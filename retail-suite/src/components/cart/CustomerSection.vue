@@ -1,0 +1,244 @@
+<!-- CustomerSection.vue -->
+<template>
+  <div
+    class="p-4"
+    :style="{ borderBottom: '1px solid var(--card-border)' }"
+  >
+    <div
+      class="flex items-stretch rounded-lg overflow-hidden"
+      :style="{
+        border: '1px solid var(--input-border)',
+        background: 'var(--input-bg)'
+      }"
+    >
+      <!-- Customer Select -->
+      <select
+        v-model="selectedCustomer"
+        @change="handleCustomerChange"
+        class="flex-grow p-2 px-3 outline-none cursor-pointer transition-all"
+        :style="{
+          background: 'var(--input-bg)',
+          color: 'var(--text-main)',
+          border: 'none'
+        }"
+      >
+        <option value="">+ Create New Customer</option>
+        <option
+          v-for="cust in customers"
+          :key="cust.name"
+          :value="cust.name"
+        >
+          {{ cust.customer_name }}
+        </option>
+      </select>
+
+      <!-- Add Customer Button -->
+      <button
+        @click="showAddCustomerModal = true"
+        class="flex items-center gap-2 px-3 py-2 font-bold text-white focus:outline-none transition-all whitespace-nowrap shadow-sm"
+        :style="{
+          background: primaryColor,
+          color: '#fff',
+          borderLeft: '1px solid var(--card-border)'
+        }"
+        title="Add New Customer"
+      >
+        <svg class="w-5 h-5 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" />
+        </svg>
+        <span class="font-semibold text-sm">Customer</span>
+      </button>
+    </div>
+
+    <!-- Selected Customer Info -->
+    <div
+      v-if="selectedCustomer"
+      class="mt-3 p-3 rounded text-sm"
+      :style="{
+        background: 'var(--info-bg)',
+        color: 'var(--focus-ring)',
+        border: '1px solid var(--info-border)'
+      }"
+    >
+      Selected: <strong>{{ selectedCustomer }}</strong>
+    </div>
+  </div>
+
+  <div class="mb-8">
+    <UpdateCustomer
+      v-show="showAddCustomerModal"
+      :model-value="showAddCustomerModal"
+      :customer-id="customer_id"
+      :customer-info="customer_info"
+      :pos_profile_doc="pos_profile"
+      :customers="customers"
+      :selectedCustomer="selectedCustomer"
+      @close="closeCustomerModal"
+      @customer-added="handleCustomerUpdated"
+      @clickOutside="closeCustomerModal"
+      @customer-updated="handleCustomerUpdated"
+    />
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, computed, watch } from 'vue'
+import UpdateCustomer from '../modals/UpdateCustomer.vue'
+import { getCustomersFromFrappeDB } from '../../services/api.js'
+import { useShiftStore } from '../../stores/shift.js'
+import { useSettingsStore } from '@/stores/settings'
+const emit = defineEmits(['customer-selected'])
+const settingsStore = useSettingsStore()
+
+const settings = computed(() => settingsStore.settings)
+const primaryColor = computed(() => {
+  return settings.value?.appearance?.primaryColor || '#06b6d4'
+})
+
+const selectedCustomer = ref('')
+const customers = ref([])
+const customer_id = ref(null)
+const customer_info = ref({})
+const showAddCustomerModal = ref(false)
+
+
+const shiftStore = useShiftStore()
+const pos_profile = computed(() => shiftStore.pos_profile || {})
+
+console.log("** pos_profile **",pos_profile.value.customer)
+// تحميل العملاء عند أول ظهور للصفحة فقط
+const loadCustomers = async () => {
+  try {
+    const customersList = await getCustomersFromFrappeDB(JSON.stringify(pos_profile.value))
+    if (customersList) {
+      customers.value = customersList
+      return customersList
+    }else{
+      return "skipped"
+    }
+  } catch (e) {
+    console.error('Failed to load customers:', e)
+  }
+}
+
+// فتح مودال جديد
+const handleCustomerChange = () => {
+  if (!selectedCustomer.value) {
+    // الخيار الفاضي -> إنشاء عميل جديد
+    showAddCustomerModal.value = true
+    customer_id.value = null
+    customer_info.value = {}
+  } else {
+    // اختيار عميل موجود
+    const cust = customers.value.find(c => c.name === selectedCustomer.value)
+    if (cust) {
+      console.log('Selected customer info:', cust)
+      customer_id.value = cust.name
+      customer_info.value = { ...cust }
+      emit('customer-selected', cust)
+    }
+  }
+}
+
+// ✅ تحديث البيانات بعد الإنشاء/التعديل
+const handleCustomerUpdated = async (updatedCustomer) => {
+ const res = await loadCustomers() // إعادة تحميل العملاء من السيرفر
+  console.log('🔄 loadCustomers:', res)
+
+  // البحث عن العميل في القائمة
+  const existingIndex = res.findIndex(c => c.name === updatedCustomer.name)
+  console.log('🔍 index:', existingIndex)
+  if (existingIndex !== -1) {
+    // ✅ تحديث العميل الموجود
+    customers.value[existingIndex] = { ...updatedCustomer }
+    console.log('✅ Customer updated in list at index:', existingIndex)
+  } else {
+    // ✅ إضافة عميل جديد
+    customers.value.push({ ...updatedCustomer })
+    console.log('✅ New customer added to list')
+  }
+
+  // ✅ تحديث البيانات المختارة بالبيانات الجديدة من السيرفر
+  customer_id.value = updatedCustomer.name
+  customer_info.value = { ...updatedCustomer }
+  selectedCustomer.value = updatedCustomer.name
+  shiftStore.setCustomer(updatedCustomer)
+  // ✅ إرسال البيانات المحدثة للأعلى
+  emit('customer-selected', updatedCustomer)
+
+  // console.log('✅ Customer info updated:', customer_info.value)
+}
+
+// إغلاق المودال
+const closeCustomerModal = () => {
+  showAddCustomerModal.value = false
+  const currentCustomer = shiftStore.$state.currentCustomer
+  console.log("currentCustomer",currentCustomer)
+  if (currentCustomer?.name) {
+    const cust = customers.value.find(c => c.name === currentCustomer.name)
+    if (cust) {
+      selectedCustomer.value = cust.name
+      customer_id.value = cust.name
+      customer_info.value = { ...cust }
+      emit('customer-selected', cust)
+    }
+  }
+}
+watch(
+  [() => customers.value, () => pos_profile.value],
+  ([customerList, profile]) => {
+    if (!customerList?.length || !profile?.customer) return
+
+    if (!selectedCustomer.value) {
+      const defaultCustomer = customerList.find(
+        c => c.name === profile.customer
+      )
+
+      if (defaultCustomer) {
+        selectedCustomer.value = defaultCustomer.name
+        customer_id.value = defaultCustomer.name
+        customer_info.value = { ...defaultCustomer }
+
+        // مهم جداً
+        shiftStore.setCustomer(defaultCustomer)
+
+        emit('customer-selected', defaultCustomer)
+
+        console.log('✅ Default customer set from POS Profile')
+      }
+    }
+  },
+  { immediate: true }
+)
+// watch(
+//   [() => customers.value, () => shiftStore.$state.currentCustomer],
+//   ([customerList, currentCustomer]) => {
+//     if (!customerList || !currentCustomer?.name) return
+
+//     const cust = customerList.find(c => c.name === currentCustomer.name)
+//     if (cust) {
+//       selectedCustomer.value = cust.name
+//       customer_id.value = cust.name
+//       customer_info.value = { ...cust }
+//       emit('customer-selected', cust)
+//     }
+//   },
+//   { immediate: true }
+// )
+
+onMounted(async () => {
+  const list = await loadCustomers()
+  const savedCustomer = shiftStore.$state.currentCustomer
+  if (savedCustomer?.name && list) {
+    const exists = list.find(c => c.name === savedCustomer.name)
+    if (exists) {
+      selectedCustomer.value = exists.name
+      customer_id.value = exists.name
+      customer_info.value = { ...exists }
+      emit("customer-selected", exists)
+    }
+  }
+})
+
+
+</script>
