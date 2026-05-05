@@ -1,0 +1,36 @@
+{
+    "doctype": "DocType",
+    "name": "Loyalty Tier",
+    "module": "Retail",
+    "custom": 1,
+    "istable": 1,
+    "fields": [
+        {
+            "fieldname": "tier_name",
+            "fieldtype": "Data",
+            "label": "Tier Name",
+            "reqd": 1,
+            "in_list_view": 1
+        },
+        {
+            "fieldname": "icon",
+            "fieldtype": "Data",
+            "label": "Icon (Emoji)",
+            "in_list_view": 1
+        },
+        {
+            "fieldname": "min_points",
+            "fieldtype": "Int",
+            "label": "Minimum Points",
+            "reqd": 1,
+            "in_list_view": 1
+        },
+        {
+            "fieldname": "multiplier",
+            "fieldtype": "Float",
+            "label": "Points Multiplier",
+            "default": "1",
+            "in_list_view": 1
+        }
+    ]
+}
