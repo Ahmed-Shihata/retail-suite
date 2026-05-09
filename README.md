@@ -1,6 +1,3 @@
-### Retail
-
-Retail Suite Backend is a powerful and flexible backend solution built on the Frappe Framework, designed to manage both POS (Point of Sale) systems and eCommerce websites. It provides seamless integration for retail operations, including inventory management, order processing, customer data management, and sales analytics. Ideal for businesses looking to unify in-store and online sales under a single backend system
 <div align="center" style="margin-top: 20px;">
     <div style="
         width:128px;
@@ -14,16 +11,20 @@ Retail Suite Backend is a powerful and flexible backend solution built on the Fr
         overflow: hidden;
         margin: 0 auto;
     ">
-        <img src="retail_suite.png" style="width: 50%; height: 50%; object-fit: cover; border-radius: 25px;">
+        <img src="/pictures/retail_suite.png" style="width: 50%; height: 50%; object-fit: cover; border-radius: 25px;">
     </div>
     <h2>Retail Suite</h2>
 </div>
 
 # 🛍️ Retail Suite
 
-**Retail Suite** is a modern **Point of Sale (POS)** system designed for small and medium retail businesses. Built with **Vue.js & Tailwind CSS** on the frontend and **Frappe / ERPNext** on the backend, it focuses on **speed, simplicity, and reliability**.
-
+**Retail Suite** is a Modern Vue-powered retail and POS experience for ERPNext/Frappe system designed for small and medium retail businesses.  **.
+.
 ---
+
+# Technology
+**Vue.js & Tailwind CSS**  **frontend**
+**Frappe / ERPNext** **backend**
 
 <h2 align="center">📫 Connect with me <img src="https://media.giphy.com/media/WUlplcMpOCEmTGBtBW/giphy.gif" width="30">
   </h2>
@@ -46,62 +47,82 @@ Retail Suite Backend is a powerful and flexible backend solution built on the Fr
 
 ---
 
-### Main Features
+## Main Features
+## Modern Retail & POS Experience
 
-1. User friendly and provides a good user experience and speed of use
-2. Fast and user-friendly checkout Quick Pay **POS screen**
-3. Supports Multiple Mode payment methods Cash, Card, Bank Transfer
-4. Easy returns Ability to make returns from **POS screen**
-5. Supports batch & serial numbering
-6. Quick Form Open & close shifts
-7. Shift summary screen
-8. Shift schedule management Easy to Assign Users to Shift
-9. Attendance tracking (attendance list, leave management, check-ins)
-10. Staff management (roles, departments, designations, permissions)
-11. Items & products management, Categories and stock levels
-12. Barcode scanning & product search
-13. Stock in / stock out tracking, Inventory balance
-14. Tracking Purchase receipts and Inventory transfers
-15. Customers & suppliers management (Create, View, Update, Delete)
-16. Tracking Receivable & Payable Invoices
-17. Financial reports: Balance Sheet, Profit & Loss, Accounts Payable & Receivable, Cash Flow
-18. Sales analytics & Expense breakdown
-19. Period closing
-20. User Seetings Role-based access control, Staff performance tracking
-21. User notifications, Receipt settings, Keyboard shortcuts
-22. Web Page For Customers Orders
-23. Payments Reconciliation
+- Dark / Light Mode support with modern Vue-powered POS interface
+- Mobile barcode scanning with real-time cart updates
+- QR code and barcode generation
+- Fast POS operations (orders, checkout, returns, refunds)
+- Multiple payment methods (Cash, Card, Bank Transfer)
+- Keyboard shortcuts for faster cashier workflow
+- Fully responsive mobile-friendly POS experience
+
+### Shift & Cashier Management
+- Opening and closing shift workflows
+- Payment reconciliation screen
+- Shift dashboard with quick Shift performance insights
+- Shift scheduling and cashier assignment
+- Receipt settings and cashier notifications
+
+### Retail Operations
+- Stock in / stock out tracking
+- Inventory transfer workflows
+- Purchase receipt management
+- Batch and serial number support
+- Customer and supplier management
+
+### Analytics & Reporting
+- Sales analytics and expense reports
+- Cash flow and financial summaries
+- Accounts receivable and payable tracking
+- Period closing and financial cycle overview
+
+### Customer Experience
+- Customer-facing online ordering page
+
+---
+
+## Built on ERPNext
+
+Retail Suite leverages the powerful backend capabilities of ERPNext, including:
+- Inventory Management
+- Accounting
+- HR & Staff Management
+- CRM
+- Stock & Warehouse Management
+
 ---
 
 ## 🖼️ Screenshots
 <h2 align="center">POS – Quick Pay Screen</h2>
 <p align="center">
-  <img src="posimage.png" alt="POS Screen" width="900">
+  <img src="/pictures/posimage.png" alt="POS Screen" width="900">
 </p>
 
 <h2 align="center">Returns & Refunds</h2>
 <p align="center">
-  <img src="returnimage.png" alt="Return Screen" width="900">
+  <img src="/pictures/returnimage.png" alt="Return Screen" width="900">
 </p>
 
 <h2 align="center">Payment & Reconciliation</h2>
 <p align="center">
-  <img src="payimage.png" alt="Reconciliation Screen" width="900">
+  <img src="/pictures/payimage.png" alt="Reconciliation Screen" width="900">
 </p>
 
 <h2 align="center">Inventory Management (Barcode)</h2>
 <p align="center">
-  <img src="barcodeimage.png" alt="Inventory Screen" width="900">
+  <img src="/pictures/barcodeimage.png" alt="Inventory Screen" width="900">
 </p>
 
 <h2 align="center">Finance Module</h2>
 <p align="center">
-  <img src="bsimage.png" alt="Finance Screen" width="900">
+  <img src="/pictures/bsimage.png" alt="Finance Screen" width="900">
 </p>
 
 <h2 align="center">System & User Settings</h2>
 <p align="center">
-  <img src="settingimage.png" alt="Settings Screen" width="900">
+  <img src="/pictures/settingimage.png" alt="Settings Screen" width="900">
 </p>
 
 ---
