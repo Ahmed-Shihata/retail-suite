@@ -18,33 +18,37 @@
 
 # 🛍️ Retail Suite
 
-**Retail Suite** is a Modern Vue-powered retail and POS experience for ERPNext/Frappe system designed for small and medium retail businesses.  **.
+**Retail Suite** is a Modern Vue-powered retail and POS experience for ERPNext/Frappe system designed for small and medium retail business.
 .
 ---
 
 # Technology
 **Vue.js & Tailwind CSS**  **frontend**
 **Frappe / ERPNext** **backend**
+<h2 align="center">
+  📫 Connect with me
+  <img src="https://media.giphy.com/media/WUlplcMpOCEmTGBtBW/giphy.gif" width="30">
+</h2>
 
-<h2 align="center">📫 Connect with me <img src="https://media.giphy.com/media/WUlplcMpOCEmTGBtBW/giphy.gif" width="30">
-  </h2>
 <p align="center">
-  <a href="http://linkedin.com/in/ahmed-abukhatwa-641a76251" target="_blank" title="LinkedIn">
+  <a href="http://linkedin.com/in/ahmed-abukhatwa-641a76251" target="_blank">
     <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/linkedin/linkedin-original.svg"
-         alt="LinkedIn" width="42" height="42" style="margin: 0 12px;" />
+         alt="LinkedIn"
+         width="42" />
   </a>
 
-  <a href="https://wa.me/201010871072" target="_blank" title="WhatsApp">
+  <a href="https://wa.me/201010871072" target="_blank">
     <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
-         alt="WhatsApp" width="42" height="42" style="margin: 0 12px;" />
+         alt="WhatsApp"
+         width="42" />
   </a>
 
-  <a href="mailto:ahmedabukhatwa1@gmail.com" target="_blank" title="Gmail">
+  <a href="mailto:ahmedabukhatwa1@gmail.com" target="_blank">
     <img src="https://cdn-icons-png.flaticon.com/512/5968/5968534.png"
-         alt="Gmail" width="42" height="42" style="margin: 0 12px;" />
+         alt="Gmail"
+         width="42" />
   </a>
 </p>
-
 ---
 
 ## Main Features
