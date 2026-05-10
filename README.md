@@ -101,7 +101,7 @@ Retail Suite leverages the powerful backend capabilities of ERPNext, including:
 </p>
 <h2 align="center">Mobile Web Scanner</h2>
 <p align="center">
-  <img src="/pictures/product_scanner_mockup.png" alt="POS Screen" width="900">
+  <img src="/pictures/product_scanner_mockup.png" alt="Mobile Web Scanner" width="250">
 </p>
 
 <h2 align="center">Returns & Refunds</h2>
