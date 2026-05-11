@@ -57,7 +57,12 @@ def generate_barcode_value(barcode_type):
     def gen_code():
         chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
         return ''.join(random.choices(chars, k=10))
-
+    # def gen_qr():
+    #     import uuid
+    #     return str(uuid.uuid4())
+    def gen_qr():
+        import random, string
+        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
     generators = {
         'EAN':    lambda: gen_ean(13),
         'EAN13':  lambda: gen_ean(13),
@@ -75,6 +80,7 @@ def generate_barcode_value(barcode_type):
         'PZN':    gen_pzn,
         'CODE39': gen_code,
         'CODE128':gen_code,
+        'QR':      gen_qr,
     }
 
     gen = generators.get(t)
@@ -400,8 +406,9 @@ def add_item_barcode(barcode_data):
         # جلب الـ row الجديد
         new_row = item_doc.barcodes[-1]
         if new_row:
-            image = generate_barcode_img(new_row.barcode, new_row.barcode_type)
-            if image:
+            # image = generate_barcode_img(new_row.barcode, new_row.barcode_type)
+            preview = generate_barcode_image_base64(barcode_value, barcode_type)
+            if preview:
                     return {
                         'status': 'success',
                         'message': _('Barcode added successfully'),
@@ -411,7 +418,7 @@ def add_item_barcode(barcode_data):
                             'barcode_type': new_row.barcode_type,
                             'posa_uom': new_row.posa_uom,
                             'uom': new_row.uom,
-                            'image': image
+                            'image': preview
                         }
                     }
             else:
@@ -578,32 +585,52 @@ def generate_barcode_svg(barcode_value, barcode_type):
         return '<svg></svg>'
 
 
+
 @frappe.whitelist()
 def generate_barcode_img(barcode_value, barcode_type):
-    """
-    توليد صورة للـ barcode
-    """
     try:
-        if barcode_type == 'QR':
+        if not barcode_value:
+            return {
+                'status': 'error',
+                'message': 'Barcode value is empty',
+                'data': ''
+            }
+
+        barcode_type_clean = (barcode_type or '').upper().strip()
+
+        # ✅ QR
+        if barcode_type_clean in ('QR', 'QRCODE'):
             qr = qrcode.QRCode(version=1, box_size=10, border=5)
             qr.add_data(barcode_value)
             qr.make(fit=True)
-            img = qr.make_image(fill_color="black", back_color="white")
-        else:
-            # يمكن تحسين هذا لأنواع أخرى
-            img = qrcode.QRCode()
-            img.add_data(barcode_value)
-            img.make()
-            img = img.make_image()
-        buffered = BytesIO()
-        img.save(buffered, format="PNG")
-        img_str = base64.b64encode(buffered.getvalue()).decode()
 
-        return f'data:image/png;base64,{img_str}'
+            img = qr.make_image(fill_color="black", back_color="white")
+
+            buffer = BytesIO()
+            img.save(buffer, format="PNG")
+
+            base64_img = base64.b64encode(buffer.getvalue()).decode()
+
+            return {
+                'status': 'success',
+                'data': f'data:image/png;base64,{base64_img}'
+            }
+
+        # ✅ Barcode
+        preview = generate_barcode_image_base64(barcode_value, barcode_type_clean)
+
+        return {
+            'status': 'success',
+            'data': preview
+        }
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), 'generate_barcode_img Error')
-        return ''
+        return {
+            'status': 'error',
+            'message': str(e),
+            'data': ''
+        }
 
 @frappe.whitelist()
 def get_unit_of_measures():
@@ -668,114 +695,6 @@ def delete_item(item_code):
     except Exception as e:
         frappe.logger().error(f"Error deleting item: {e}")
         return {"status": "error", "message": str(e)}
-
-
-# @frappe.whitelist()
-# def add_item(item_data):
-#     """
-#     إضافة Item جديد مع رفع الصورة
-#     مثال item_data:
-#     {
-#         "item_code": "TEST-001",
-#         "item_name": "Test Item",
-#         "item_group": "Products",
-#         "image": "data:image/jpeg;base64,/9j/4AAQSkZJR...",  # base64 أو مسار
-#         "stock_uom": "Nos",
-#         "is_stock_item": 1,
-#         "is_sales_item": 1
-#     }
-#     """
-#     try:
-#         # تحويل string إلى dict إذا لزم الأمر
-#         if isinstance(item_data, str):
-#             item_data = frappe.parse_json(item_data)
-
-#         print("\n\nitem data", item_data)
-
-#         # التحقق من الحقول المطلوبة
-#         required_fields = ["naming_series", "item_name", "item_group"]
-#         for field in required_fields:
-#             if field not in item_data:
-#                 return {
-#                     "status": "error",
-#                     "message": f"Required field missing: {field}"
-#                 }
-#         print("==================== Generate Item Code =====================")
-#         # generate item_code
-#         print("\n\n item_code (1.1)", item_data)
-#         item_code = generate_item_code(item_data)
-#         print("\n\n item_code (1.2)", item_code)
-
-#         # التحقق من عدم تكرار item_code
-#         if frappe.db.exists("Item", item_code):
-#             return {
-#                 "status": "error",
-#                 "message": f"Item with code {item_code} already exists"
-#             }
-
-#         # year = nowdate().split('-')[0]
-
-#         if isinstance(item_data, dict):
-#             item_data["naming_series"] = item_code
-#             item_data["item_code"] = item_code
-#             item_data["name"] = item_code
-#             item_data["has_serial_no"] = 0
-#             # item_data["serial_no_series"] = f'STO-ITEM-.YYYY.-#####'
-#         print("==================== Handle Image =====================")
-#         # معالجة الصورة إذا كانت موجودة
-#         image_path = None
-#         if item_data.get("image"):
-#             print("Item Have Image ")
-#             image_path = handle_item_image(item_data.get("image"), item_code)
-#             print("image path ",image_path)
-#             if image_path:
-#                 item_data["image"] = image_path
-#             else:
-#                 # إذا فشل رفع الصورة، احذفها من البيانات
-#                 item_data.pop("image", None)
-
-#         print("\n\nitem data (2)", item_data)
-
-#         # إنشاء الـ Item document
-#         item_doc = frappe.get_doc({
-#             "doctype": "Item",
-#             **item_data
-#         })
-
-#         print("\n\nitem doc (3)", item_doc)
-
-#         # إدراج مع تجاهل الصلاحيات
-#         item_doc.insert(ignore_permissions=True)
-#         frappe.db.commit()
-#         print("\n\nitem is ADD")
-
-#         # مسح الـ cache بعد الإضافة
-#         clear_posa_cache()
-
-#         return {
-#             "status": "success",
-#             "message": f"Item {item_doc.item_code} added successfully",
-#             "item_code": item_doc.item_code,
-#             "image": image_path
-#         }
-
-#     except frappe.DuplicateEntryError:
-#         return {
-#             "status": "error",
-#             "message": f"Item {item_data.get('item_code')} already exists"
-#         }
-#     except frappe.ValidationError as e:
-#         return {
-#             "status": "error",
-#             "message": f"Validation error: {str(e)}"
-#         }
-#     except Exception as e:
-#         frappe.logger().error(f"Error adding item: {e}")
-#         return {
-#             "status": "error",
-#             "message": str(e)
-#         }
-
 
 def handle_item_image(image_data, item_code):
     """
@@ -938,6 +857,7 @@ def generate_item_code():
         next_num = 1
 
     return f'STO-ITEM-{year}-{str(next_num).zfill(5)}'
+
 @frappe.whitelist()
 def add_item(item_data):
     try:
@@ -1003,54 +923,6 @@ def add_item(item_data):
         return {"status": "error", "message": str(e)}
 
 
-# def generate_item_code(doc):
-#     year = nowdate().split('-')[0]
-#     # Frappe بتتكفل بكل حاجة - atomic + sequential
-#     # STO-ITEM-2025-00003
-#     item_code = make_autoname(f'STO-ITEM-{year}-.#####')
-#     return item_code
-
-# def generate_item_code(doc):
-#     print("DOC",doc)
-#     year = nowdate().split('-')[0]  # 2025
-#     if isinstance(doc, list):
-#         naming_series = doc.naming_series
-#     else:
-#         naming_series = doc.get("naming_series")
-#     # البحث عن آخر item
-#     last_item = frappe.db.sql("""
-#         SELECT name FROM `tabItem`
-#         WHERE name LIKE %s
-#         ORDER BY name DESC
-#         LIMIT 1
-#     """, (f'STO-ITEM-{year}-%', ), as_dict=True)
-#     print("last_item", last_item)
-#     # إذا كان فيه منتجات
-#     if last_item and len(last_item) > 0:
-#         try:
-#             last_num = int(last_item[0]['name'].split('-')[-1])
-#             next_num = last_num + 1
-#         except (ValueError, IndexError):
-#             next_num = 1
-#     else:
-#         # أول منتج = رقم 1
-#         next_num = 1
-
-#     item_code = f'STO-ITEM-{year}-{str(next_num).zfill(5)}'
-#     if isinstance(doc, list):
-#         doc.item_code = item_code
-#         doc.name = item_code
-#         doc.has_serial_no = 0
-#         doc.serial_no_series = f'STO-ITEM-.YYYY.-#####'
-#     return f'STO-ITEM-{year}-{str(next_num).zfill(5)}'
-
-
-# retail/retail/api/inventory.py
-# ============================================================
-# get_inventory_balance
-# Returns all items with their stock qty per warehouse,
-# enriched with price, category, and image.
-# ============================================================
 @frappe.whitelist()
 def get_inventory_balance():
     """

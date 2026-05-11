@@ -22,3 +22,6 @@ cloudflared-linux-amd64.deb
 
 # cache
 .cache/
+
+# npm lock (using yarn instead)
+package-lock.json

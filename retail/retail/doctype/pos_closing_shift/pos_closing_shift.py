@@ -1,14 +1,16 @@
 # Copyright (c) 2026, Ahmed Abu-khatwa and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 import json
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
+from retail.retail.api.shifts import get_shift_pos_transactions
 from retail.retail.api.posapp import get_draft_invoices, get_sales_invoice_child_table
+from retail.retail.api.payment_utils import get_shift_invoice_payments, get_shift_unallocated_payments, get_shift_pos_invoices, get_shift_payments_entries, submit_printed_invoices
 from frappe.utils import format_time, datetime, get_datetime
+
 class POSClosingShift(Document):
     def validate(self):
         user = frappe.get_all(
@@ -105,23 +107,7 @@ def get_cashiers(doctype, txt, searchfield, start, page_len, filters):
 
 @frappe.whitelist()
 def get_pos_invoices(pos_opening_shift):
-    submit_printed_invoices(pos_opening_shift)
-    data = frappe.db.sql(
-        """
-	select
-		name
-	from
-		`tabSales Invoice`
-	where
-		docstatus = 1 and posa_pos_opening_shift = %s
-	""",
-        (pos_opening_shift),
-        as_dict=1,
-    )
-
-    data = [frappe.get_doc("Sales Invoice", d.name).as_dict() for d in data]
-
-    return data
+    return get_shift_pos_invoices(pos_opening_shift)
 
 @frappe.whitelist()
 def get_all_pos_invoices(**kwargs):
@@ -154,45 +140,14 @@ def get_all_pos_invoices(**kwargs):
         "invoices": invoices
     }
 
+# in pos_closing_shift.py
 @frappe.whitelist()
 def get_payments_entries(pos_opening_shift):
-    return frappe.get_all(
-        "Payment Entry",
-        filters={
-            "docstatus": 1,
-            "reference_no": pos_opening_shift,
-            "payment_type": "Receive",
-        },
-        fields=[
-            "name",
-            "mode_of_payment",
-            "paid_amount",
-            "reference_no",
-            "posting_date",
-            "party",
-        ],
-    )
-
+    return get_shift_payments_entries(pos_opening_shift)
 
 @frappe.whitelist()
 def make_closing_shift_from_opening(opening_shift):
     opening_shift = json.loads(opening_shift)
-    print("\n" + "="*80)
-    print("DEBUG: OPENING SHIFT DATA")
-    print("="*80)
-    print(f"Opening Shift Name: {opening_shift.get('name')}")
-    print(f"closingBalance: {opening_shift.get('closingBalance')}")
-    print(f"closing_details: {opening_shift.get('closing_details')}")
-    print(f"balance_details: {opening_shift.get('balance_details')}")
-    print("="*80)
-
-    closing_balance = opening_shift.get("closingBalance")
-    if closing_balance is None:
-        closing_balance = 0
-    try:
-        closing_balance = flt(closing_balance)
-    except:
-        closing_balance = 0
 
     submit_printed_invoices(opening_shift.get("name"))
 
@@ -209,75 +164,68 @@ def make_closing_shift_from_opening(opening_shift):
 
     invoices = get_pos_invoices(opening_shift.get("name"))
 
-    pos_transactions = []
+    pos_invoices = []
     taxes = []
-    payments = []
+    payments = {}
     pos_payments_table = []
-    for detail in opening_shift.get("balance_details"):
-        payments.append(
-            frappe._dict(
-                {
-                    "mode_of_payment": detail.get("mode_of_payment"),
-                    "opening_amount": detail.get("amount") or 0,
-                    "expected_amount": 0,
-                    "closing_amount": 0,
-                }
-            )
-        )
+    # ── 1. ابدأ بـ balance_details (opening amounts) ──
+    for detail in opening_shift.get("balance_details", []):
+        mop = detail.get("mode_of_payment")
+        payments[mop] = frappe._dict({
+            "mode_of_payment": mop,
+            "opening_amount": flt(detail.get("amount") or 0),
+            "expected_amount": 0,
+            "closing_amount": 0,
+        })
 
+    # ── 2. loop الفواتير ──
     for inv in invoices:
-        print(f"  - {inv.name}: {inv.grand_total}, payments: {len(inv.payments)}")
-        pos_transactions.append(
-            frappe._dict(
-                {
-                    "sales_invoice": inv.name,
-                    "posting_date": inv.posting_date,
-                    "grand_total": inv.grand_total,
-                    "customer": inv.customer,
-                }
-            )
-        )
+        pos_invoices.append(frappe._dict({
+            "sales_invoice": inv.name,
+            "posting_date": inv.posting_date,
+            "grand_total": inv.grand_total,
+            "customer": inv.customer,
+        }))
         closing_shift.grand_total += flt(inv.grand_total)
         closing_shift.net_total += flt(inv.net_total)
         closing_shift.total_quantity += flt(inv.total_qty)
 
         for t in inv.taxes:
-            existing_tax = [
-                tx
-                for tx in taxes
-                if tx.account_head == t.account_head and tx.rate == t.rate
-            ]
+            existing_tax = next((tx for tx in taxes if tx.account_head == t.account_head and tx.rate == t.rate), None)
             if existing_tax:
-                existing_tax[0].amount += flt(t.tax_amount)
+                existing_tax.amount += flt(t.tax_amount)
             else:
-                taxes.append(
-                    frappe._dict(
-                        {
-                            "account_head": t.account_head,
-                            "rate": t.rate,
-                            "amount": t.tax_amount,
-                        }
-                    )
-                )
+                taxes.append(frappe._dict({
+                    "account_head": t.account_head,
+                    "rate": t.rate,
+                    "amount": t.tax_amount,
+                }))
 
-        for p in inv.payments:
-            existing_pay = [
-                pay for pay in payments if pay.mode_of_payment == p.mode_of_payment
-            ]
-            if existing_pay:
-                if not hasattr(existing_pay[0], 'expected_amount'):
-                    existing_pay[0].expected_amount = 0
-                existing_pay[0].expected_amount += flt(p.amount)
-            else:
-                payments.append(
-                    frappe._dict(
-                        {
-                            "mode_of_payment": py.mode_of_payment,
-                            "expected_amount": flt(py.paid_amount),
+        # ✅ الفواتير اللي عندها payments مباشرة
+        if inv.payments:
+            for p in inv.payments:
+                mop = p.mode_of_payment
+                if mop not in payments:
+                    payments[mop] = frappe._dict({
+                        "mode_of_payment": mop,
+                        "opening_amount": 0,
+                        "expected_amount": 0,
+                        "closing_amount": 0,
+                    })
+                payments[mop].expected_amount += flt(p.amount)
 
-                        }
-                    )
-                )
+        payment_entries = get_shift_invoice_payments(inv["name"])
+        for pe in payment_entries:
+            mop = pe["mode_of_payment"]
+            if mop not in payments:
+                payments[mop] = {
+                    "mode_of_payment": mop,
+                    "opening_amount": 0,
+                    "expected_amount": 0,
+                    "closing_amount": 0,
+                }
+            payments[mop]["expected_amount"] += pe["allocated_to_this_invoice"]
+
 
     pos_payments = get_payments_entries(opening_shift.get("name"))
 
@@ -293,37 +241,49 @@ def make_closing_shift_from_opening(opening_shift):
                 }
             )
         )
-        existing_pay = [
-            pay for pay in payments if pay.mode_of_payment == py.mode_of_payment
-        ]
-        if existing_pay:
-            existing_pay[0].expected_amount += flt(py.paid_amount)
-        else:
-            payments.append(
-                frappe._dict(
-                    {
-                        "mode_of_payment": py.mode_of_payment,
-                        "expected_amount": flt(py.paid_amount),
-                    }
-                )
-            )
-    print("\nDEBUG: Final payments list:")
-    for pay in payments:
-        expected = getattr(pay, 'expected_amount', 0)
-        print(f"  {pay.mode_of_payment}: opening={pay.opening_amount}, expected={expected}, closing={pay.closing_amount}")
-    print("="*80 + "\n")
-    closing_shift.set("pos_transactions", pos_transactions)
-    closing_shift.set("payment_reconciliation", payments)
+
+    # ── 4. Unallocated payments — مقسمة على mode مش مجموع واحد ──
+    unallocated = get_shift_unallocated_payments(opening_shift.get("name"))
+    for pe in unallocated:
+        mop = pe.get("mode_of_payment")
+        if mop not in payments:
+            payments[mop] = frappe._dict({
+                "mode_of_payment": mop,
+                "opening_amount": 0,
+                "expected_amount": 0,
+                "closing_amount": 0,
+            })
+        payments[mop]["expected_amount"] += flt(pe.get("unallocated_amount", 0))
+
+    # ── 5. حط الـ closing_amount من closing_details ──
+    closing_details = opening_shift.get("closing_details") or []
+    if isinstance(closing_details, dict):
+        closing_details = [closing_details]
+
+    for mop, pay in payments.items():
+        closing_detail = next(
+            (d for d in closing_details if d.get("modeOfPayment") == mop), None
+        )
+        pay.closing_amount = flt(closing_detail.get("closingBalance")) if closing_detail else 0
+        diff = pay.expected_amount + pay.opening_amount - pay.closing_amount
+        print(f"{mop}: opening={pay.opening_amount}, expected={pay.expected_amount}, closing={pay.closing_amount}, diff={diff}")
+
+    payments_list = list(payments.values())
+
+    closing_shift.set("pos_transactions", pos_invoices)
+    closing_shift.set("payment_reconciliation", payments_list)
     closing_shift.set("taxes", taxes)
     closing_shift.set("pos_payments", pos_payments_table)
 
+    if opening_shift.get("user") == frappe.session.user:
+        closing_shift.save(ignore_permissions=True)
+    else:
+        closing_shift.save()
 
-    opening_shift_doc = frappe.get_doc("POS Opening Shift", opening_shift.get("name"))
-    closing_shift.save()
-    opening_shift_doc.db_set("status", "Closed")
-    opening_shift_doc.db_set("pos_closing_shift", closing_shift.name)
-    print('\n pos_closing_shift Name ====> ',closing_shift.as_dict())
+    frappe.db.set_value("POS Opening Shift", opening_shift.get("name"), "status", "Closed")
+    frappe.db.set_value("POS Opening Shift", opening_shift.get("name"), "pos_closing_shift", closing_shift.name)
     frappe.db.commit()
+
     return closing_shift
 
 
@@ -336,19 +296,6 @@ def submit_closing_shift(closing_shift):
     closing_shift_doc.submit()
     return closing_shift_doc.name
 
-
-def submit_printed_invoices(pos_opening_shift):
-    invoices_list = frappe.get_all(
-        "Sales Invoice",
-        filters={
-            "posa_pos_opening_shift": pos_opening_shift,
-            "docstatus": 0,
-            "posa_is_printed": 1,
-        },
-    )
-    for invoice in invoices_list:
-        invoice_doc = frappe.get_doc("Sales Invoice", invoice.name)
-        invoice_doc.submit()
 
 @frappe.whitelist()
 def get_shift_summary(pos_opening_shift_name):
@@ -394,7 +341,9 @@ def get_shift_summary(pos_opening_shift_name):
 
         invoice_doc = frappe.get_doc("Sales Invoice", d.name)
         invoice_qty = sum(flt(it.qty) for it in (invoice_doc.items or []))
-        # "posting_date": get_datetime(d.posting_date).strftime("%Y-%m-%d %H:%M:%S"),
+
+        is_return = flt(d.grand_total) < 0
+
         pos_transactions.append(frappe._dict({
             "sales_invoice": d.name,
             "posting_time": format_time(d.posting_time, "hh:mm a"),
@@ -403,7 +352,8 @@ def get_shift_summary(pos_opening_shift_name):
             "customer": d.customer,
             "total_qty": invoice_qty,
             "Cashier": d.owner,
-            "status": d.status
+            "status": d.status,
+            "is_return": is_return
         }))
 
         # 🔸 الضرائب
@@ -421,13 +371,19 @@ def get_shift_summary(pos_opening_shift_name):
         # 🔸 المدفوعات (Sales Invoice Payments)
         for p in d.payments:
             existing_pay = [pay for pay in payments if pay.mode_of_payment == p.mode_of_payment]
+
+            print('existing_pay: ', existing_pay)
+            payment_amount = flt(p.amount)
+            if flt(d.grand_total) < 0 and payment_amount > 0:
+                payment_amount = -payment_amount
+
             if existing_pay:
-                existing_pay[0].expected_amount += flt(p.amount)
+                existing_pay[0].expected_amount += payment_amount
             else:
                 payments.append(frappe._dict({
                     "mode_of_payment": p.mode_of_payment,
                     "opening_amount": 0,
-                    "expected_amount": p.amount,
+                    "expected_amount": payment_amount,
                 }))
 
     # 🔹 مدفوعات Payment Entry
@@ -460,3 +416,209 @@ def get_shift_summary(pos_opening_shift_name):
         "payments": payments,
         "pos_payments": pos_payments_table
     }
+
+def calculate_total_cash_collected(shift_id):
+    from frappe.utils import flt
+
+    transactions = get_shift_pos_transactions(shift_id)
+
+    total = 0.0
+    for tx in transactions:
+        amount = flt(tx.get("amount", 0))
+        if tx.get("type") == "in":
+            total += amount
+        elif tx.get("type") == "out":
+            total -= amount
+
+    return total
+
+def calculate_total_cash_collected(shift_id):
+    from frappe.utils import flt
+
+    transactions = get_shift_pos_transactions(shift_id)
+    total = sum(
+        flt(tx["amount"]) if tx["type"] == "in" else -flt(tx["amount"])
+        for tx in transactions
+    )
+
+    # أضف الغير مخصصة إن أردت احتسابها
+    unallocated = get_shift_unallocated_payments(shift_id)
+    total += sum(flt(pe.get("unallocated_amount", 0)) for pe in unallocated)
+
+    return total
+
+
+def init_payments_from_opening(opening_shift: dict):
+    opening = {}
+    for detail in opening_shift.get("balance_details", []):
+        mop = detail.get("mode_of_payment")
+        opening[mop] = {
+            "mode_of_payment": mop,
+            "opening_amount": flt(detail.get("amount") or 0),
+            "expected_amount": 0,
+            "closing_amount": 0,
+        }
+    return opening
+
+def summarize_invoices(invoices):
+    summary = {
+        "grand_total": 0,
+        "net_total": 0,
+        "total_quantity": 0
+    }
+    for inv in invoices:
+        summary["grand_total"] += inv["grand_total"]
+        summary["net_total"] += inv["net_total"]
+        summary["total_quantity"] += inv["total_qty"]
+    return summary
+
+def compute_expected_from_invoices(invoices, payments):
+    """تحسب expected_amount لكل طريقة دفع من الفواتير"""
+    payments_dict = {}
+
+    for inv in invoices:
+        # 1️⃣ دفعات POS المباشرة
+        if inv["payments"]:
+            for p in inv["payments"]:
+                mop = p.mode_of_payment
+                if mop not in payments:
+                    payments[mop] = {
+                        "mode_of_payment": mop,
+                        "opening_amount": 0,
+                        "expected_amount": 0,
+                        "closing_amount": 0,
+                    }
+                payments[mop]["expected_amount"] += p.amount
+
+        # 2️⃣ Payment Entries المرتبطة بالفاتورة (دائمًا)
+        payment_entries = get_shift_invoice_payments(inv["name"])
+        for pe in payment_entries:
+            mop = pe["mode_of_payment"]
+            if mop not in payments:
+                payments[mop] = {
+                    "mode_of_payment": mop,
+                    "opening_amount": 0,
+                    "expected_amount": 0,
+                    "closing_amount": 0,
+                }
+            payments[mop]["expected_amount"] += pe["allocated_to_this_invoice"]
+
+    # طبع النتيجة للمراجعة
+    print("✅ Aggregated Payments:", payments)
+    return payments
+
+def add_unallocated_to_payments(payments, unallocated):
+    for pe in unallocated:
+        mop = pe.get("mode_of_payment")
+        if mop not in payments:
+            payments[mop] = {
+                "mode_of_payment": mop,
+                "opening_amount": 0,
+                "expected_amount": 0,
+                "closing_amount": 0,
+            }
+        payments[mop]["expected_amount"] += flt(pe.get("unallocated_amount", 0))
+    return payments
+
+
+def add_allocated_from_payment_entries(payments, pos_payments):
+    for py in pos_payments:
+        mop = py.mode_of_payment
+        from frappe.utils import flt
+        if mop not in payments:
+            payments[mop] = {
+                "mode_of_payment": mop,
+                "opening_amount": 0,
+                "expected_amount": 0,
+                "closing_amount": 0,
+            }
+
+        invoice_refs = frappe.get_all(
+            "Payment Entry Reference",
+            filters={
+                "parent": py.name,
+                "reference_doctype": "Sales Invoice"
+            },
+            fields=["allocated_amount"]
+        )
+
+        allocated = sum(flt(r.allocated_amount) for r in invoice_refs)
+        payments[mop]["expected_amount"] += allocated
+
+    return payments
+
+def add_payment_mode_to_opening(shift_id, mode_of_payment, opening_amount=0.0):
+    opening_shift = frappe.get_doc("POS Opening Shift", shift_id)
+
+    existing = next(
+        (b for b in opening_shift.balance_details if b.get("mode_of_payment") == mode_of_payment),
+        None
+    )
+
+    if not existing:
+        opening_shift.append("balance_details", {
+            "mode_of_payment": mode_of_payment,
+            "amount": opening_amount
+        })
+        # Tell Frappe to skip the submit validation check
+        opening_shift.flags.ignore_validate_update_after_submit = True
+        opening_shift.save(ignore_permissions=True)
+        frappe.db.commit()
+        print(f"✅ Added {mode_of_payment} to balance_details of {shift_id}")
+    else:
+        print(f"ℹ️ {mode_of_payment} already exists in balance_details")
+
+
+@frappe.whitelist()
+def get_shift_payment_summary(opening_shift_name):
+    """يرجع الـ expected amount لكل mode of payment"""
+    opening_shift = frappe.get_doc("POS Opening Shift", opening_shift_name)
+    invoices = get_pos_invoices(opening_shift_name)
+
+    payments = {}
+
+    # Opening amounts
+    for detail in opening_shift.balance_details:
+        mop = detail.mode_of_payment
+        payments[mop] = {
+            "mode_of_payment": mop,
+            "opening_amount": flt(detail.amount),
+            "expected_amount": flt(detail.amount),  # يبدأ بالـ opening
+        }
+
+    # Invoice payments
+    for inv in invoices:
+        if inv.payments:
+            for p in inv.payments:
+                mop = p.mode_of_payment
+                if mop not in payments:
+                    payments[mop] = {
+                        "mode_of_payment": mop,
+                        "opening_amount": 0,
+                        "expected_amount": 0,
+                    }
+                payments[mop]["expected_amount"] += flt(p.amount)
+
+        # Payment entries
+        for pe in get_shift_invoice_payments(inv.name):
+            mop = pe["mode_of_payment"]
+            if mop not in payments:
+                payments[mop] = {
+                    "mode_of_payment": mop,
+                    "opening_amount": 0,
+                    "expected_amount": 0,
+                }
+            payments[mop]["expected_amount"] += flt(pe["allocated_to_this_invoice"])
+
+    # Unallocated
+    for pe in get_shift_unallocated_payments(opening_shift_name):
+        mop = pe.get("mode_of_payment")
+        if mop not in payments:
+            payments[mop] = {
+                "mode_of_payment": mop,
+                "opening_amount": 0,
+                "expected_amount": 0,
+            }
+        payments[mop]["expected_amount"] += flt(pe.get("unallocated_amount", 0))
+
+    return list(payments.values())
