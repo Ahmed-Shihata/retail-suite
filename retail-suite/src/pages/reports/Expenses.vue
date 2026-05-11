@@ -1,121 +1,173 @@
 <!-- Reports/Expenses.vue -->
 <template>
   <MainLayout>
-    <div class="w-full flex min-h-screen bg-gray-50">
-      <main class="flex flex-col flex-1 min-h-screen">
-        <!-- Header -->
-        <header class="mx-3 mt-3 sticky top-0 z-10 bg-white rounded-xl shadow-sm border-b border-gray-200">
-          <div class="px-6 py-4 flex justify-between items-center">
-            <div class="flex items-center gap-3">
-              <button @click="goBack" class="p-2 hover:bg-gray-100 rounded-lg transition">
-                <ArrowLeft class="w-6 h-6 text-gray-600" />
+    <div class="w-full flex min-h-screen" style="font-size: 13px;" :style="{ background: 'var(--item-bg)' }">
+      <main class="flex flex-col flex-1">
+
+        <!-- ══════════════════ HEADER ══════════════════ -->
+        <header
+          class="mx-3 mt-3 sticky top-0 z-10 rounded-lg shadow-sm"
+          :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
+        >
+          <div class="px-4 py-2 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+              <button
+                @click="goBack"
+                class="p-1.5 rounded-md transition-colors"
+                :style="{ color: 'var(--text-muted)' }"
+                @mouseover="$event.currentTarget.style.background = 'var(--nav-item-hover-bg)'"
+                @mouseleave="$event.currentTarget.style.background = 'transparent'"
+              >
+                <ArrowLeft class="w-4 h-4" />
               </button>
-              <h1 class="text-lg font-bold text-gray-900">Expenses Breakdown</h1>
+              <div>
+                <h1 class="text-sm font-bold" :style="{ color: 'var(--text-main)' }">Expenses Breakdown</h1>
+                <p class="text-xs" :style="{ color: 'var(--text-muted)' }">Category expense analysis</p>
+              </div>
             </div>
-            <button @click="exportReport" class="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
-              <Download class="w-4 h-4" />
+            <button
+              @click="exportReport"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-medium rounded-md transition-colors"
+              :style="{ background: 'var(--icon-color-green)' }"
+              @mouseover="$event.currentTarget.style.opacity = '0.85'"
+              @mouseleave="$event.currentTarget.style.opacity = '1'"
+            >
+              <Download class="w-3 h-3" />
               Export
             </button>
           </div>
         </header>
 
-        <!-- Key Metrics -->
-        <section class="px-6 py-8">
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-              <p class="text-sm text-gray-600 mb-2">Total Expenses</p>
-              <p class="text-3xl font-bold text-red-600">$38,000</p>
-              <p class="text-xs text-gray-500 mt-2">Current Month</p>
-            </div>
-            <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-              <p class="text-sm text-gray-600 mb-2">Average Daily</p>
-              <p class="text-3xl font-bold text-orange-600">$1,267</p>
-              <p class="text-xs text-gray-500 mt-2">30 days</p>
-            </div>
-            <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-              <p class="text-sm text-gray-600 mb-2">Highest Category</p>
-              <p class="text-3xl font-bold text-purple-600">$8,000</p>
-              <p class="text-xs text-gray-500 mt-2">Salaries & Wages</p>
-            </div>
-            <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-              <p class="text-sm text-gray-600 mb-2">vs. Last Month</p>
-              <p class="text-3xl font-bold text-green-600">-5.2%</p>
-              <p class="text-xs text-gray-500 mt-2">Decrease</p>
+        <!-- ══════════════════ STATISTICS ══════════════════ -->
+        <section class="px-3 pt-3">
+          <div
+            class="rounded-lg shadow-sm p-3"
+            :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
+          >
+            <h2 class="text-xs font-semibold uppercase tracking-wide mb-2" :style="{ color: 'var(--text-muted)' }">
+              Key Metrics
+            </h2>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+              <StatsCard title="Total Expenses"    value="$38,000" icon="TrendingDown" color="orange" />
+              <StatsCard title="Average Daily"     value="$1,267"  icon="BarChart2"   color="blue"   />
+              <StatsCard title="Highest Category"  value="$8,000"  icon="AlertCircle" color="purple" />
+              <StatsCard title="vs. Last Month"    value="-5.2%"   icon="TrendingUp"  color="green"  />
             </div>
           </div>
         </section>
 
-        <!-- Content -->
-        <section class="flex-1 px-6 pb-6">
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Expenses List -->
-            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 class="text-xl font-bold text-gray-900 mb-6">Expense Categories</h2>
-              <div class="space-y-4">
-                <div v-for="expense in expenseCategories" :key="expense.id" class="p-4 border border-gray-200 rounded-lg hover:shadow-md transition">
-                  <div class="flex items-start justify-between mb-3">
-                    <div class="flex items-center gap-3">
-                      <div :style="{ backgroundColor: expense.color }" class="w-4 h-4 rounded-full"></div>
+        <!-- ══════════════════ CONTENT ══════════════════ -->
+        <section class="px-3 pt-3 pb-4">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+
+            <!-- Expense Categories List -->
+            <div
+              class="lg:col-span-2 rounded-lg shadow-sm p-4"
+              :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
+            >
+              <h2 class="text-xs font-bold mb-3" :style="{ color: 'var(--text-main)' }">Expense Categories</h2>
+
+              <div class="space-y-2">
+                <div
+                  v-for="expense in expenseCategories"
+                  :key="expense.id"
+                  class="p-3 rounded-md transition-colors"
+                  :style="{ border: '1px solid var(--card-border)' }"
+                  @mouseover="$event.currentTarget.style.background = 'var(--nav-item-hover-bg)'"
+                  @mouseleave="$event.currentTarget.style.background = 'transparent'"
+                >
+                  <div class="flex items-start justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                      <div class="w-3 h-3 rounded-full flex-shrink-0" :style="{ background: expense.color }" />
                       <div>
-                        <p class="font-semibold text-gray-900">{{ expense.name }}</p>
-                        <p class="text-sm text-gray-500">{{ expense.description }}</p>
+                        <p class="text-xs font-semibold" :style="{ color: 'var(--text-main)' }">{{ expense.name }}</p>
+                        <p class="text-xs" :style="{ color: 'var(--text-muted)' }">{{ expense.description }}</p>
                       </div>
                     </div>
-                    <span class="text-lg font-bold text-gray-900">${{ expense.amount.toLocaleString() }}</span>
+                    <span class="text-xs font-bold" :style="{ color: 'var(--text-main)' }">
+                      ${{ expense.amount.toLocaleString() }}
+                    </span>
                   </div>
-                  <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div :style="{ width: expense.percentage + '%', backgroundColor: expense.color }" class="h-2 rounded-full transition-all"></div>
+                  <!-- Progress bar -->
+                  <div class="w-full rounded-full h-1.5" :style="{ background: 'var(--item-bg)' }">
+                    <div
+                      class="h-1.5 rounded-full transition-all"
+                      :style="{ width: expense.percentage + '%', background: expense.color }"
+                    />
                   </div>
-                  <div class="flex justify-between items-center mt-2">
-                    <span class="text-xs text-gray-500">{{ expense.percentage }}% of total</span>
-                    <span class="text-xs font-medium text-gray-600">{{ expense.count }} transactions</span>
+                  <div class="flex justify-between items-center mt-1.5">
+                    <span class="text-xs" :style="{ color: 'var(--text-muted)' }">{{ expense.percentage }}% of total</span>
+                    <span class="text-xs font-medium" :style="{ color: 'var(--text-muted)' }">{{ expense.count }} transactions</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Summary Card -->
-            <div class="space-y-6">
-              <!-- Pie Chart Alternative -->
-              <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-6">Distribution</h3>
-                <div class="space-y-3">
-                  <div v-for="expense in expenseCategories" :key="expense.id" class="flex items-center justify-between">
+            <!-- Right Column -->
+            <div class="space-y-3">
+
+              <!-- Distribution -->
+              <div
+                class="rounded-lg shadow-sm p-4"
+                :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
+              >
+                <h3 class="text-xs font-bold mb-3" :style="{ color: 'var(--text-main)' }">Distribution</h3>
+                <div class="space-y-2">
+                  <div
+                    v-for="expense in expenseCategories"
+                    :key="expense.id"
+                    class="flex items-center justify-between"
+                  >
                     <div class="flex items-center gap-2">
-                      <div :style="{ backgroundColor: expense.color }" class="w-3 h-3 rounded-full"></div>
-                      <span class="text-sm text-gray-700">{{ expense.name }}</span>
+                      <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ background: expense.color }" />
+                      <span class="text-xs truncate max-w-[120px]" :style="{ color: 'var(--text-sub)' }">{{ expense.name }}</span>
                     </div>
-                    <span class="text-sm font-semibold text-gray-900">{{ expense.percentage }}%</span>
+                    <span class="text-xs font-semibold" :style="{ color: 'var(--text-main)' }">{{ expense.percentage }}%</span>
                   </div>
                 </div>
               </div>
 
-              <!-- Top 3 Expenses -->
-              <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-4">Top 3 Expenses</h3>
-                <div class="space-y-3">
-                  <div v-for="(expense, idx) in topExpenses" :key="idx" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <!-- Top 3 -->
+              <div
+                class="rounded-lg shadow-sm p-4"
+                :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
+              >
+                <h3 class="text-xs font-bold mb-3" :style="{ color: 'var(--text-main)' }">Top 3 Expenses</h3>
+                <div class="space-y-2">
+                  <div
+                    v-for="(expense, idx) in topExpenses"
+                    :key="idx"
+                    class="flex items-center justify-between px-3 py-2 rounded-md"
+                    :style="{ background: 'var(--item-bg)', border: '1px solid var(--item-border)' }"
+                  >
                     <div class="flex items-center gap-2">
-                      <span class="text-lg font-bold text-gray-400">{{ idx + 1 }}</span>
-                      <span class="text-sm text-gray-700">{{ expense.name }}</span>
+                      <span class="text-sm font-bold" :style="{ color: 'var(--text-muted)' }">{{ idx + 1 }}</span>
+                      <span class="text-xs" :style="{ color: 'var(--text-sub)' }">{{ expense.name }}</span>
                     </div>
-                    <span class="text-sm font-bold text-gray-900">${{ expense.amount.toLocaleString() }}</span>
+                    <span class="text-xs font-bold" :style="{ color: 'var(--text-main)' }">
+                      ${{ expense.amount.toLocaleString() }}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <!-- Trends -->
-              <div class="bg-gradient-to-br from-red-50 to-orange-50 rounded-xl shadow-sm border border-red-200 p-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-3">Monthly Trend</h3>
-                <div class="space-y-2 text-sm">
-                  <p class="text-gray-600">Last 3 Months Average</p>
-                  <p class="text-2xl font-bold text-red-600">$36,500</p>
-                  <p class="text-xs text-gray-500 mt-2">📈 Current: $38,000</p>
+              <!-- Monthly Trend -->
+              <div
+                class="rounded-lg shadow-sm p-4"
+                :style="{ background: 'var(--warning-bg)', border: '1px solid var(--warning-border)' }"
+              >
+                <h3 class="text-xs font-bold mb-2" :style="{ color: 'var(--text-main)' }">Monthly Trend</h3>
+                <div class="space-y-1">
+                  <p class="text-xs" :style="{ color: 'var(--text-muted)' }">Last 3 Months Average</p>
+                  <p class="text-xl font-bold" style="color: #ef4444;">$36,500</p>
+                  <p class="text-xs mt-1" :style="{ color: 'var(--text-muted)' }">📈 Current: $38,000</p>
                 </div>
               </div>
+
             </div>
           </div>
         </section>
+
       </main>
     </div>
   </MainLayout>
@@ -125,37 +177,28 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import MainLayout from '@/layout/MainLayout.vue'
+import StatsCard from '@/layout/StatsCard.vue'
 import { ArrowLeft, Download } from 'lucide-vue-next'
 
+const router = useRouter()
 
-    const router = useRouter()
+const expenseCategories = [
+  { id: 1,  name: 'Salaries & Wages',      description: '12 employees + benefits',       amount: 8000, percentage: 21, color: '#3b82f6', count: 12 },
+  { id: 2,  name: 'Rent & Lease',           description: 'Office space + parking',         amount: 3500, percentage: 9,  color: '#ef4444', count: 2  },
+  { id: 3,  name: 'Utilities',              description: 'Electric, water, internet',       amount: 1200, percentage: 3,  color: '#10b981', count: 5  },
+  { id: 4,  name: 'Marketing & Ads',        description: 'Digital & print campaigns',       amount: 5500, percentage: 14, color: '#f59e0b', count: 18 },
+  { id: 5,  name: 'Office Supplies',        description: 'Equipment & materials',           amount: 2100, percentage: 6,  color: '#8b5cf6', count: 24 },
+  { id: 6,  name: 'Travel & Transport',     description: 'Client meetings & deliveries',    amount: 4200, percentage: 11, color: '#ec4899', count: 8  },
+  { id: 7,  name: 'Professional Services',  description: 'Legal, accounting, consulting',   amount: 3900, percentage: 10, color: '#06b6d4', count: 6  },
+  { id: 8,  name: 'Software & Licenses',    description: 'Tools & subscriptions',           amount: 1600, percentage: 4,  color: '#14b8a6', count: 9  },
+  { id: 9,  name: 'Insurance',              description: 'Liability & property',            amount: 1500, percentage: 4,  color: '#f97316', count: 1  },
+  { id: 10, name: 'Miscellaneous',          description: 'Other expenses',                  amount: 1000, percentage: 3,  color: '#6b7280', count: 7  },
+]
 
-    const expenseCategories = [
-      { id: 1, name: 'Salaries & Wages', description: '12 employees + benefits', amount: 8000, percentage: 21, color: '#3b82f6', count: 12 },
-      { id: 2, name: 'Rent & Lease', description: 'Office space + parking', amount: 3500, percentage: 9, color: '#ef4444', count: 2 },
-      { id: 3, name: 'Utilities', description: 'Electric, water, internet', amount: 1200, percentage: 3, color: '#10b981', count: 5 },
-      { id: 4, name: 'Marketing & Ads', description: 'Digital & print campaigns', amount: 5500, percentage: 14, color: '#f59e0b', count: 18 },
-      { id: 5, name: 'Office Supplies', description: 'Equipment & materials', amount: 2100, percentage: 6, color: '#8b5cf6', count: 24 },
-      { id: 6, name: 'Travel & Transport', description: 'Client meetings & deliveries', amount: 4200, percentage: 11, color: '#ec4899', count: 8 },
-      { id: 7, name: 'Professional Services', description: 'Legal, accounting, consulting', amount: 3900, percentage: 10, color: '#06b6d4', count: 6 },
-      { id: 8, name: 'Software & Licenses', description: 'Tools & subscriptions', amount: 1600, percentage: 4, color: '#14b8a6', count: 9 },
-      { id: 9, name: 'Insurance', description: 'Liability & property', amount: 1500, percentage: 4, color: '#f97316', count: 1 },
-      { id: 10, name: 'Miscellaneous', description: 'Other expenses', amount: 1000, percentage: 3, color: '#6b7280', count: 7 }
-    ]
+const topExpenses = computed(() =>
+  [...expenseCategories].sort((a, b) => b.amount - a.amount).slice(0, 3)
+)
 
-    const topExpenses = computed(() => {
-      return [...expenseCategories]
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 3)
-    })
-
-    const goBack = () => {
-      router.back()
-    }
-
-    const exportReport = () => {
-      console.log('Exporting Expenses Report...')
-    }
-
-
+const goBack       = () => router.back()
+const exportReport = () => console.log('Exporting Expenses Report...')
 </script>

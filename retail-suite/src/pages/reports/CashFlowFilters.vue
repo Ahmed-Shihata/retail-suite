@@ -1,7 +1,12 @@
 <template>
-  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+<div class="rounded-xl shadow-sm p-5"
+     style="
+       background: var(--card-bg);
+       border: 1px solid var(--card-border);
+     ">
     <div class="flex items-center justify-between mb-4">
-      <h3 class="text-sm font-bold text-gray-900 flex items-center gap-2">
+      <h3 class="text-sm font-bold flex items-center gap-2"
+        style="color: var(--text-title);">
         <Filter class="w-4 h-4 text-gray-500" />
         Report Filters
       </h3>

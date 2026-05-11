@@ -1156,7 +1156,7 @@ export const generateBarcodePreview = async (data) => {
     })
 
     console.log("api generateBarcodePreview", response)
-    return response.data.message || response.data
+    return response.data?.message?.data || response.data?.message
     }catch (error) {
         console.error("❌ generateBarcodePreview error:", error)
     }

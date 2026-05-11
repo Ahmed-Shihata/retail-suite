@@ -19,6 +19,7 @@
       <!-- Dashboard Cards -->
       <section class="px-2 pb-2">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <DashboardCard title="UserDashboard List" description="UserDashboard" icon="Users" color="blue" @click="navigateTo('UserDashboard')" />
           <DashboardCard title="Staff List" description="View and manage all staff members" icon="Users" color="blue" @click="navigateTo('StaffList')" />
           <DashboardCard title="Staff Management Control" description="Create Role, Designation, Department" icon="User" color="purple" @click="navigateTo('StaffManagementControl')" />
           <DashboardCard title="Shifts Management" description="Manage work shifts and schedules" icon="Clock" color="indigo" @click="navigateTo('Shifts')" />

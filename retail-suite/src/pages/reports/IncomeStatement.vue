@@ -1,22 +1,40 @@
 <!-- Reports/IncomeStatement.vue -->
 <template>
   <MainLayout>
-    <div class="w-full flex min-h-screen bg-gray-50">
-      <main class="flex flex-col flex-1 min-h-screen">
-        <!-- Header with Back Button -->
-        <header class="mx-3 mt-3 sticky top-0 z-10 bg-white rounded-xl shadow-sm border-b border-gray-200">
-          <div class="px-6 py-4 flex justify-between items-center">
-            <div class="flex items-center gap-3">
-              <button @click="goBack" class="p-2 hover:bg-gray-100 rounded-lg transition">
-                <ArrowLeft class="w-6 h-6 text-gray-600" />
+    <div class="w-full flex min-h-screen" style="font-size: 13px;" :style="{ background: 'var(--item-bg)' }">
+      <main class="flex flex-col flex-1">
+
+        <!-- ══════════════════ HEADER ══════════════════ -->
+        <header
+          class="mx-3 mt-3 sticky top-0 z-10 rounded-lg shadow-sm"
+          :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
+        >
+          <div class="px-4 py-2 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+              <button
+                @click="goBack"
+                class="p-1.5 rounded-md transition-colors"
+                :style="{ color: 'var(--text-muted)' }"
+                @mouseover="$event.currentTarget.style.background = 'var(--nav-item-hover-bg)'"
+                @mouseleave="$event.currentTarget.style.background = 'transparent'"
+              >
+                <ArrowLeft class="w-4 h-4" />
               </button>
-              <h1 class="text-lg font-bold text-gray-900">Income Statement</h1>
+              <div>
+                <h1 class="text-sm font-bold" :style="{ color: 'var(--text-main)' }">Income Statement</h1>
+                <p class="text-xs" :style="{ color: 'var(--text-muted)' }">{{ periodLabel }}</p>
+              </div>
             </div>
-            <div class="flex gap-2">
+            <div class="flex items-center gap-2">
               <select
                 v-model="selectedPeriod"
                 @change="loadReport"
-                class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="px-2 py-1.5 text-xs rounded-md focus:outline-none"
+                :style="{
+                  background: 'var(--input-bg)',
+                  color: 'var(--text-main)',
+                  border: '1px solid var(--input-border)'
+                }"
               >
                 <option value="monthly">This Month</option>
                 <option value="quarterly">This Quarter</option>
@@ -25,209 +43,246 @@
               <button
                 @click="exportReport"
                 :disabled="loading"
-                class="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition disabled:opacity-50"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-medium rounded-md transition-colors disabled:opacity-50"
+                :style="{ background: 'var(--icon-color-green)' }"
               >
-                <Download class="w-4 h-4" />
+                <Download class="w-3 h-3" />
                 Export
               </button>
             </div>
           </div>
         </header>
 
-        <!-- Loading State -->
-        <div v-if="loading" class="flex-1 flex items-center justify-center">
-          <div class="text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p class="text-gray-600">Loading Income Statement...</p>
+        <!-- ══════════════════ KEY METRICS ══════════════════ -->
+        <section class="px-3 pt-3">
+          <div
+            class="rounded-lg shadow-sm p-3"
+            :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
+          >
+            <h2 class="text-xs font-semibold uppercase tracking-wide mb-2" :style="{ color: 'var(--text-muted)' }">
+              Key Metrics
+            </h2>
+            <div class="grid grid-cols-2 lg:grid-cols-3 gap-2">
+              <StatsCard title="Expense Ratio"    :value="`${(reportData.summary?.expense_ratio || 0).toFixed(1)}%`" icon="BarChart2"   color="green"  />
+              <StatsCard title="Monthly Average"  :value="formatCurrency(monthlyAverage)"                            icon="TrendingUp" color="blue"   />
+              <StatsCard title="Profit Margin"    :value="`${profitMargin.toFixed(1)}%`"                             icon="DollarSign" color="purple" />
+            </div>
+          </div>
+        </section>
+
+        <!-- ══════════════════ LOADING ══════════════════ -->
+        <div v-if="loading" class="flex-1 flex items-center justify-center py-20">
+          <div class="flex flex-col items-center gap-3">
+            <svg class="w-8 h-8 animate-spin" :style="{ color: 'var(--focus-ring)' }" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+            </svg>
+            <p class="text-xs" :style="{ color: 'var(--text-muted)' }">Loading Income Statement...</p>
           </div>
         </div>
 
-        <!-- Error State -->
-        <div v-else-if="error" class="flex-1 px-6 py-8">
-          <div class="bg-red-50 border border-red-200 rounded-lg p-6">
-            <p class="text-red-800 font-semibold">Error Loading Report</p>
-            <p class="text-red-600 text-sm mt-2">{{ error }}</p>
+        <!-- ══════════════════ ERROR ══════════════════ -->
+        <div v-else-if="error" class="px-3 pt-3">
+          <div
+            class="rounded-lg p-4"
+            :style="{ background: '#fef2f2', border: '1px solid #fecaca' }"
+          >
+            <p class="text-xs font-semibold" style="color: #991b1b;">Error Loading Report</p>
+            <p class="text-xs mt-1" style="color: #dc2626;">{{ error }}</p>
             <button
               @click="loadReport"
-              class="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+              class="mt-3 px-3 py-1.5 text-white text-xs rounded-md transition-colors"
+              style="background: #dc2626;"
             >
               Try Again
             </button>
           </div>
         </div>
 
-        <!-- Main Content -->
-        <section v-else class="flex-1 px-6 py-8">
-          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-            <!-- Title -->
-            <div class="mb-8 border-b-2 border-gray-200 pb-6">
-              <h2 class="text-3xl font-bold text-gray-900">Income Statement</h2>
-              <p class="text-gray-600 mt-1">
+        <!-- ══════════════════ MAIN CONTENT ══════════════════ -->
+        <section v-else class="px-3 pt-3 pb-6">
+          <div
+            class="rounded-lg shadow-sm p-4"
+            :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
+          >
+
+            <!-- Report Title -->
+            <div class="mb-4 pb-3" :style="{ borderBottom: '2px solid var(--card-border)' }">
+              <h2 class="text-base font-bold" :style="{ color: 'var(--text-main)' }">Income Statement</h2>
+              <p class="text-xs mt-0.5" :style="{ color: 'var(--text-muted)' }">
                 For the period of {{ periodLabel }}
-                <span v-if="reportData.period" class="text-sm text-gray-500 ml-2">
+                <span v-if="reportData.period" class="ml-1">
                   ({{ formatDate(reportData.period.start_date) }} to {{ formatDate(reportData.period.end_date) }})
                 </span>
               </p>
             </div>
 
-            <!-- Income Section -->
-            <div v-if="incomeFlatted.length > 0" class="mb-8">
-              <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <TrendingUp class="w-6 h-6 text-green-600" />
+            <!-- ── Revenue ── -->
+            <div v-if="incomeFlatted.length > 0" class="mb-4">
+              <h3 class="text-xs font-bold mb-2 flex items-center gap-1.5" :style="{ color: 'var(--text-main)' }">
+                <TrendingUp class="w-3.5 h-3.5" :style="{ color: 'var(--icon-color-green)' }" />
                 Revenue
               </h3>
-              <div class="space-y-0 ml-4 border border-gray-200 rounded-lg overflow-hidden">
+              <div
+                class="rounded-md overflow-hidden"
+                :style="{ border: '1px solid var(--card-border)' }"
+              >
                 <div
                   v-for="item in incomeFlatted"
                   :key="item.account"
-                  class="border-b border-gray-100 last:border-b-0 transition"
-                  :class="{
-                    'bg-green-100 hover:bg-green-150': item.level === 0,
-                    'bg-yellow-50 hover:bg-yellow-100': item.level > 0
+                  :style="{
+                    background: item.level === 0 ? 'var(--icon-bg-green)' : 'var(--item-bg)',
+                    borderBottom: '1px solid var(--card-border)'
                   }"
                 >
                   <div
-                    class="flex items-center justify-between px-4 py-3"
+                    class="flex items-center justify-between py-2 pr-3 transition-colors"
                     :class="{ 'cursor-pointer': item.hasChildren }"
+                    :style="{ paddingLeft: `${(item.level || 0) * 24 + 12}px` }"
                     @click="item.hasChildren && toggleAccount(item.account)"
-                    :style="{ paddingLeft: `${(item.level || 0) * 32 + 16}px` }"
+                    @mouseover="$event.currentTarget.style.background = 'var(--nav-item-hover-bg)'"
+                    @mouseleave="$event.currentTarget.style.background = 'transparent'"
                   >
-                    <div class="flex items-center gap-2 flex-1">
-                      <!-- Collapse/Expand Icon -->
-                      <div v-if="item.hasChildren" class="w-5 flex-shrink-0">
+                    <div class="flex items-center gap-1.5 flex-1">
+                      <div v-if="item.hasChildren" class="w-4 flex-shrink-0">
                         <ChevronRight
-                          :class="[
-                            'w-5 h-5 text-gray-500 transition-transform',
-                            expandedAccounts.includes(item.account) ? 'rotate-90' : ''
-                          ]"
+                          class="w-3.5 h-3.5 transition-transform"
+                          :class="expandedAccounts.includes(item.account) ? 'rotate-90' : ''"
+                          :style="{ color: 'var(--text-muted)' }"
                         />
                       </div>
-                      <div v-else class="w-5 flex-shrink-0"></div>
-
-                      <!-- Account Name -->
+                      <div v-else class="w-4 flex-shrink-0" />
                       <span
-                        class="text-gray-700"
-                        :class="{ 'font-bold': item.hasChildren, 'font-medium': !item.hasChildren }"
+                        class="text-xs"
+                        :class="item.hasChildren ? 'font-bold' : 'font-medium'"
+                        :style="{ color: 'var(--text-sub)' }"
                       >
                         {{ item.account_name || item.account }}
                       </span>
                     </div>
-                    <!-- Amount -->
-                    <span class="font-semibold text-gray-900 ml-4">
+                    <span class="text-xs font-semibold ml-4" :style="{ color: 'var(--text-main)' }">
                       {{ formatCurrency(item.total || 0) }}
                     </span>
                   </div>
                 </div>
 
-                <!-- Total Income Row -->
-                <div class="flex items-center justify-between px-4 py-3 font-bold text-lg bg-green-50">
-                  <span>Total Revenue</span>
-                  <span class="text-green-600">{{ formatCurrency(reportData.summary?.total_income || 0) }}</span>
+                <!-- Total Revenue -->
+                <div
+                  class="flex items-center justify-between px-3 py-2 font-bold"
+                  :style="{ background: 'var(--icon-bg-green)', borderTop: '1px solid var(--icon-color-green)' }"
+                >
+                  <span class="text-xs" :style="{ color: 'var(--text-main)' }">Total Revenue</span>
+                  <span class="text-xs" :style="{ color: 'var(--icon-color-green)' }">
+                    {{ formatCurrency(reportData.summary?.total_income || 0) }}
+                  </span>
                 </div>
               </div>
             </div>
 
-            <!-- Expenses Section -->
-            <div v-if="expenseFlatted.length > 0" class="mb-8">
-              <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <TrendingDown class="w-6 h-6 text-red-600" />
+            <!-- ── Operating Expenses ── -->
+            <div v-if="expenseFlatted.length > 0" class="mb-4">
+              <h3 class="text-xs font-bold mb-2 flex items-center gap-1.5" :style="{ color: 'var(--text-main)' }">
+                <TrendingDown class="w-3.5 h-3.5" style="color: #ef4444;" />
                 Operating Expenses
               </h3>
-              <div class="space-y-0 ml-4 border border-gray-200 rounded-lg overflow-hidden">
+              <div
+                class="rounded-md overflow-hidden"
+                :style="{ border: '1px solid var(--card-border)' }"
+              >
                 <div
                   v-for="item in expenseFlatted"
                   :key="item.account"
-                  class="border-b border-gray-100 last:border-b-0 transition"
-                  :class="{
-                    'bg-red-100 hover:bg-red-150': item.level === 0,
-                    'bg-orange-50 hover:bg-orange-100': item.level > 0
+                  :style="{
+                    background: item.level === 0 ? '#fef2f2' : 'var(--item-bg)',
+                    borderBottom: '1px solid var(--card-border)'
                   }"
                 >
                   <div
-                    class="flex items-center justify-between px-4 py-3"
+                    class="flex items-center justify-between py-2 pr-3 transition-colors"
                     :class="{ 'cursor-pointer': item.hasChildren }"
+                    :style="{ paddingLeft: `${(item.level || 0) * 24 + 12}px` }"
                     @click="item.hasChildren && toggleAccount(item.account)"
-                    :style="{ paddingLeft: `${(item.level || 0) * 32 + 16}px` }"
+                    @mouseover="$event.currentTarget.style.background = 'var(--nav-item-hover-bg)'"
+                    @mouseleave="$event.currentTarget.style.background = 'transparent'"
                   >
-                    <div class="flex items-center gap-2 flex-1">
-                      <!-- Collapse/Expand Icon -->
-                      <div v-if="item.hasChildren" class="w-5 flex-shrink-0">
+                    <div class="flex items-center gap-1.5 flex-1">
+                      <div v-if="item.hasChildren" class="w-4 flex-shrink-0">
                         <ChevronRight
-                          :class="[
-                            'w-5 h-5 text-gray-500 transition-transform',
-                            expandedAccounts.includes(item.account) ? 'rotate-90' : ''
-                          ]"
+                          class="w-3.5 h-3.5 transition-transform"
+                          :class="expandedAccounts.includes(item.account) ? 'rotate-90' : ''"
+                          :style="{ color: 'var(--text-muted)' }"
                         />
                       </div>
-                      <div v-else class="w-5 flex-shrink-0"></div>
-
-                      <!-- Account Name -->
+                      <div v-else class="w-4 flex-shrink-0" />
                       <span
-                        class="text-gray-700"
-                        :class="{ 'font-bold': item.hasChildren, 'font-medium': !item.hasChildren }"
+                        class="text-xs"
+                        :class="item.hasChildren ? 'font-bold' : 'font-medium'"
+                        :style="{ color: 'var(--text-sub)' }"
                       >
                         {{ item.account_name || item.account }}
                       </span>
                     </div>
-                    <!-- Amount -->
-                    <span class="font-semibold text-gray-900 ml-4">
+                    <span class="text-xs font-semibold ml-4" :style="{ color: 'var(--text-main)' }">
                       {{ formatCurrency(Math.abs(item.total || 0)) }}
                     </span>
                   </div>
                 </div>
 
-                <!-- Total Expenses Row -->
-                <div class="flex items-center justify-between px-4 py-3 font-bold text-lg bg-red-50">
-                  <span>Total Expenses</span>
-                  <span class="text-red-600">{{ formatCurrency(reportData.summary?.total_expenses || 0) }}</span>
+                <!-- Total Expenses -->
+                <div
+                  class="flex items-center justify-between px-3 py-2 font-bold"
+                  style="background: #fef2f2; border-top: 1px solid #fca5a5;"
+                >
+                  <span class="text-xs" :style="{ color: 'var(--text-main)' }">Total Expenses</span>
+                  <span class="text-xs" style="color: #ef4444;">
+                    {{ formatCurrency(reportData.summary?.total_expenses || 0) }}
+                  </span>
                 </div>
               </div>
             </div>
 
-            <!-- Summary Section -->
-            <div class="bg-blue-50 rounded-lg p-6 border-2 border-blue-200">
-              <div class="space-y-4">
-                <div class="flex justify-between items-center pb-3 border-b border-blue-200">
-                  <span class="font-semibold text-gray-900">Gross Profit</span>
-                  <span class="text-lg font-bold text-blue-600">{{ formatCurrency(grossProfit) }}</span>
+            <!-- ── Summary ── -->
+            <div
+              class="rounded-md p-4"
+              :style="{ background: 'var(--info-bg)', border: '2px solid var(--focus-ring)' }"
+            >
+              <div class="space-y-2.5">
+                <div
+                  class="flex justify-between items-center pb-2"
+                  :style="{ borderBottom: '1px solid var(--info-border)' }"
+                >
+                  <span class="text-xs font-semibold" :style="{ color: 'var(--text-sub)' }">Gross Profit</span>
+                  <span class="text-xs font-bold" :style="{ color: 'var(--focus-ring)' }">{{ formatCurrency(grossProfit) }}</span>
                 </div>
-                <div class="flex justify-between items-center pb-3 border-b border-blue-200">
-                  <span class="font-semibold text-gray-900">Operating Income</span>
-                  <span class="text-lg font-bold text-blue-600">{{ formatCurrency(operatingIncome) }}</span>
+                <div
+                  class="flex justify-between items-center pb-2"
+                  :style="{ borderBottom: '1px solid var(--info-border)' }"
+                >
+                  <span class="text-xs font-semibold" :style="{ color: 'var(--text-sub)' }">Operating Income</span>
+                  <span class="text-xs font-bold" :style="{ color: 'var(--focus-ring)' }">{{ formatCurrency(operatingIncome) }}</span>
                 </div>
                 <div class="flex justify-between items-center">
-                  <span class="text-xl font-bold text-gray-900">Net Income</span>
+                  <span class="text-sm font-bold" :style="{ color: 'var(--text-main)' }">Net Income</span>
                   <span
-                    class="text-2xl font-bold"
-                    :class="netIncome >= 0 ? 'text-green-600' : 'text-red-600'"
+                    class="text-base font-bold"
+                    :style="{ color: netIncome >= 0 ? 'var(--icon-color-green)' : '#ef4444' }"
                   >
                     {{ formatCurrency(netIncome) }}
                   </span>
                 </div>
-                <div class="flex justify-between items-center pt-3 border-t border-blue-200">
-                  <span class="font-semibold text-gray-900">Profit Margin</span>
-                  <span class="text-lg font-bold text-blue-600">{{ profitMargin.toFixed(2) }}%</span>
+                <div
+                  class="flex justify-between items-center pt-2"
+                  :style="{ borderTop: '1px solid var(--info-border)' }"
+                >
+                  <span class="text-xs font-semibold" :style="{ color: 'var(--text-sub)' }">Profit Margin</span>
+                  <span class="text-xs font-bold" :style="{ color: 'var(--focus-ring)' }">{{ profitMargin.toFixed(2) }}%</span>
                 </div>
               </div>
             </div>
 
-            <!-- Key Metrics -->
-            <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div class="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
-                <p class="text-sm text-gray-600 mb-1">Expense Ratio</p>
-                <p class="text-3xl font-bold text-green-600">{{ (reportData.summary?.expense_ratio || 0).toFixed(1) }}%</p>
-              </div>
-              <div class="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
-                <p class="text-sm text-gray-600 mb-1">Monthly Average</p>
-                <p class="text-3xl font-bold text-blue-600">{{ formatCurrency(monthlyAverage) }}</p>
-              </div>
-              <div class="p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200">
-                <p class="text-sm text-gray-600 mb-1">Profit Margin</p>
-                <p class="text-3xl font-bold text-purple-600">{{ profitMargin.toFixed(1) }}%</p>
-              </div>
-            </div>
           </div>
         </section>
+
       </main>
     </div>
   </MainLayout>
@@ -237,289 +292,147 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import MainLayout from '@/layout/MainLayout.vue'
+import StatsCard from '@/layout/StatsCard.vue'
 import { ArrowLeft, Download, TrendingUp, TrendingDown, ChevronRight } from 'lucide-vue-next'
 import {
   getIncomeStatementYearly,
   getIncomeStatementMonthly,
-  getIncomeStatementByPeriod
+  getIncomeStatementByPeriod,
 } from '@/services/api'
 
-  const router = useRouter()
-  const selectedPeriod = ref('yearly')
-  const loading = ref(false)
-  const error = ref(null)
-  const expandedAccounts = ref(['Income - P', 'Expenses - P'])
+const router         = useRouter()
+const selectedPeriod = ref('yearly')
+const loading        = ref(false)
+const error          = ref(null)
+const expandedAccounts = ref(['Income - P', 'Expenses - P'])
 
-  const reportData = ref({
-    summary: {
-      total_income: 0,
-      total_expenses: 0,
-      net_profit: 0,
-      profit_margin: 0,
-      expense_ratio: 0
-    },
-    data: [],
-    period: {
-      start_date: '',
-      end_date: ''
-    }
+const reportData = ref({
+  summary: { total_income: 0, total_expenses: 0, net_profit: 0, profit_margin: 0, expense_ratio: 0 },
+  data: [],
+  period: { start_date: '', end_date: '' },
+})
+
+// ── Tree helpers ──────────────────────────────────────
+const buildAccountTree = (accounts) => {
+  const map = {}
+  const tree = []
+  accounts.forEach(a => { if (a.account) map[a.account] = { ...a, children: [] } })
+  accounts.forEach(a => {
+    if (a.parent_account && map[a.parent_account]) map[a.parent_account].children.push(map[a.account])
+    else if (a.account) tree.push(map[a.account])
   })
+  return tree
+}
 
-  // Build account tree from flat data
-  const buildAccountTree = (accounts) => {
-    const map = {}
-    const tree = []
-
-    // Create map
-    accounts.forEach(account => {
-      if (account.account) {
-        map[account.account] = { ...account, children: [] }
-      }
+const flattenAccountTree = (tree, expandedSet = [], level = 0) => {
+  const result = []
+  const traverse = (items, currentLevel = 0) => {
+    items.forEach(item => {
+      result.push({ ...item, level: currentLevel, hasChildren: !!(item.children?.length), isExpanded: expandedSet.includes(item.account) })
+      if (item.children?.length && expandedSet.includes(item.account)) traverse(item.children, currentLevel + 1)
     })
-
-    // Link children to parents
-    accounts.forEach(account => {
-      if (account.parent_account && map[account.parent_account]) {
-        map[account.parent_account].children.push(map[account.account])
-      } else if (account.account) {
-        tree.push(map[account.account])
-      }
-    })
-
-    return tree
   }
+  traverse(tree, level)
+  return result
+}
 
-  // Flatten tree with visibility logic - RECURSIVE
-  const flattenAccountTree = (tree, expandedSet = [], level = 0) => {
-    const result = []
+const getAccountHierarchy = (accounts, isIncome) => {
+  const rootAccounts = accounts.filter(row => {
+    const name = row.account_name || ''
+    return isIncome
+      ? (name.includes('Income') || name.includes('Sales')) && !name.includes('Total') && row.account && !row.parent_account
+      : (name.includes('Expense') || name.includes('Cost of')) && !name.includes('Total') && row.account && !row.parent_account
+  })
+  const allAccounts = new Set()
+  const addDescendants = (key) => {
+    allAccounts.add(key)
+    accounts.filter(a => a.parent_account === key).forEach(c => { if (c.account) addDescendants(c.account) })
+  }
+  const addParents = (key) => {
+    const acc = accounts.find(a => a.account === key)
+    if (acc) { allAccounts.add(key); if (acc.parent_account) addParents(acc.parent_account) }
+  }
+  rootAccounts.forEach(r => { if (r.account) addDescendants(r.account) })
+  accounts.forEach(acc => {
+    const name = acc.account_name || ''
+    const hasKeyword = isIncome ? (name.includes('Income') || name.includes('Sales')) : (name.includes('Expense') || name.includes('Cost of'))
+    if (hasKeyword && !name.includes('Total') && acc.account) { addDescendants(acc.account); addParents(acc.account) }
+  })
+  return accounts.filter(row => allAccounts.has(row.account))
+}
 
-    const traverse = (items, currentLevel = 0) => {
-      items.forEach(item => {
-        result.push({
-          ...item,
-          level: currentLevel,
-          hasChildren: item.children && item.children.length > 0,
-          isExpanded: expandedSet.includes(item.account)
-        })
+const incomeTree   = computed(() => buildAccountTree(getAccountHierarchy(reportData.value.data || [], true)))
+const incomeFlatted = computed(() => flattenAccountTree(incomeTree.value, expandedAccounts.value))
+const expenseTree  = computed(() => buildAccountTree(getAccountHierarchy(reportData.value.data || [], false)))
+const expenseFlatted = computed(() => flattenAccountTree(expenseTree.value, expandedAccounts.value))
 
-        // Show children only if parent is expanded
-        if (item.children && item.children.length > 0 && expandedSet.includes(item.account)) {
-          traverse(item.children, currentLevel + 1)
-        }
+// ── Computed ──────────────────────────────────────────
+const totalRevenue    = computed(() => reportData.value.summary?.total_income   || 0)
+const totalExpenses   = computed(() => reportData.value.summary?.total_expenses || 0)
+const grossProfit     = computed(() => totalRevenue.value - totalExpenses.value)
+const operatingIncome = computed(() => grossProfit.value)
+const netIncome       = computed(() => reportData.value.summary?.net_profit     || 0)
+const profitMargin    = computed(() => totalRevenue.value === 0 ? 0 : (netIncome.value / totalRevenue.value) * 100)
+const monthlyAverage  = computed(() => netIncome.value / 12)
+const periodLabel     = computed(() => ({ monthly: 'Current Month', quarterly: 'Current Quarter', yearly: 'Current Year' })[selectedPeriod.value])
+
+// ── Actions ───────────────────────────────────────────
+const toggleAccount = (accountKey) => {
+  const idx = expandedAccounts.value.indexOf(accountKey)
+  if (idx > -1) {
+    expandedAccounts.value.splice(idx, 1)
+  } else {
+    expandedAccounts.value.push(accountKey)
+    const allData = reportData.value.data || []
+    const acc = allData.find(a => a.account === accountKey)
+    if (acc?.parent_account) {
+      let cur = acc.parent_account
+      while (cur) {
+        if (!expandedAccounts.value.includes(cur)) expandedAccounts.value.push(cur)
+        cur = allData.find(a => a.account === cur)?.parent_account
+      }
+    }
+  }
+}
+
+const getReportData = async () => {
+  loading.value = true; error.value = null
+  try {
+    let result
+    if (selectedPeriod.value === 'monthly') {
+      result = await getIncomeStatementMonthly()
+    } else if (selectedPeriod.value === 'quarterly') {
+      const today = new Date()
+      const q = Math.floor(today.getMonth() / 3)
+      result = await getIncomeStatementByPeriod({
+        company:   'pos',
+        from_date: new Date(today.getFullYear(), q * 3, 1).toISOString().split('T')[0],
+        to_date:   new Date(today.getFullYear(), (q + 1) * 3, 0).toISOString().split('T')[0],
       })
-    }
-
-    traverse(tree, level)
-    return result
-  }
-
-  // Get all parent accounts to include their parents too
-// Get all accounts in the hierarchy (parents + all descendants)
-  const getAccountHierarchy = (accounts, isIncome) => {
-    // First find root accounts based on name
-    const rootAccounts = accounts.filter(row => {
-      const name = row.account_name || ''
-      if (isIncome) {
-        return (name.includes('Income') || name.includes('Sales')) &&
-                !name.includes('Total') &&
-                row.account &&
-                !row.parent_account // Root level only
-      } else {
-        return (name.includes('Expense') || name.includes('Cost of')) &&
-                !name.includes('Total') &&
-                row.account &&
-                !row.parent_account // Root level only
-      }
-    })
-
-    const allAccounts = new Set()
-
-    // Helper to add all descendants recursively
-    const addDescendants = (accountKey) => {
-      allAccounts.add(accountKey)
-      const children = accounts.filter(a => a.parent_account === accountKey)
-      children.forEach(child => {
-        if (child.account) {
-          addDescendants(child.account)
-        }
-      })
-    }
-
-    // Helper to add all parents up to root
-    const addParents = (accountKey) => {
-      const account = accounts.find(a => a.account === accountKey)
-      if (account) {
-        allAccounts.add(accountKey)
-        if (account.parent_account) {
-          addParents(account.parent_account)
-        }
-      }
-    }
-
-    // Start from root accounts and add all their descendants
-    rootAccounts.forEach(root => {
-      if (root.account) {
-        addDescendants(root.account)
-      }
-    })
-
-    // Also add any accounts that might be in the middle of the tree
-    // but have the keyword in their name
-    accounts.forEach(acc => {
-      const name = acc.account_name || ''
-      const hasKeyword = isIncome
-        ? (name.includes('Income') || name.includes('Sales'))
-        : (name.includes('Expense') || name.includes('Cost of'))
-
-      if (hasKeyword && !name.includes('Total') && acc.account) {
-        addDescendants(acc.account)
-        addParents(acc.account)
-      }
-    })
-
-    // Return all accounts in the hierarchy
-    return accounts.filter(row => allAccounts.has(row.account))
-  }
-  // Filter and build income tree
-  const incomeTree = computed(() => {
-    const accounts = getAccountHierarchy(reportData.value.data || [], true)
-    return buildAccountTree(accounts)
-  })
-
-  const incomeFlatted = computed(() => {
-    return flattenAccountTree(incomeTree.value, expandedAccounts.value)
-  })
-
-  // Filter and build expense tree
-  const expenseTree = computed(() => {
-    const accounts = getAccountHierarchy(reportData.value.data || [], false)
-    return buildAccountTree(accounts)
-  })
-
-  const expenseFlatted = computed(() => {
-    return flattenAccountTree(expenseTree.value, expandedAccounts.value)
-  })
-
-  const getReportData = async () => {
-    loading.value = true
-    error.value = null
-
-    try {
-      let result
-
-      switch (selectedPeriod.value) {
-        case 'monthly':
-          result = await getIncomeStatementMonthly()
-          break
-        case 'quarterly':
-          const today = new Date()
-          const quarter = Math.floor(today.getMonth() / 3)
-          const startDate = new Date(today.getFullYear(), quarter * 3, 1)
-          const endDate = new Date(today.getFullYear(), (quarter + 1) * 3, 0)
-
-          result = await getIncomeStatementByPeriod({
-            company: 'pos',
-            from_date: startDate.toISOString().split('T')[0],
-            to_date: endDate.toISOString().split('T')[0]
-          })
-          break
-        case 'yearly':
-        default:
-          result = await getIncomeStatementYearly()
-      }
-
-      if (result?.status === 'success') {
-        reportData.value = result
-      } else {
-        error.value = 'Failed to load report data'
-      }
-    } catch (err) {
-      error.value = err.message || 'Error loading report'
-      console.error('Error loading income statement:', err)
-    } finally {
-      loading.value = false
-    }
-  }
-
-  const totalRevenue = computed(() => reportData.value.summary?.total_income || 0)
-  const totalExpenses = computed(() => reportData.value.summary?.total_expenses || 0)
-  const grossProfit = computed(() => totalRevenue.value - totalExpenses.value)
-  const operatingIncome = computed(() => grossProfit.value)
-  const netIncome = computed(() => reportData.value.summary?.net_profit || 0)
-
-  const profitMargin = computed(() => {
-    if (totalRevenue.value === 0) return 0
-    return (netIncome.value / totalRevenue.value) * 100
-  })
-
-  const monthlyAverage = computed(() => netIncome.value / 12)
-
-  const periodLabel = computed(() => {
-    const labels = {
-      monthly: 'Current Month',
-      quarterly: 'Current Quarter',
-      yearly: 'Current Year'
-    }
-    return labels[selectedPeriod.value]
-  })
-
-  const toggleAccount = (accountKey) => {
-    const index = expandedAccounts.value.indexOf(accountKey)
-    if (index > -1) {
-      // Collapse
-      expandedAccounts.value.splice(index, 1)
     } else {
-      // Expand + auto-expand parent chain
-      expandedAccounts.value.push(accountKey)
-
-      // Find and expand parent chain
-      const allData = reportData.value.data || []
-      const accountData = allData.find(a => a.account === accountKey)
-
-      if (accountData && accountData.parent_account) {
-        let currentParent = accountData.parent_account
-        while (currentParent) {
-          if (!expandedAccounts.value.includes(currentParent)) {
-            expandedAccounts.value.push(currentParent)
-          }
-          const parentData = allData.find(a => a.account === currentParent)
-          currentParent = parentData?.parent_account
-        }
-      }
+      result = await getIncomeStatementYearly()
     }
+    if (result?.status === 'success') reportData.value = result
+    else error.value = 'Failed to load report data'
+  } catch (err) {
+    error.value = err.message || 'Error loading report'
+    console.error('Error loading income statement:', err)
+  } finally {
+    loading.value = false
   }
+}
 
-  const formatCurrency = (value) => {
-    if (!value && value !== 0) return '$0.00'
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value)
-  }
+const formatCurrency = (value) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value || 0)
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return ''
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-  }
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
 
-  const loadReport = async () => {
-    await getReportData()
-  }
+const loadReport   = async () => { await getReportData() }
+const goBack       = () => router.back()
+const exportReport = () => console.log('Exporting Income Statement...')
 
-  const goBack = () => {
-    router.back()
-  }
-
-  const exportReport = () => {
-    console.log('Exporting Income Statement...')
-  }
-
-  onMounted(() => {
-    getReportData()
-  })
-
-
+onMounted(() => { getReportData() })
 </script>

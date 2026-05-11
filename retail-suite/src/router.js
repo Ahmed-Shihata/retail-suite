@@ -55,7 +55,6 @@ import StaffList from "@/pages/staff/StaffList.vue";
 import StaffProfile from "@/pages/staff/StaffProfile.vue";
 import StaffManagementControl from '@/pages/staff/StaffManagementControl.vue';
 
-import ReportsDashboard from "@/pages/reports/ReportsDashboard.vue";
 import SalesAnalytics from "@/pages/reports/SalesAnalytics.vue";
 import IncomeStatement from'@/pages/reports/IncomeStatement.vue';
 import AccountsPayable from'@/pages/reports/AccountsPayable.vue';
@@ -218,12 +217,6 @@ const routes = [
   // ==========================
   // Accounting
   // ==========================
-  {
-    path: "/reports-dashboard",
-    name: "ReportsDashboard",
-    component: ReportsDashboard,
-    meta: { title: "Reports-Dashboard", requiresAuth: true },
-  },
   {
     path: "/accounting-reports",
     name: "AccountingReposts",

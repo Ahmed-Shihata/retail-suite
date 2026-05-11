@@ -61,19 +61,19 @@
 
           <!-- DroidCam Scanner Button -->
           <button
-            @click="handleDroidCamConnect"
-            :disabled="isDroidCamConnecting"
-            class="relative w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200"
-            :class="[
-              isDroidCamConnected
-                ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 shadow-md'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
-              isDroidCamConnecting ? 'opacity-75 cursor-wait' : ''
-            ]"
+          @click="handleDroidCamConnect"
+          :disabled="isDroidCamConnecting"
+          class="relative w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200"
+          :class="[
+            isDroidCamConnected
+            ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 shadow-md'
+            : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+            isDroidCamConnecting ? 'opacity-75 cursor-wait' : ''
+          ]"
             :title="isDroidCamConnected ? 'DroidCam Connected' : 'Connect DroidCam'"
-          >
-            <!-- Scanner Icon -->
-            <BarcodeScannerIcon class="w-5 h-5" />
+            >
+            <!-- Droid Camera Connect Icon -->
+            <PlayIcon class="w-5 h-5" />
 
             <!-- Connected Indicator -->
             <div
@@ -96,7 +96,7 @@
             class="w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200 bg-gray-100 text-gray-600 hover:bg-gray-200"
             title="Mobile Scanner"
           >
-            <PlayIcon class="w-5 h-5" />
+          <BarcodeScannerIcon class="w-5 h-5" />
           </button>
 
           <!-- Close Shift Button -->

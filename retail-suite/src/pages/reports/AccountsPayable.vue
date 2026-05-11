@@ -4,68 +4,110 @@ FRONTEND - AccountsPayable.vue Component
 
 <template>
   <MainLayout>
-    <div class="w-full flex min-h-screen bg-gray-50">
-      <main class="flex flex-col flex-1 min-h-screen">
-        <!-- Header -->
-        <header class="mx-3 mt-3 sticky top-0 z-10 bg-white rounded-xl shadow-sm border-b border-gray-200">
+   <div class="w-full flex min-h-screen" style="font-size: 13px;" :style="{ background: 'var(--item-bg)' }">
+      <main class="flex flex-col flex-1">
+        <!--══════════════════ Header ═══════════════════════ -->
+        <header
+          class="mx-3 mt-3 sticky top-0 z-10  rounded-xl shadow-sm border-b"
+          :style="{ background: 'var(--header-bg)', borderColor: 'var(--header-border)' }">
           <div class="px-6 py-4 flex justify-between items-center">
             <div class="flex items-center gap-3">
-              <button @click="goBack" class="p-2 hover:bg-gray-100 rounded-lg transition">
-                <ArrowLeft class="w-6 h-6 text-gray-600" />
+              <button
+                @click="goBack"
+                class="p-1.5 rounded-md transition-colors"
+                :style="{ color: 'var(--text-muted)' }"
+                @mouseover="$event.currentTarget.style.background = 'var(--nav-item-hover-bg)'"
+                @mouseleave="$event.currentTarget.style.background = 'transparent'"
+>
+                <ArrowLeft class="w-6 h-6" :style="{ color: 'var(--text-muted)' }"/>
               </button>
-              <h1 class="text-lg font-bold text-gray-900">Accounts Payable</h1>
+              <h1 class="text-lg font-bold" :style="{ color: 'var(--text-main)' }">Accounts Payable</h1>
             </div>
-            <button @click="exportReport" class="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+           <button
+              @click="exportReport"
+              class="flex items-center gap-2 px-4 py-2 rounded-lg transition"
+              :style="{
+                background: 'var(--btn-success)',
+                color: '#fff'
+              }"
+              @mouseenter="$event.currentTarget.style.filter = 'brightness(1.05)'"
+              @mouseleave="$event.currentTarget.style.filter = 'none'"
+            >
               <Download class="w-4 h-4" />
               Export
-            </button>
+          </button>
           </div>
         </header>
 
-        <!-- Key Metrics -->
-        <section class="px-6 py-8">
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-6 shadow-sm border border-orange-200">
-              <p class="text-sm text-gray-600 mb-2">Total Payable</p>
-              <p v-if="loading" class="text-3xl font-bold text-orange-600 animate-pulse">--</p>
-              <p v-else class="text-3xl font-bold text-orange-600">${{ totalPayable.toLocaleString() }}</p>
-              <p class="text-xs text-gray-500 mt-2">Outstanding bills</p>
-            </div>
-            <div class="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-6 shadow-sm border border-red-200">
-              <p class="text-sm text-gray-600 mb-2">Overdue Amount</p>
-              <p v-if="loading" class="text-3xl font-bold text-red-600 animate-pulse">--</p>
-              <p v-else class="text-3xl font-bold text-red-600">${{ overdueAmount.toLocaleString() }}</p>
-              <p class="text-xs text-gray-500 mt-2">Needs immediate action</p>
-            </div>
-            <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 shadow-sm border border-blue-200">
-              <p class="text-sm text-gray-600 mb-2">Paid This Month</p>
-              <p v-if="loading" class="text-3xl font-bold text-blue-600 animate-pulse">--</p>
-              <p v-else class="text-3xl font-bold text-blue-600">${{ paidMonth.toLocaleString() }}</p>
-              <p class="text-xs text-gray-500 mt-2">Current period</p>
-            </div>
-            <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-6 shadow-sm border border-green-200">
-              <p class="text-sm text-gray-600 mb-2">Payment Rate</p>
-              <p v-if="loading" class="text-3xl font-bold text-green-600 animate-pulse">--</p>
-              <p v-else class="text-3xl font-bold text-green-600">{{ paymentRate.toFixed(1) }}%</p>
-              <p class="text-xs text-gray-500 mt-2">Efficiency metric</p>
-            </div>
+        <!--══════════════════ Key Metrics ═══════════════════════ -->
+        <section class="flex-shrink-0 px-6 py-8">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatsCard
+              title="Total Payable"
+              :value="totalPayable"
+              subtitle="Outstanding bills"
+              icon="Receipt"
+              color="purple"
+            />
+              <StatsCard
+                title="Paid This Month"
+                :value="paidMonth"
+                subtitle="Current period"
+                icon="CheckCircle2"
+                color="blue"
+              />
+              <StatsCard
+                title="Overdue Amount"
+                :value="overdueAmount"
+                subtitle="Needs immediate action"
+                icon="AlertTriangle"
+                color="red"
+              />
+              <StatsCard
+                title="Payment Rate"
+                :value="paymentRate.toFixed(1) + '%'"
+                subtitle="Efficiency metric"
+                icon="TrendingUp"
+                color="green"
+              />
+
           </div>
         </section>
 
-        <!-- Content -->
+        <!--══════════════════ Main Content ═══════════════════════ -->
         <section class="flex-1 px-6 pb-6">
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Payables Table -->
-            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div class="px-6 py-4 border-b border-gray-200 bg-orange-50">
+
+             <!-- ══════════════════ Payables Table ══════════════════ -->
+              <div
+                class="lg:col-span-2 rounded-xl overflow-hidden"
+                :style="{
+                  background: 'var(--content-panel-bg)',
+                  border: '1px solid var(--content-panel-border)',
+                  boxShadow: 'var(--content-panel-shadow)'
+                }"
+              >
+              <!-- Table Header -->
+              <div
+                  class="px-6 py-4 border-b "
+                  :style="{
+                  background: 'var(--pt-table-header-bg)',
+                  borderColor: 'var(--pt-table-header-border)'
+                }">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <h2 class="text-lg font-bold text-gray-900">Supplier Bills</h2>
+                  <h2 class="text-lg font-bold" :style="{ color: 'var(--text-main)' }">Supplier Bills</h2>
                   <div class="relative w-full sm:w-64">
                       <input
                         v-model="searchQuery"
                         type="text"
                         placeholder="Search by invoice, customer or amount..."
-                        class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        class="w-full px-4 py-2 pr-10 rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent"
+                        :style="{
+                          background: 'var(--pt-search-bg)',
+                          border: '1px solid var(--pt-search-border)',
+                          color: 'var(--pt-search-text)',
+                          '--tw-ring-color': 'var(--pt-focus-ring)'
+                        }"
                       />
                       <svg class="absolute right-3 top-2.5 w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -97,28 +139,53 @@ FRONTEND - AccountsPayable.vue Component
               <!-- Table -->
               <div v-else class="overflow-x-auto">
                 <table class="w-full">
-                  <thead class="bg-gray-50 border-b border-gray-200">
+                  <thead :style="{
+                      background: 'var(--section-bg)',
+                      borderBottom: '1px solid var(--item-border)'
+                    }">
                     <tr>
-                      <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">Supplier</th>
-                      <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">Bill #</th>
-                      <th class="px-4 py-3 text-right text-sm font-semibold text-gray-900">Amount</th>
-                      <th class="px-4 py-3 text-left text-sm font-semibold text-gray-900">Due Date</th>
-                      <th class="px-4 py-3 text-center text-sm font-semibold text-gray-900">Status</th>
-                      <th class="px-4 py-3 text-right text-sm font-semibold text-gray-900">Days Overdue</th>
+                      <th
+                          v-for="tab in ['Supplier', 'Bill #', 'Amount', 'Due Date', 'Status', 'Days Overdue']"
+                          :key="tab"
+                          :class="['Status','Amount','Days Overdue'].includes(col) ? 'text-center' : ''"
+                          class="px-4 py-3 text-left text-sm font-semibold"
+                          :style="{ color: 'var(--text-main)' }">
+                        {{ tab }}
+                    </th>
+
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="bill in paginatedInvoices" :key="bill.id" class="border-b border-gray-100 hover:bg-gray-50">
-                      <td class="px-4 py-3 text-gray-900 font-medium">{{ bill.supplier }}</td>
-                      <td class="px-4 py-3 text-gray-600">{{ bill.invoiceNo }}</td>
-                      <td class="px-4 py-3 text-right text-gray-900 font-semibold">${{ bill.amount.toLocaleString() }}</td>
-                      <td class="px-4 py-3 text-gray-600">{{ formatDate(bill.dueDate) }}</td>
-                      <td class="px-4 py-3 text-center">
+                    <tr
+                      v-for="bill in paginatedInvoices"
+                      :key="bill.id"
+                      class="border-b transition-colors"
+                      :style="{
+                        borderColor: 'var(--item-border)'
+                      }"
+                      @mouseenter="$event.currentTarget.style.background = 'var(--nav-item-hover-bg)'"
+                      @mouseleave="$event.currentTarget.style.background = 'transparent'"
+                    >
+                      <td class="px-4 py-3 font-medium"
+                        :style="{ color: 'var(--text-main)' }"
+                      >
+                        {{ bill.supplier }}
+                      </td>
+                      <td class="px-4 py-3 font-medium" :style="{ color: 'var(--text-main)' }">
+                        {{ bill.invoiceNo }}
+                      </td>
+                      <td class="px-4 py-3 text-left font-semibold" :style="{ color: 'var(--text-main)' }">
+                        ${{ bill.amount.toLocaleString() }}
+                      </td>
+                      <td class="px-4 py-3 text-gray-600" :style="{ color: 'var(--text-main)' }">
+                        {{ formatDate(bill.dueDate) }}
+                      </td>
+                      <td class="px-4 py-3">
                         <span :class="['px-3 py-1 rounded-full text-xs font-semibold', getStatusClass(bill.status)]">
                           {{ bill.status }}
                         </span>
                       </td>
-                      <td class="px-4 py-3 text-right" :class="bill.daysOverdue > 0 ? 'text-red-600 font-bold' : 'text-gray-600'">
+                      <td class="px-4 py-3" :style="{ color: 'var(--text-main)' }">
                         {{ bill.daysOverdue > 0 ? `${bill.daysOverdue} days` : '-' }}
                       </td>
                     </tr>
@@ -126,43 +193,100 @@ FRONTEND - AccountsPayable.vue Component
                 </table>
               </div>
               <!-- Pagination -->
-              <div v-if="totalPages > 1 && !loading && filteredInvoices.length > 0" class="px-4 sm:px-6 py-4 border-t border-gray-200 flex-shrink-0 bg-gray-50">
+              <div
+                v-if="totalPages > 1 && !loading && filteredInvoices.length > 0"
+                class="px-4 sm:px-6 py-4 border-t flex-shrink-0"
+                :style="{
+                  background: 'var(--section-bg)',
+                  borderColor: 'var(--item-border)'
+                }"
+              >
                 <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div class="text-xs sm:text-sm text-gray-700 order-2 sm:order-1">
-                    Showing <span class="font-medium">{{ ((currentPage - 1) * itemsPerPage) + 1 }}</span> to
-                    <span class="font-medium">{{ Math.min(currentPage * itemsPerPage, filteredInvoices.length) }}</span> of
-                    <span class="font-medium">{{ filteredInvoices.length }}</span> results
-                    <span v-if="searchQuery" class="text-gray-500 ml-2">(filtered from {{ payables.length }})</span>
+
+                  <!-- Info -->
+                  <div
+                    class="text-xs sm:text-sm order-2 sm:order-1"
+                    :style="{ color: 'var(--text-sub)' }"
+                  >
+                    Showing
+                    <span class="font-medium" :style="{ color: 'var(--text-main)' }">
+                      {{ ((currentPage - 1) * itemsPerPage) + 1 }}
+                    </span>
+                    to
+                    <span class="font-medium" :style="{ color: 'var(--text-main)' }">
+                      {{ Math.min(currentPage * itemsPerPage, filteredInvoices.length) }}
+                    </span>
+                    of
+                    <span class="font-medium" :style="{ color: 'var(--text-main)' }">
+                      {{ filteredInvoices.length }}
+                    </span>
+                    results
+
+                    <span
+                      v-if="searchQuery"
+                      class="ml-2"
+                      :style="{ color: 'var(--text-muted)' }"
+                    >
+                      (filtered from {{ payables.length }})
+                    </span>
                   </div>
+
+                  <!-- Controls -->
                   <div class="flex items-center gap-2 order-1 sm:order-2">
+
+                    <!-- Prev -->
                     <button
                       @click="currentPage = Math.max(1, currentPage - 1)"
                       :disabled="currentPage === 1"
-                      class="px-2 sm:px-3 py-1.5 border border-gray-300 text-gray-700 text-xs sm:text-sm rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all duration-200"
+                      class="px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm border transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      :style="{
+                        background: 'var(--item-bg)',
+                        border: '1px solid var(--item-border)',
+                        color: 'var(--text-main)'
+                      }"
                     >
                       <span class="hidden sm:inline">Previous</span>
                       <span class="sm:hidden">Prev</span>
                     </button>
+
+                    <!-- Pages -->
                     <button
                       v-for="page in visiblePages"
                       :key="page"
                       @click="currentPage = page"
-                      class="px-2 sm:px-3 py-1.5 border text-xs sm:text-sm rounded-lg transition-all duration-200 font-medium"
-                      :class="{
-                        'bg-cyan-500 text-white border-cyan-500': currentPage === page,
-                        'border-gray-300 text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500': currentPage !== page
-                      }"
+                      class="px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium border transition-all duration-200"
+                      :style="
+                        currentPage === page
+                          ? {
+                              background: 'var(--btn-info)',
+                              border: '1px solid var(--focus-ring)',
+                              color: '#fff'
+                            }
+                          : {
+                              background: 'var(--item-bg)',
+                              border: '1px solid var(--item-border)',
+                              color: 'var(--text-main)'
+                            }
+                      "
                     >
                       {{ page }}
                     </button>
+
+                    <!-- Next -->
                     <button
                       @click="currentPage = Math.min(totalPages, currentPage + 1)"
                       :disabled="currentPage === totalPages"
-                      class="px-2 sm:px-3 py-1.5 border border-gray-300 text-gray-700 text-xs sm:text-sm rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all duration-200"
+                      class="px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm border transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      :style="{
+                        background: 'var(--item-bg)',
+                        border: '1px solid var(--item-border)',
+                        color: 'var(--text-main)'
+                      }"
                     >
                       <span class="hidden sm:inline">Next</span>
                       <span class="sm:hidden">Next</span>
                     </button>
+
                   </div>
                 </div>
               </div>
@@ -170,112 +294,267 @@ FRONTEND - AccountsPayable.vue Component
 
             <!-- Sidebar Analytics -->
             <div class="space-y-6">
-              <!-- Aging Report -->
-              <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-4">Aging Analysis</h3>
+
+              <!--=═════════════════ Aging Analysis ══════════════════ -->
+
+              <div
+                class="rounded-xl shadow-sm border p-6"
+                :style="{
+                  background: 'var(--content-panel-bg)',
+                  border: '1px solid var(--content-panel-border)'
+                }"
+              >
+                <h3
+                  class="text-lg font-bold mb-4"
+                  :style="{ color: 'var(--text-main)' }"
+                >
+                  Aging Analysis
+                </h3>
+
+                <!-- Loading -->
                 <div v-if="loading" class="space-y-3">
-                  <div v-for="i in 4" :key="i" class="p-3 bg-gray-50 rounded-lg animate-pulse">
-                    <div class="h-4 bg-gray-300 rounded mb-2 w-3/4"></div>
-                    <div class="h-2 bg-gray-200 rounded-full w-full"></div>
+                  <div
+                    v-for="i in 4"
+                    :key="i"
+                    class="p-3 rounded-lg animate-pulse"
+                    :style="{ background: 'var(--item-bg)' }"
+                  >
+                    <div class="h-4 rounded mb-2 w-3/4" :style="{ background: 'var(--item-border)' }"></div>
+                    <div class="h-2 rounded-full w-full" :style="{ background: 'var(--track-bg)' }"></div>
                   </div>
                 </div>
+
+                <!-- Data -->
                 <div v-else class="space-y-3">
-                  <div v-for="aging in agingData" :key="aging.id" class="p-3 bg-gray-50 rounded-lg">
+                  <div
+                    v-for="aging in agingData"
+                    :key="aging.id"
+                    class="p-3 rounded-lg"
+                    :style="{ background: 'var(--item-bg)' }"
+                  >
                     <div class="flex justify-between items-center mb-2">
-                      <span class="text-sm text-gray-700 font-medium">{{ aging.period }}</span>
-                      <span class="text-sm font-bold" :class="aging.color">{{ aging.percentage }}%</span>
+
+                      <span
+                        class="text-sm font-medium"
+                        :style="{ color: 'var(--text-sub)' }"
+                      >
+                        {{ aging.period }}
+                      </span>
+
+                      <span class="text-sm font-bold" :class="aging.color">
+                        {{ aging.percentage }}%
+                      </span>
                     </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2">
-                      <div :style="{ width: aging.percentage + '%' }" :class="['h-2 rounded-full', aging.bgColor]"></div>
+
+                    <!-- Progress -->
+                    <div
+                      class="w-full rounded-full h-2"
+                      :style="{ background: 'var(--track-bg)' }"
+                    >
+                      <div
+                        class="h-2 rounded-full"
+                        :style="{ width: aging.percentage + '%' }"
+                        :class="aging.bgColor"
+                      ></div>
                     </div>
-                    <p class="text-xs text-gray-500 mt-1">${{ aging.amount.toLocaleString() }}</p>
+
+                    <p
+                      class="text-xs mt-1"
+                      :style="{ color: 'var(--text-muted)' }"
+                    >
+                      ${{ aging.amount.toLocaleString() }}
+                    </p>
                   </div>
                 </div>
               </div>
 
               <!-- Top Suppliers -->
-              <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-4">Top Suppliers</h3>
+              <div
+                class="rounded-xl shadow-sm border p-6"
+                :style="{
+                  background: 'var(--content-panel-bg)',
+                  border: '1px solid var(--content-panel-border)'
+                }"
+              >
+                <h3
+                  class="text-lg font-bold mb-4"
+                  :style="{ color: 'var(--text-main)' }"
+                >
+                  Top Suppliers
+                </h3>
+
+                <!-- Loading -->
                 <div v-if="loading" class="space-y-3">
-                  <div v-for="i in 5" :key="i" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg animate-pulse">
-                    <div class="h-4 bg-gray-300 rounded w-1/2"></div>
-                    <div class="h-4 bg-gray-300 rounded w-1/4"></div>
+                  <div
+                    v-for="i in 5"
+                    :key="i"
+                    class="flex items-center justify-between p-3 rounded-lg animate-pulse"
+                    :style="{ background: 'var(--item-bg)' }"
+                  >
+                    <div class="h-4 w-1/2 rounded" :style="{ background: 'var(--item-border)' }"></div>
+                    <div class="h-4 w-1/4 rounded" :style="{ background: 'var(--item-border)' }"></div>
                   </div>
                 </div>
+
+                <!-- Data -->
                 <div v-else class="space-y-3">
-                  <div v-for="(supplier, idx) in topSuppliers" :key="idx" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div
+                    v-for="(supplier, idx) in topSuppliers"
+                    :key="idx"
+                    class="flex items-center justify-between p-3 rounded-lg"
+                    :style="{ background: 'var(--item-bg)' }"
+                  >
                     <div class="flex items-center gap-2">
-                      <span class="text-sm font-bold text-gray-400">{{ idx + 1 }}</span>
-                      <span class="text-sm text-gray-700">{{ supplier.name }}</span>
+
+                      <span
+                        class="text-sm font-bold"
+                        :style="{ color: 'var(--text-muted)' }"
+                      >
+                        {{ idx + 1 }}
+                      </span>
+
+                      <span
+                        class="text-sm"
+                        :style="{ color: 'var(--text-sub)' }"
+                      >
+                        {{ supplier.name }}
+                      </span>
                     </div>
-                    <span class="text-sm font-bold text-gray-900">${{ supplier.amount.toLocaleString() }}</span>
+
+                    <span
+                      class="text-sm font-bold"
+                      :style="{ color: 'var(--text-main)' }"
+                    >
+                      ${{ supplier.amount.toLocaleString() }}
+                    </span>
                   </div>
                 </div>
               </div>
 
               <!-- Payment Trend -->
-              <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-sm border border-blue-200 p-6">
-                <h3 class="text-lg font-bold text-gray-900 mb-3">Payment Trend</h3>
+              <div
+                class="rounded-xl shadow-sm border p-6"
+                :style="{
+                  background: 'var(--info-bg)',
+                  border: '1px solid var(--info-border)'
+                }"
+              >
+                <h3
+                  class="text-lg font-bold mb-3"
+                  :style="{ color: 'var(--text-main)' }"
+                >
+                  Payment Trend
+                </h3>
+
                 <div class="space-y-2 text-sm">
-                  <p class="text-gray-600">Last 30 Days Payments</p>
-                  <p v-if="loading" class="text-2xl font-bold text-blue-600 animate-pulse">--</p>
-                  <p v-else class="text-2xl font-bold text-blue-600">${{ last30DaysPayments.toLocaleString() }}</p>
-                  <p class="text-xs text-gray-500 mt-2">📈 Payment rate stable</p>
+
+                  <p :style="{ color: 'var(--text-sub)' }">
+                    Last 30 Days Payments
+                  </p>
+
+                  <p
+                    v-if="loading"
+                    class="text-2xl font-bold animate-pulse"
+                    :style="{ color: 'var(--primary-600)' }"
+                  >
+                    --
+                  </p>
+
+                  <p
+                    v-else
+                    class="text-2xl font-bold"
+                    :style="{ color: 'var(--primary-600)' }"
+                  >
+                    ${{ last30DaysPayments.toLocaleString() }}
+                  </p>
+
+                  <p
+                    class="text-xs mt-2"
+                    :style="{ color: 'var(--text-muted)' }"
+                  >
+                    📈 Payment rate stable
+                  </p>
+
                 </div>
               </div>
+
             </div>
           </div>
 
           <!-- Summary Table -->
-          <div class="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 class="text-lg font-bold text-gray-900 mb-4">Summary by Status</h2>
+          <div class="mt-6 rounded-xl shadow-sm border p-6"
+              :style="{
+                background: 'var(--content-panel-bg)',
+                borderColor: 'var(--content-panel-border)',
+                boxShadow: 'var(--content-panel-shadow)'
+              }"
+          >
+            <h2 class="text-lg font-bold mb-4" :style="{ color: 'var(--text-main)' }">Summary by Status</h2>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div class="p-4 bg-green-50 rounded-lg border-l-4 border-green-500">
-                <p class="text-sm text-gray-600 mb-1">Paid</p>
-                <p v-if="loading" class="text-2xl font-bold text-green-600 animate-pulse">--</p>
-                <p v-else class="text-2xl font-bold text-green-600">{{ statusCounts.paid }}</p>
-                <p v-if="!loading" class="text-xs text-gray-500 mt-1">${{ statusAmounts.paid.toLocaleString() }}</p>
-              </div>
-              <div class="p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
-                <p class="text-sm text-gray-600 mb-1">Due</p>
-                <p v-if="loading" class="text-2xl font-bold text-blue-600 animate-pulse">--</p>
-                <p v-else class="text-2xl font-bold text-blue-600">{{ statusCounts.due }}</p>
-                <p v-if="!loading" class="text-xs text-gray-500 mt-1">${{ statusAmounts.due.toLocaleString() }}</p>
-              </div>
-              <div class="p-4 bg-orange-50 rounded-lg border-l-4 border-orange-500">
-                <p class="text-sm text-gray-600 mb-1">Overdue</p>
-                <p v-if="loading" class="text-2xl font-bold text-orange-600 animate-pulse">--</p>
-                <p v-else class="text-2xl font-bold text-orange-600">{{ statusCounts.overdue }}</p>
-                <p v-if="!loading" class="text-xs text-gray-500 mt-1">${{ statusAmounts.overdue.toLocaleString() }}</p>
-              </div>
-              <div class="p-4 bg-red-50 rounded-lg border-l-4 border-red-500">
-                <p class="text-sm text-gray-600 mb-1">In Dispute</p>
-                <p v-if="loading" class="text-2xl font-bold text-red-600 animate-pulse">--</p>
-                <p v-else class="text-2xl font-bold text-red-600">{{ statusCounts.disputed }}</p>
-                <p v-if="!loading" class="text-xs text-gray-500 mt-1">${{ statusAmounts.disputed.toLocaleString() }}</p>
-              </div>
+                            <StatsCard
+                title="Paid"
+                :value="statusCounts.paid"
+                :subtitle="'$' + statusAmounts.paid.toLocaleString()"
+                icon="CheckCircle2"
+                color="green"
+              />
+              <StatsCard
+                title="Due"
+                :value="statusCounts.due"
+                :subtitle="'$' + statusAmounts.due.toLocaleString()"
+                icon="Clock"
+                color="blue"
+              />
+              <StatsCard
+                title="Overdue"
+                :value="statusCounts.overdue"
+                :subtitle="'$' + statusAmounts.overdue.toLocaleString()"
+                icon="AlertTriangle"
+                color="orange"
+              />
+              <StatsCard
+                title="In Dispute"
+                :value="statusCounts.disputed"
+               :subtitle="'$' + statusAmounts.disputed.toLocaleString()"
+                icon="MessageSquare"
+                color="red"
+              />
+
             </div>
           </div>
 
           <!-- Cash Flow Impact -->
-          <div class="mt-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl shadow-sm border border-purple-200 p-6">
-            <h2 class="text-lg font-bold text-gray-900 mb-4">Cash Flow Planning</h2>
+         <div class="mt-6 rounded-xl shadow-sm border p-6"
+              :style="{
+                background: 'var(--content-panel-bg)',
+                borderColor: 'var(--content-panel-border)',
+                boxShadow: 'var(--content-panel-shadow)'
+              }"
+          >
+            <h2 class="text-lg font-bold mb-4" :style="{ color: 'var(--text-main)' }">Cash Flow Planning</h2>
+
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div class="p-4 bg-white rounded-lg border border-purple-200">
-                <p class="text-sm text-gray-600 mb-2">Due This Week</p>
-                <p v-if="loading" class="text-2xl font-bold text-purple-600 animate-pulse">--</p>
-                <p v-else class="text-2xl font-bold text-purple-600">${{ dueThisWeek.toLocaleString() }}</p>
-              </div>
-              <div class="p-4 bg-white rounded-lg border border-purple-200">
-                <p class="text-sm text-gray-600 mb-2">Due This Month</p>
-                <p v-if="loading" class="text-2xl font-bold text-purple-600 animate-pulse">--</p>
-                <p v-else class="text-2xl font-bold text-purple-600">${{ dueThisMonth.toLocaleString() }}</p>
-              </div>
-              <div class="p-4 bg-white rounded-lg border border-purple-200">
-                <p class="text-sm text-gray-600 mb-2">Due Next Month</p>
-                <p v-if="loading" class="text-2xl font-bold text-purple-600 animate-pulse">--</p>
-                <p v-else class="text-2xl font-bold text-purple-600">${{ dueNextMonth.toLocaleString() }}</p>
-              </div>
+              <StatsCard
+                title="Due This Week"
+                :value="dueThisWeek.toLocaleString()"
+                subtitle=""
+                icon="Receipt"
+                color="purple"
+              />
+              <StatsCard
+                title="Due This Month"
+                :value="dueThisMonth.toLocaleString()"
+                subtitle=""
+                icon="Receipt"
+                color="purple"
+              />
+              <StatsCard
+                title="Due Next Month"
+                :value="dueNextMonth.toLocaleString()"
+                subtitle=""
+                icon="Receipt"
+                color="purple"
+              />
             </div>
           </div>
         </section>
@@ -290,7 +569,7 @@ import { useRouter } from 'vue-router'
 import MainLayout from '@/layout/MainLayout.vue'
 import { ArrowLeft, Download } from 'lucide-vue-next'
 import { getAccountsPayableReport, exportAccountsPayableReport } from '@/services/api'
-
+import StatsCard from '@/layout/StatsCard.vue'
 
     const router = useRouter()
     const loading = ref(true)

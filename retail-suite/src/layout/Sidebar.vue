@@ -99,25 +99,6 @@
             </span>
           </router-link>
         </li>
-
-        <!-- User Dahboard Menu Item -->
-        <li>
-          <router-link
-            to="/user-dashboard"
-            class="flex items-center"
-            #default="{ isActive }"
-          >
-            <span
-              class="flex items-center justify-center h-10 w-10 rounded-2xl transition-all duration-200"
-              :class="getMenuClass('/user-dashboard', isActive)"
-              :style="getMenuStyle('/user-dashboard', isActive)"
-              title="Users Management"
-            >
-              <Users />
-            </span>
-          </router-link>
-        </li>
-
         <!-- Shifts Menu Item -->
         <li>
           <router-link

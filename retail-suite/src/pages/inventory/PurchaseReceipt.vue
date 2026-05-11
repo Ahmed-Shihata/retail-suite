@@ -1,228 +1,449 @@
+<!-- PurchaseReceipt.vue -->
 <template>
   <MainLayout>
-    <div class="w-full flex min-h-screen bg-gray-50">
-      <main class="flex flex-col flex-1 min-h-screen">
+    <div class="w-full flex min-h-screen" style="font-size: 13px;" :style="{ background: 'var(--item-bg)' }">
+      <main class="flex flex-col flex-1">
 
-        <!-- Header -->
-        <header class="mx-3 mt-3 sticky top-0 z-10 bg-white rounded-xl shadow-sm border-b border-gray-200">
-          <div class="px-6 py-4 flex justify-between items-center">
-            <div class="flex items-center gap-3">
-              <ShoppingCart class="w-8 h-8 text-cyan-600" />
-              <h1 class="text-lg font-bold text-gray-900">Purchase Receipts</h1>
+        <!-- ══════════════════ HEADER ══════════════════ -->
+        <header
+          class="mx-3 mt-3 sticky top-0 z-10 rounded-lg shadow-sm"
+          :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
+        >
+          <div class="px-4 py-2 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+              <ShoppingCart class="w-5 h-5" :style="{ color: 'var(--focus-ring)' }" />
+              <div>
+                <h1 class="text-sm font-bold" :style="{ color: 'var(--text-main)' }">Purchase Receipts</h1>
+                <p class="text-xs" :style="{ color: 'var(--text-muted)' }">{{ purchases.length }} total receipts</p>
+              </div>
             </div>
             <button
               @click="showAddModal = true"
-              class="inline-flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg transition"
+              class="inline-flex items-center gap-1.5 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+              :style="{ background: 'var(--focus-ring)' }"
             >
-              <Plus class="w-4 h-4" />
-              New Receipt
+              <Plus class="w-3 h-3" /> New Receipt
             </button>
           </div>
         </header>
 
-        <!-- Filters -->
-        <section class="px-4 py-2">
-          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-1">
-            <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Receipt No.</label>
-                <input
-                  v-model="searchReceiptNo"
-                  type="text"
-                  placeholder="Search receipt..."
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
-                />
+        <!-- ══════════════════ STATISTICS ══════════════════ -->
+        <section class="px-3 pt-3">
+          <div
+            class="rounded-lg shadow-sm p-3"
+            :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
+          >
+            <h2 class="text-xs font-semibold uppercase tracking-wide mb-2" :style="{ color: 'var(--text-muted)' }">
+              Statistics
+            </h2>
+            <div class="grid grid-cols-2 lg:grid-cols-6 gap-2">
+              <StatsCard title="Total"       :value="purchases.length"               icon="ShoppingCart" color="blue"   />
+              <StatsCard title="Draft"       :value="summaryStats.draft"             icon="FileText"     color="orange" />
+              <StatsCard title="To Bill"     :value="summaryStats.tobill"            icon="Tag"          color="purple" />
+              <StatsCard title="Completed"   :value="summaryStats.completed"         icon="CheckCircle"  color="green"  />
+              <StatsCard title="Cancelled"   :value="summaryStats.cancelled"         icon="XCircle"      color="orange" />
+              <StatsCard title="Total Amt"   :value="formatPrice(summaryStats.totalAmount)" icon="TrendingUp" color="blue" />
+            </div>
+          </div>
+        </section>
+
+        <!-- ══════════════════ FILTERS ══════════════════ -->
+        <section class="px-3 pt-3">
+          <div
+            class="rounded-lg shadow-sm p-3"
+            :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
+          >
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2">
+
+              <!-- Receipt Search -->
+              <div class="col-span-2">
+                <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--text-muted)' }">Search</label>
+                <div class="relative">
+                  <Search class="absolute left-2.5 top-2 w-3 h-3 pointer-events-none" :style="{ color: 'var(--text-muted)' }" />
+                  <input
+                    v-model="searchReceiptNo"
+                    type="text"
+                    placeholder="Receipt no. or supplier..."
+                    class="w-full pl-8 pr-3 py-1.5 rounded-md focus:outline-none text-xs transition-all"
+                    :style="{
+                      background: 'var(--input-bg)',
+                      color: 'var(--text-main)',
+                      border: '1px solid var(--input-border)'
+                    }"
+                  />
+                </div>
               </div>
+
+              <!-- Supplier -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Supplier</label>
+                <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--text-muted)' }">Supplier</label>
                 <input
                   v-model="searchSupplier"
                   type="text"
                   placeholder="Search supplier..."
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
+                  class="w-full px-2 py-1.5 rounded-md focus:outline-none text-xs"
+                  :style="{
+                    background: 'var(--input-bg)',
+                    color: 'var(--text-main)',
+                    border: '1px solid var(--input-border)'
+                  }"
                 />
               </div>
+
+              <!-- From Date -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--text-muted)' }">From</label>
+                <input
+                  v-model="filterFromDate"
+                  type="date"
+                  class="w-full px-2 py-1.5 rounded-md focus:outline-none text-xs"
+                  :style="{
+                    background: 'var(--input-bg)',
+                    color: 'var(--text-main)',
+                    border: '1px solid var(--input-border)'
+                  }"
+                />
+              </div>
+
+              <!-- To Date -->
+              <div>
+                <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--text-muted)' }">To</label>
+                <input
+                  v-model="filterToDate"
+                  type="date"
+                  class="w-full px-2 py-1.5 rounded-md focus:outline-none text-xs"
+                  :style="{
+                    background: 'var(--input-bg)',
+                    color: 'var(--text-main)',
+                    border: '1px solid var(--input-border)'
+                  }"
+                />
+              </div>
+
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+
+              <!-- Status -->
+              <div>
+                <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--text-muted)' }">Status</label>
                 <select
                   v-model="statusFilter"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
+                  class="w-full px-2 py-1.5 rounded-md focus:outline-none text-xs"
+                  :style="{
+                    background: 'var(--input-bg)',
+                    color: 'var(--text-main)',
+                    border: '1px solid var(--input-border)'
+                  }"
                 >
-                  <option value="">All</option>
+                  <option value="">All Status</option>
                   <option value="Draft">Draft</option>
                   <option value="To Bill">To Bill</option>
                   <option value="Completed">Completed</option>
                   <option value="Cancelled">Cancelled</option>
                 </select>
               </div>
+
+              <!-- Count -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">From Date</label>
-                <input
-                  v-model="filterFromDate"
-                  type="date"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
-                />
+                <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--text-muted)' }">Count</label>
+                <div
+                  class="px-2 py-1.5 rounded-md font-semibold text-xs"
+                  :style="{
+                    background: 'var(--item-bg)',
+                    color: 'var(--text-main)',
+                    border: '1px solid var(--item-border)'
+                  }"
+                >
+                  {{ filteredPurchases.length }} receipts
+                </div>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">To Date</label>
-                <input
-                  v-model="filterToDate"
-                  type="date"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
-                />
+
+              <!-- Clear -->
+              <div class="flex items-end">
+                <button
+                  @click="resetFilters"
+                  class="w-full px-3 py-1.5 rounded-md text-xs transition-colors"
+                  :style="{
+                    background: 'var(--item-bg)',
+                    color: 'var(--text-sub)',
+                    border: '1px solid var(--item-border)'
+                  }"
+                  @mouseover="$event.currentTarget.style.background = 'var(--nav-item-hover-bg)'"
+                  @mouseleave="$event.currentTarget.style.background = 'var(--item-bg)'"
+                >
+                  Clear Filters
+                </button>
               </div>
+
             </div>
           </div>
         </section>
 
-        <!-- Summary Cards -->
-        <section class="px-4 py-2">
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
-            <div class="bg-white rounded-lg border border-gray-200 p-4">
-              <p class="text-sm text-gray-600">Total Receipts</p>
-              <p class="text-2xl font-bold text-blue-600">{{ purchases.length }}</p>
+        <!-- ══════════════════ TABLE ══════════════════ -->
+        <section class="px-3 pt-3 pb-3">
+          <div
+            class="rounded-lg shadow-sm flex flex-col overflow-hidden"
+            :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
+          >
+            <!-- Table Header Bar -->
+            <div
+              class="px-4 py-2 flex items-center gap-2"
+              :style="{ borderBottom: '1px solid var(--card-border)' }"
+            >
+              <ShoppingCart class="w-4 h-4" :style="{ color: 'var(--text-muted)' }" />
+              <span class="text-xs font-semibold" :style="{ color: 'var(--text-sub)' }">All Receipts</span>
+              <span class="text-xs" :style="{ color: 'var(--text-muted)' }">({{ purchases.length }})</span>
+              <span v-if="loading" class="text-xs ml-auto" :style="{ color: 'var(--text-muted)' }">Loading...</span>
             </div>
-            <div class="bg-white rounded-lg border border-gray-200 p-2">
-              <p class="text-sm text-gray-600">Draft</p>
-              <p class="text-2xl font-bold text-yellow-400">{{ summaryStats.draft }}</p>
-            </div>
-            <div class="bg-white rounded-lg border border-gray-200 p-2">
-              <p class="text-sm text-gray-600">To Bill</p>
-              <p class="text-2xl font-bold text-pink-600">{{ summaryStats.tobill }}</p>
-            </div>
-             <div class="bg-white rounded-lg border border-gray-200 p-2">
-              <p class="text-sm text-gray-600">Completed</p>
-              <p class="text-2xl font-bold text-green-600">{{ summaryStats.completed }}</p>
-            </div>
-            <div class="bg-white rounded-lg border border-gray-200 p-2">
-              <p class="text-sm text-gray-600">Cancelled</p>
-              <p class="text-2xl font-bold text-red-600">{{ summaryStats.cancelled }}</p>
-            </div>
-            <div class="bg-white rounded-lg border border-gray-200 p-2">
-              <p class="text-sm text-gray-600">Total Amount</p>
-              <p class="text-2xl font-bold text-purple-600">{{ formatPrice(summaryStats.totalAmount) }}</p>
-            </div>
-          </div>
-        </section>
 
-        <!-- Loading -->
-        <div v-if="loading" class="flex justify-center items-center py-12">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
-          <span class="ml-3 text-gray-500">Loading receipts...</span>
-        </div>
-
-        <!-- Receipts Table -->
-        <section v-else class="flex-1 px-4 pb-6">
-          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="overflow-x-auto">
-              <table class="w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+            <!-- Table -->
+            <div class="overflow-x-auto" style="scrollbar-width: thin;">
+              <table class="w-full border-collapse" style="font-size: 12px; min-width: 700px;">
+                <thead class="sticky top-0 z-10" :style="{ background: 'var(--item-bg)' }">
                   <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Receipt No.</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th
+                      v-for="label in ['Receipt No.', 'Date', 'Supplier', 'Items', 'Amount', 'Status', 'Actions']"
+                      :key="label"
+                      class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap"
+                      :class="['Amount', 'Actions'].includes(label) ? 'text-center' : ''"
+                      :style="{ color: 'var(--text-muted)', borderBottom: '1px solid var(--card-border)' }"
+                    >
+                      {{ label }}
+                    </th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-200">
-                  <tr v-for="purchase in filteredPurchases" :key="purchase.name" class="hover:bg-gray-50">
-                    <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ purchase.name }}</td>
-                    <td class="px-6 py-4 text-sm text-gray-900">{{ formatDate(purchase.posting_date) }}</td>
-                    <td class="px-6 py-4 text-sm text-gray-900">{{ purchase.supplier }}</td>
-                    <td class="px-6 py-4 text-sm text-gray-600">{{ purchase.items?.length || 0 }} items</td>
-                    <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ formatPrice(purchase.grand_total || purchase.total_amount || 0) }}</td>
-                    <td class="px-6 py-4 text-sm">
-                      <span :class="getStatusBadge(purchase.status)" class="px-2.5 py-0.5 rounded-full text-xs font-medium">
-                        {{ capitalizeStatus(purchase.status) }}
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 text-sm font-medium">
-                      <div class="flex gap-2">
-                        <!-- View - دايماً -->
-                        <button @click="viewReceipt(purchase)" class="text-cyan-600 hover:text-cyan-900" title="View">
-                          <Eye class="w-4 h-4" />
-                        </button>
 
-                        <!-- Edit - Draft فقط -->
-                        <button
-                          v-if="canEdit(purchase)"
-                          @click="editReceipt(purchase)"
-                          class="text-blue-600 hover:text-blue-900"
-                          title="Edit"
-                        >
-                          <Edit2 class="w-4 h-4" />
-                        </button>
-
-                        <!-- Submit - Draft فقط -->
-                        <button
-                          v-if="canSubmit(purchase)"
-                          @click="submitReceipt(purchase)"
-                          class="text-green-600 hover:text-green-900"
-                          title="Submit"
-                        >
-                          <CheckCircle class="w-4 h-4" />
-                        </button>
-
-                        <!-- Cancel - Submitted فقط -->
-                        <button
-                          v-if="canCancel(purchase)"
-                          @click="cancelReceipt(purchase)"
-                          class="text-orange-600 hover:text-orange-900"
-                          title="Cancel"
-                        >
-                          <XCircle class="w-4 h-4" />
-                        </button>
-
-                        <!-- Delete - Draft فقط -->
-                        <button
-                          v-if="canEdit(purchase)"
-                          @click="deleteReceipt(purchase)"
-                          class="text-red-600 hover:text-red-900"
-                          title="Delete"
-                        >
-                          <Trash2 class="w-4 h-4" />
-                        </button>
-                          <!-- Invoice - To Bill / Partly Billed فقط -->
-                        <button
-                          v-if="canCreateInvoice(purchase)"
-                          @click="createInvoice(purchase)"
-                          class="text-purple-600 hover:text-purple-900"
-                          title="Create Invoice"
-                        >
-                          <FileText class="w-4 h-4" />
-                        </button>
+                <tbody>
+                  <!-- Loading -->
+                  <tr v-if="loading">
+                    <td colspan="7" class="py-10 text-center">
+                      <div class="flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5 animate-spin" :style="{ color: 'var(--focus-ring)' }" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                        </svg>
+                        <span class="text-xs" :style="{ color: 'var(--text-muted)' }">Loading receipts...</span>
                       </div>
                     </td>
                   </tr>
 
-                  <!-- Empty State -->
-                  <tr v-if="filteredPurchases.length === 0">
-                    <td colspan="7" class="px-6 py-12 text-center text-gray-500">
-                      No purchase receipts found.
+                  <!-- Empty -->
+                  <tr v-else-if="paginatedPurchases.length === 0">
+                    <td colspan="7" class="py-14 text-center">
+                      <div class="flex flex-col items-center gap-2">
+                        <div
+                          class="w-10 h-10 flex items-center justify-center rounded-full mb-1"
+                          :style="{ background: 'var(--item-bg)' }"
+                        >
+                          <ShoppingCart class="w-5 h-5" :style="{ color: 'var(--text-muted)', opacity: 0.5 }" />
+                        </div>
+                        <p class="text-xs font-medium" :style="{ color: 'var(--text-sub)' }">No Purchase Receipts Found</p>
+                        <p class="text-xs" :style="{ color: 'var(--text-muted)' }">Try adjusting your filters</p>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Rows -->
+                  <tr
+                    v-else
+                    v-for="purchase in paginatedPurchases"
+                    :key="purchase.name"
+                    class="transition-colors"
+                    :style="{ borderBottom: '1px solid var(--card-border)' }"
+                    @mouseover="$event.currentTarget.style.background = 'var(--nav-item-hover-bg)'"
+                    @mouseleave="$event.currentTarget.style.background = 'var(--card-bg)'"
+                  >
+                    <!-- Receipt No -->
+                    <td class="px-3 py-2 whitespace-nowrap">
+                      <span
+                        class="font-mono text-xs px-2 py-0.5 rounded font-medium"
+                        :style="{ background: 'var(--item-bg)', color: 'var(--text-sub)', border: '1px solid var(--item-border)' }"
+                      >{{ purchase.name }}</span>
+                    </td>
+
+                    <!-- Date -->
+                    <td class="px-3 py-2 whitespace-nowrap text-xs" :style="{ color: 'var(--text-muted)' }">
+                      {{ formatDate(purchase.posting_date) }}
+                    </td>
+
+                    <!-- Supplier -->
+                    <td class="px-3 py-2 whitespace-nowrap text-xs" :style="{ color: 'var(--text-sub)' }">
+                      {{ purchase.supplier }}
+                    </td>
+
+                    <!-- Items -->
+                    <td class="px-3 py-2 whitespace-nowrap text-xs text-center" :style="{ color: 'var(--text-muted)' }">
+                      <span
+                        v-if="purchase.items?.length"
+                        class="inline-flex items-center justify-center w-5 h-5 text-white rounded-full font-semibold"
+                        style="font-size:10px;"
+                        :style="{ background: 'var(--focus-ring)' }"
+                      >{{ purchase.items.length }}</span>
+                      <span v-else>—</span>
+                    </td>
+
+                    <!-- Amount -->
+                    <td class="px-3 py-2 whitespace-nowrap text-center font-semibold text-xs" :style="{ color: 'var(--focus-ring)' }">
+                      {{ formatPrice(purchase.grand_total || purchase.total_amount || 0) }}
+                    </td>
+
+                    <!-- Status -->
+                    <td class="px-3 py-2 whitespace-nowrap">
+                      <span
+                        class="inline-flex items-center px-2 py-0.5 rounded-full font-medium"
+                        style="font-size: 10px;"
+                        :style="getStatusStyle(purchase.status)"
+                      >
+                        <span
+                          class="w-1.5 h-1.5 rounded-full mr-1 inline-block"
+                          :style="{ background: getStatusStyle(purchase.status).color }"
+                        />
+                        {{ capitalizeStatus(purchase.status) }}
+                      </span>
+                    </td>
+
+                    <!-- Actions -->
+                    <td class="px-3 py-2 whitespace-nowrap">
+                      <div class="flex items-center justify-center gap-1">
+
+                        <!-- View -->
+                        <button
+                          @click="viewReceipt(purchase)"
+                          class="w-6 h-6 flex items-center justify-center rounded transition-colors"
+                          :style="{ color: 'var(--focus-ring)' }"
+                          @mouseover="$event.currentTarget.style.background = 'var(--info-bg)'"
+                          @mouseleave="$event.currentTarget.style.background = 'transparent'"
+                          title="View"
+                        >
+                          <Eye class="w-3.5 h-3.5" />
+                        </button>
+
+                        <!-- Edit (Draft only) -->
+                        <button
+                          v-if="canEdit(purchase)"
+                          @click="editReceipt(purchase)"
+                          class="w-6 h-6 flex items-center justify-center rounded transition-colors"
+                          :style="{ color: 'var(--warning-border)' }"
+                          @mouseover="$event.currentTarget.style.background = 'var(--warning-bg)'"
+                          @mouseleave="$event.currentTarget.style.background = 'transparent'"
+                          title="Edit"
+                        >
+                          <Edit2 class="w-3.5 h-3.5" />
+                        </button>
+
+                        <!-- Submit (Draft only) -->
+                        <button
+                          v-if="canSubmit(purchase)"
+                          @click="submitReceipt(purchase)"
+                          class="w-6 h-6 flex items-center justify-center rounded transition-colors"
+                          :style="{ color: 'var(--icon-color-green)' }"
+                          @mouseover="$event.currentTarget.style.background = 'var(--icon-bg-green)'"
+                          @mouseleave="$event.currentTarget.style.background = 'transparent'"
+                          title="Submit"
+                        >
+                          <CheckCircle class="w-3.5 h-3.5" />
+                        </button>
+
+                        <!-- Cancel (Submitted only) -->
+                        <button
+                          v-if="canCancel(purchase)"
+                          @click="cancelReceipt(purchase)"
+                          class="w-6 h-6 flex items-center justify-center rounded transition-colors"
+                          :style="{ color: 'var(--warning-border)' }"
+                          @mouseover="$event.currentTarget.style.background = 'var(--warning-bg)'"
+                          @mouseleave="$event.currentTarget.style.background = 'transparent'"
+                          title="Cancel"
+                        >
+                          <XCircle class="w-3.5 h-3.5" />
+                        </button>
+
+                        <!-- Delete (Draft only) -->
+                        <button
+                          v-if="canEdit(purchase)"
+                          @click="deleteReceipt(purchase)"
+                          class="w-6 h-6 flex items-center justify-center rounded transition-colors"
+                          style="color: #ef4444;"
+                          @mouseover="$event.currentTarget.style.background = '#fef2f2'"
+                          @mouseleave="$event.currentTarget.style.background = 'transparent'"
+                          title="Delete"
+                        >
+                          <Trash2 class="w-3.5 h-3.5" />
+                        </button>
+
+                        <!-- Invoice (To Bill / Partly Billed) -->
+                        <button
+                          v-if="canCreateInvoice(purchase)"
+                          @click="createInvoice(purchase)"
+                          class="w-6 h-6 flex items-center justify-center rounded transition-colors"
+                          style="color: #9333ea;"
+                          @mouseover="$event.currentTarget.style.background = '#f5f3ff'"
+                          @mouseleave="$event.currentTarget.style.background = 'transparent'"
+                          title="Create Invoice"
+                        >
+                          <FileText class="w-3.5 h-3.5" />
+                        </button>
+
+                      </div>
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
+
+            <!-- Pagination -->
+            <div
+              v-if="totalPages > 1"
+              class="px-4 py-2.5"
+              :style="{ borderTop: '1px solid var(--card-border)', background: 'var(--item-bg)' }"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-xs" :style="{ color: 'var(--text-muted)' }">
+                  Showing {{ ((currentPage - 1) * itemsPerPage) + 1 }}–{{ Math.min(currentPage * itemsPerPage, filteredPurchases.length) }}
+                  of {{ filteredPurchases.length }}
+                </span>
+                <div class="flex items-center gap-1">
+                  <button
+                    @click="currentPage = Math.max(1, currentPage - 1)"
+                    :disabled="currentPage === 1"
+                    class="px-2 py-1 text-xs rounded disabled:opacity-40 transition-colors"
+                    :style="{ border: '1px solid var(--card-border)', color: 'var(--text-sub)', background: 'var(--card-bg)' }"
+                  >Prev</button>
+
+                  <button
+                    v-for="page in visiblePages"
+                    :key="page"
+                    @click="currentPage = page"
+                    class="px-2 py-1 text-xs rounded transition-colors font-medium"
+                    :style="currentPage === page
+                      ? { background: 'var(--focus-ring)', color: '#fff', border: '1px solid var(--focus-ring)' }
+                      : { background: 'var(--card-bg)', color: 'var(--text-sub)', border: '1px solid var(--card-border)' }"
+                  >{{ page }}</button>
+
+                  <button
+                    @click="currentPage = Math.min(totalPages, currentPage + 1)"
+                    :disabled="currentPage === totalPages"
+                    class="px-2 py-1 text-xs rounded disabled:opacity-40 transition-colors"
+                    :style="{ border: '1px solid var(--card-border)', color: 'var(--text-sub)', background: 'var(--card-bg)' }"
+                  >Next</button>
+                </div>
+              </div>
+            </div>
+
           </div>
         </section>
 
-        <!-- Purchase Receipt Modal -->
+        <!-- ══════════════════ MODALS ══════════════════ -->
         <PurchaseReceiptModal
           v-if="showAddModal || showEditModal"
           :show="showAddModal || showEditModal"
           :purchase="editingPurchase"
           :is-editing="showEditModal"
-
           :products="inventoryStore.items"
           @save="savePurchase"
           @close="closeModal"
         />
 
-        <!-- Receipt Detail Modal -->
         <ReceiptDetailModal
           v-if="showDetailModal"
           :receipt="selectedPurchase"
@@ -239,14 +460,16 @@
           @close="showInvoiceModal = false"
           @submit="handleInvoiceSubmit"
         />
-          <ConfirmModal
-            :show="confirmModal.show"
-            :type="confirmModal.type"
-            :doc-name="confirmModal.docName"
-            :loading="confirmModal.loading"
-            @confirm="onConfirmOk"
-            @cancel="onConfirmCancel"
-          />
+
+        <ConfirmModal
+          :show="confirmModal.show"
+          :type="confirmModal.type"
+          :doc-name="confirmModal.docName"
+          :loading="confirmModal.loading"
+          @confirm="onConfirmOk"
+          @cancel="onConfirmCancel"
+        />
+
       </main>
     </div>
   </MainLayout>
@@ -254,14 +477,15 @@
 
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue'
-import MainLayout from '@/layout/MainLayout.vue'
-import PurchaseReceiptModal from '@/components/modals/PurchaseReceiptModal.vue'
-import ReceiptDetailModal from '@/components/modals/ReceiptDetailModal.vue'
-import ConfirmModal from '@/components/modals/ConfirmModal.vue'
-import PurchaseInvoiceModal from '@/components/modals/PurchaseInvoiceModal.vue'
-import { useInventoryStore } from '@/stores/inventory'
-import { formatPrice } from '@/utils/formatters'
-import { ShoppingCart, Plus, Eye, Edit2, Trash2, CheckCircle, XCircle, FileText } from 'lucide-vue-next'
+import MainLayout             from '@/layout/MainLayout.vue'
+import StatsCard              from '@/layout/StatsCard.vue'
+import PurchaseReceiptModal   from '@/components/modals/PurchaseReceiptModal.vue'
+import ReceiptDetailModal     from '@/components/modals/ReceiptDetailModal.vue'
+import ConfirmModal           from '@/components/modals/ConfirmModal.vue'
+import PurchaseInvoiceModal   from '@/components/modals/PurchaseInvoiceModal.vue'
+import { useInventoryStore }  from '@/stores/inventory'
+import { formatPrice }        from '@/utils/formatters'
+import { ShoppingCart, Plus, Eye, Edit2, Trash2, CheckCircle, XCircle, FileText, Search } from 'lucide-vue-next'
 import {
   getPurchaseReceipts,
   createPurchaseReceipt,
@@ -269,12 +493,14 @@ import {
   deletePurchaseReceipt,
   cancelPurchaseReceipt,
   submitPurchaseReceipt,
-createPurchaseInvoiceFromReceipt
+  createPurchaseInvoiceFromReceipt,
 } from '@/services/api'
+
 // ─── State ────────────────────────────────────────────
-const inventoryStore = useInventoryStore()
-const purchases      = ref([])
-const loading        = ref(false)
+const inventoryStore  = useInventoryStore()
+const purchases       = ref([])
+const loading         = ref(false)
+const uoms            = ref([])
 
 const searchReceiptNo = ref('')
 const searchSupplier  = ref('')
@@ -282,14 +508,26 @@ const statusFilter    = ref('')
 const filterFromDate  = ref('')
 const filterToDate    = ref('')
 
+// Pagination
+const currentPage  = ref(1)
+const itemsPerPage = ref(20)
+
 const showAddModal    = ref(false)
 const showEditModal   = ref(false)
 const showDetailModal = ref(false)
 const editingPurchase = ref(null)
 const selectedPurchase = ref(null)
 
-const uoms = ref([])
-// ─── Load Data ────────────────────────────────────────
+const showInvoiceModal = ref(false)
+const invoiceReceipt   = ref(null)
+const invoiceError     = ref(null)
+const invoiceSuccess   = ref(null)
+
+const confirmModal = reactive({
+  show: false, type: 'submit', docName: '', loading: false, _resolve: null,
+})
+
+// ─── Load ─────────────────────────────────────────────
 const loadReceipts = async () => {
   loading.value = true
   try {
@@ -305,161 +543,81 @@ const loadReceipts = async () => {
 // ─── Computed ─────────────────────────────────────────
 const filteredPurchases = computed(() => {
   let data = [...purchases.value]
-
-  if (searchReceiptNo.value) {
-    data = data.filter(p =>
-      p.name?.toLowerCase().includes(searchReceiptNo.value.toLowerCase())
-    )
-  }
-
-  if (searchSupplier.value) {
-    data = data.filter(p =>
-      p.supplier?.toLowerCase().includes(searchSupplier.value.toLowerCase())
-    )
-  }
-
-  if (statusFilter.value) {
+  if (searchReceiptNo.value)
+    data = data.filter(p => p.name?.toLowerCase().includes(searchReceiptNo.value.toLowerCase()))
+  if (searchSupplier.value)
+    data = data.filter(p => p.supplier?.toLowerCase().includes(searchSupplier.value.toLowerCase()))
+  if (statusFilter.value)
     data = data.filter(p => p.status === statusFilter.value)
-  }
-
-  if (filterFromDate.value) {
+  if (filterFromDate.value)
     data = data.filter(p => new Date(p.posting_date) >= new Date(filterFromDate.value))
-  }
-
-  if (filterToDate.value) {
+  if (filterToDate.value)
     data = data.filter(p => new Date(p.posting_date) <= new Date(filterToDate.value))
-  }
-
   return data.sort((a, b) => new Date(b.posting_date) - new Date(a.posting_date))
 })
 
+const paginatedPurchases = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  return filteredPurchases.value.slice(start, start + itemsPerPage.value)
+})
+
+const totalPages = computed(() =>
+  Math.ceil(filteredPurchases.value.length / itemsPerPage.value)
+)
+
+const visiblePages = computed(() => {
+  const pages = []
+  const maxVisible = 5
+  let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2))
+  let end   = Math.min(totalPages.value, start + maxVisible - 1)
+  if (end - start < maxVisible - 1) start = Math.max(1, end - maxVisible + 1)
+  for (let i = start; i <= end; i++) pages.push(i)
+  return pages
+})
+
 const summaryStats = computed(() => ({
-  draft:     purchases.value.filter(p => p.status === 'Draft').length,
-  tobill:    purchases.value.filter(p => p.status === 'To Bill').length,
+  draft:       purchases.value.filter(p => p.status === 'Draft').length,
+  tobill:      purchases.value.filter(p => p.status === 'To Bill').length,
   completed:   purchases.value.filter(p => p.status === 'Completed').length,
-  cancelled: purchases.value.filter(p => p.status === 'Cancelled').length,
-  totalAmount: purchases.value.reduce((sum, p) => sum + (p.grand_total || p.total_amount || 0), 0)
+  cancelled:   purchases.value.filter(p => p.status === 'Cancelled').length,
+  totalAmount: purchases.value.reduce((sum, p) => sum + (p.grand_total || p.total_amount || 0), 0),
 }))
 
 // ─── Helpers ──────────────────────────────────────────
-// ✅ getStatusBadge - كل الحالات
-const getStatusBadge = (status) => {
-  const badges = {
-    'Draft':          'bg-gray-100 text-gray-700',
-    'To Bill':        'bg-blue-100 text-blue-800',
-    'Partly Billed':  'bg-yellow-100 text-yellow-800',
-    'Completed':      'bg-green-100 text-green-800',
-    'Return':         'bg-orange-100 text-orange-800',
-    'Return Issued':  'bg-orange-200 text-orange-900',
-    'Cancelled':      'bg-red-100 text-red-800',
-    'Closed':         'bg-gray-200 text-gray-600',
+const getStatusStyle = (status) => {
+  const map = {
+    'Draft':         { background: 'var(--item-bg)',       color: 'var(--text-muted)'       },
+    'To Bill':       { background: 'var(--info-bg)',        color: 'var(--focus-ring)'       },
+    'Partly Billed': { background: 'var(--warning-bg)',     color: 'var(--warning-border)'   },
+    'Completed':     { background: 'var(--icon-bg-green)',  color: 'var(--icon-color-green)' },
+    'Return':        { background: 'var(--warning-bg)',     color: 'var(--warning-border)'   },
+    'Cancelled':     { background: '#fef2f2',               color: '#ef4444'                 },
+    'Closed':        { background: 'var(--item-bg)',        color: 'var(--text-muted)'       },
   }
-  return badges[status] || 'bg-gray-100 text-gray-800'
+  return map[status] || { background: 'var(--item-bg)', color: 'var(--text-muted)' }
 }
 
-// ✅ هل ينفع يتعدل؟ (Draft بس)
-const canEdit = (purchase) => purchase.docstatus === 0
+const canEdit          = (p) => p.docstatus === 0
+const canSubmit        = (p) => p.docstatus === 0
+const canCancel        = (p) => p.docstatus === 1
+const canCreateInvoice = (p) => p.docstatus === 1 && ['To Bill', 'Partly Billed'].includes(p.status)
 
-// ✅ هل ينفع يتعمل Submit؟ (Draft بس)
-const canSubmit = (purchase) => purchase.docstatus === 0
+const capitalizeStatus = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : ''
+const formatDate       = (d) => d ? new Date(d).toLocaleDateString() : '—'
 
-// ✅ هل ينفع يتكنسل؟ (Submitted بس)
-const canCancel = (purchase) => purchase.docstatus === 1
-
-
-// ✅ هل ينفع يتعمل Invoice؟ (To Bill أو Partly Billed)
-const canCreateInvoice = (purchase) =>
-  purchase.docstatus === 1 &&
-  ['To Bill', 'Partly Billed'].includes(purchase.status)
-
-// ✅ Action
-
-
-const showInvoiceModal = ref(false)
-const invoiceReceipt   = ref(null)
-
-const invoiceError   = ref(null)
-const invoiceSuccess = ref(null)
-
-const createInvoice = (purchase) => {
-  console.log("purchase",purchase)
-  invoiceReceipt.value  = purchase
-  showInvoiceModal.value = true
+const resetFilters = () => {
+  searchReceiptNo.value = ''
+  searchSupplier.value  = ''
+  statusFilter.value    = ''
+  filterFromDate.value  = ''
+  filterToDate.value    = ''
+  currentPage.value     = 1
 }
-// ───  (PurchaseReceipts.vue) ────────────────────────────────
-
-const handleInvoiceSubmit = async (payload) => {
-  invoiceError.value   = null
-  invoiceSuccess.value = null
-
-  try {
-    const res = await createPurchaseInvoiceFromReceipt(invoiceReceipt.value.name, payload)
-
-    invoiceSuccess.value = `✅ Invoice created: ${res.data.name}`
-
-    // أقفل الـ modal بعد ثانيتين عشان المستخدم يشوف النجاح
-    setTimeout(() => {
-      showInvoiceModal.value = false
-      invoiceReceipt.value   = null
-      invoiceSuccess.value   = null
-    }, 2000)
-
-    await loadReceipts()
-
-  } catch (error) {
-    // Frappe بيرجع الـ error details في error.response.data
-    const frappeMsg =
-      error?.response?.data?.exception ||        // Python exception
-      error?.response?.data?.message  ||        // _("message") throw
-      error?.response?.data?.exc_type ||        // exception type
-      error?.message                  ||        // JS error
-      'Unknown error occurred'
-
-    // نظّف الـ Traceback من الـ message لو موجود
-    invoiceError.value = frappeMsg.split('\n')[0]  // أول سطر بس
-
-    console.error('Full error details:', error?.response?.data || error)
-  }
-}
-
-const capitalizeStatus = (status) =>
-  status ? status.charAt(0).toUpperCase() + status.slice(1) : ''
-
-const formatDate = (date) =>
-  date ? new Date(date).toLocaleDateString() : '-'
 
 // ─── Actions ──────────────────────────────────────────
-const viewReceipt = (purchase) => {
-    console.log("viewReceipt ",purchase)
-  selectedPurchase.value = purchase
-  showDetailModal.value = true
-}
-
-const editReceipt = (purchase) => {
-  editingPurchase.value = purchase
-  showEditModal.value = true
-}
-
-const savePurchase = async (purchaseData) => {
-  try {
-    if (showEditModal.value && editingPurchase.value) {
-      // ✅ Update
-      console.log("updatePurchaseReceipt here")
-      console.log("editingPurchase.value.name ",editingPurchase.value.name)
-       console.log("purchaseData",purchaseData)
-      await updatePurchaseReceipt(editingPurchase.value.name, purchaseData)
-    } else {
-      // ✅ Create
-      await createPurchaseReceipt(purchaseData)
-    }
-    // Reload من الـ API
-    await loadReceipts()
-    closeModal()
-  } catch (error) {
-    console.error('Error saving purchase receipt:', error)
-  }
-}
-
+const viewReceipt  = (p) => { selectedPurchase.value = p; showDetailModal.value = true }
+const editReceipt  = (p) => { editingPurchase.value  = p; showEditModal.value   = true }
+const createInvoice = (p) => { invoiceReceipt.value   = p; showInvoiceModal.value = true }
 
 const closeModal = () => {
   showAddModal.value    = false
@@ -467,108 +625,78 @@ const closeModal = () => {
   editingPurchase.value = null
 }
 
+const savePurchase = async (purchaseData) => {
+  try {
+    if (showEditModal.value && editingPurchase.value) {
+      await updatePurchaseReceipt(editingPurchase.value.name, purchaseData)
+    } else {
+      await createPurchaseReceipt(purchaseData)
+    }
+    await loadReceipts()
+    closeModal()
+  } catch (error) {
+    console.error('Error saving purchase receipt:', error)
+  }
+}
 
-
-// ─── 2. Replace the 3 confirm() refs ─────────────────
-const confirmModal = reactive({
-  show:    false,
-  type:    'submit',   // 'submit' | 'cancel' | 'delete'
-  docName: '',
-  loading: false,
-  _resolve: null,      // internal
-})
-
-// helper — returns a Promise that resolves true/false
+// ─── Confirm Modal ────────────────────────────────────
 const askConfirm = (type, docName) => {
   confirmModal.type    = type
   confirmModal.docName = docName
   confirmModal.show    = true
   return new Promise(resolve => { confirmModal._resolve = resolve })
 }
+const onConfirmOk     = async () => { confirmModal.loading = true; confirmModal._resolve?.(true) }
+const onConfirmCancel = ()       => { confirmModal.show = false; confirmModal.loading = false; confirmModal._resolve?.(false) }
+const closeConfirm    = ()       => { confirmModal.show = false; confirmModal.loading = false }
 
-const onConfirmOk = async () => {
-  confirmModal.loading = true
-  confirmModal._resolve?.(true)
-}
-
-const onConfirmCancel = () => {
-  confirmModal.show    = false
-  confirmModal.loading = false
-  confirmModal._resolve?.(false)
-}
-
-const closeConfirm = () => {
-  confirmModal.show    = false
-  confirmModal.loading = false
-}
-
-
-// ─── 3. Replace submitReceipt ────────────────────────
 const submitReceipt = async (purchase) => {
   const ok = await askConfirm('submit', purchase.name)
   if (!ok) return
-  try {
-    await submitPurchaseReceipt(purchase.name)
-    await loadReceipts()
-  } catch (error) {
-    console.error('Error submitting:', error)
-  } finally {
-    closeConfirm()
-  }
+  try { await submitPurchaseReceipt(purchase.name); await loadReceipts() }
+  catch (e) { console.error(e) }
+  finally { closeConfirm() }
 }
 
-
-// ─── 4. Replace cancelReceipt ────────────────────────
 const cancelReceipt = async (purchase) => {
   const ok = await askConfirm('cancel', purchase.name)
   if (!ok) return
-  try {
-    await cancelPurchaseReceipt(purchase.name)
-    await loadReceipts()
-  } catch (error) {
-    console.error('Error cancelling:', error)
-  } finally {
-    closeConfirm()
-  }
+  try { await cancelPurchaseReceipt(purchase.name); await loadReceipts() }
+  catch (e) { console.error(e) }
+  finally { closeConfirm() }
 }
 
-
-// ─── 5. Replace deleteReceipt ────────────────────────
 const deleteReceipt = async (purchase) => {
   const ok = await askConfirm('delete', purchase.name)
   if (!ok) return
   try {
     await deletePurchaseReceipt(purchase.name)
     purchases.value = purchases.value.filter(p => p.name !== purchase.name)
+  } catch (e) { console.error(e) }
+  finally { closeConfirm() }
+}
+
+const handleInvoiceSubmit = async (payload) => {
+  invoiceError.value = null; invoiceSuccess.value = null
+  try {
+    const res = await createPurchaseInvoiceFromReceipt(invoiceReceipt.value.name, payload)
+    invoiceSuccess.value = `✅ Invoice created: ${res.data.name}`
+    setTimeout(() => {
+      showInvoiceModal.value = false; invoiceReceipt.value = null; invoiceSuccess.value = null
+    }, 2000)
+    await loadReceipts()
   } catch (error) {
-    console.error('Error deleting:', error)
-  } finally {
-    closeConfirm()
+    const frappeMsg = error?.response?.data?.exception || error?.response?.data?.message || error?.message || 'Unknown error'
+    invoiceError.value = frappeMsg.split('\n')[0]
+    console.error('Full error:', error?.response?.data || error)
   }
 }
 
-
-// ─── 6. Add reactive import at top ───────────────────
-// import { ref, computed, onMounted, reactive } from 'vue'  ← add reactive
-
-
-// ─── 7. Add to template (next to other modals) ───────
-/*
-  <ConfirmModal
-    :show="confirmModal.show"
-    :type="confirmModal.type"
-    :doc-name="confirmModal.docName"
-    :loading="confirmModal.loading"
-    @confirm="onConfirmOk"
-    @cancel="onConfirmCancel"
-  />
-*/
 // ─── Lifecycle ────────────────────────────────────────
-onMounted(async() => {
+onMounted(async () => {
   await loadReceipts()
   await inventoryStore.loadItems?.()
   const fetchedUoms = await inventoryStore.loadUOM()
-
   uoms.value = fetchedUoms || []
 })
 </script>

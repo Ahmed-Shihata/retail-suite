@@ -1,5 +1,44 @@
 :root {
 
+
+      /* Stats Cards */
+  --stats-primary-bg: #eff6ff;
+  --stats-primary-border: #dbeafe;
+  --stats-primary-text: #2563eb;
+  --stats-primary-value: #1e3a8a;
+
+  --stats-success-bg: #f0fdf4;
+  --stats-success-border: #dcfce7;
+  --stats-success-text: #16a34a;
+  --stats-success-value: #14532d;
+
+  --stats-warning-bg: #fefce8;
+  --stats-warning-border: #fef9c3;
+  --stats-warning-text: #ca8a04;
+  --stats-warning-value: #713f12;
+
+  --stats-purple-bg: #faf5ff;
+  --stats-purple-border: #f3e8ff;
+  --stats-purple-text: #9333ea;
+  --stats-purple-value: #581c87;
+
+    /* <-- ══════════════════  tables══════════════════ --> */
+      /* payable-table */
+    --pt-table-header-bg: rgba(249, 115, 22, 0.08);
+    --pt-table-header-border: rgba(20, 184, 166, 0.12);
+
+    --pt-search-bg: #ffffff;
+    --pt-search-border: #d1d5db;
+    --pt-search-text: #111827;
+    --pt-search-placeholder: #9ca3af;
+
+    --pt-search-icon: #9ca3af;
+
+    --pt-focus-ring: #fb923c;
+
+
+
+
     /* pay.vue */
     --v-theme-surface: #fff,
 
@@ -21,17 +60,20 @@
     --content-panel-shadow: 0 1px 2px rgba(0,0,0,0.05);
 
 
-    --nav-bg: #ffffff;
-    --text-secondary: #6b7280;   /* alias for --text-sub */
-
-    /* setting.vue */
+    --header-bg: #ffffff;
+    --header-border: #e5e7eb;
     --card-bg: #ffffff;
     --card-border: #e5e7eb;
+    --text-main: #111827;
+    --text-sub: #6b7280;
+    --text-muted: #6b7280;
+
+    --nav-bg: #ffffff;
+    --text-secondary: #6b7280;
+
+    /* setting.vue */
 
     --kbd-bg: #f3f4f6;
-    --text-main: #111827;
-    --text-sub: #374151;
-    --text-muted: #6b7280;
 
     --item-bg: #f9fafb;
     --item-border: #e5e7eb;
@@ -39,7 +81,7 @@
     --input-bg: #ffffff;
     --input-border: #d1d5db;
 
-    --warning-bg: #fffbeb;
+    --warning-bg: #f87171;;
     --warning-border: #fde68a;
 
     --btn-success: linear-gradient(135deg, #16a34a, #15803d);
@@ -49,8 +91,8 @@
     --select-bg: #ffffff;
     --select-border: #d1d5db;
 
-    --info-bg: #ecfeff;
-    --info-border: #a5f3fc;
+    --info-bg: #a5f3fc;
+    --info-border: #67e8f9;
 
     --btn-info: linear-gradient(135deg, #0891b2, #0e7490);
 
@@ -80,10 +122,6 @@
     --nav-active-border: var(--primary-600);
 
     /* Archive.vue */
-    --card-bg: #ffffff;
-    --card-border: #e5e7eb;
-    --text-main: #111827;
-    --text-sub: #6b7280;
 
     --icon-bg-blue: #dbeafe;
     --icon-color-blue: #2563eb;
@@ -94,10 +132,47 @@
     --icon-bg-purple: #ede9fe;
     --icon-color-purple: #7c3aed;
 
-    --text-muted: #4b5563;
+
 }
 
 .theme-dark {
+
+  --stats-primary-bg: rgba(37, 99, 235, 0.12);
+  --stats-primary-border: rgba(37, 99, 235, 0.22);
+  --stats-primary-text: #60a5fa;
+  --stats-primary-value: #bfdbfe;
+
+  --stats-success-bg: rgba(22, 163, 74, 0.12);
+  --stats-success-border: rgba(22, 163, 74, 0.22);
+  --stats-success-text: #4ade80;
+  --stats-success-value: #dcfce7;
+
+  --stats-warning-bg: rgba(202, 138, 4, 0.12);
+  --stats-warning-border: rgba(202, 138, 4, 0.22);
+  --stats-warning-text: #facc15;
+  --stats-warning-value: #fef9c3;
+
+  --stats-purple-bg: rgba(147, 51, 234, 0.12);
+  --stats-purple-border: rgba(147, 51, 234, 0.22);
+  --stats-purple-text: #c084fc;
+  --stats-purple-value: #f3e8ff;
+    /* <-- ══════════════════  tables══════════════════ --> */
+  /* payable-table */
+  --pt-table-header-bg: rgba(249, 115, 22, 0.08);
+  --pt-table-header-border: rgba(20, 184, 166, 0.12);
+
+  --pt-search-bg: rgba(5, 18, 22, 0.85);
+  --pt-search-border: rgba(20, 184, 166, 0.22);
+  --pt-search-text: #e2f5f1;
+  --pt-search-placeholder: #7fb8ac;
+
+  --pt-search-icon: #7fb8ac;
+
+  --pt-focus-ring: #fb923c;
+
+
+
+
         /* pay.vue */
     --v-theme-surface: 30, 30, 30;
     --v-theme-background: 18, 18, 18;
@@ -120,6 +195,15 @@
     --content-panel-border: rgba(20, 184, 166, 0.10);
     --content-panel-shadow: 0 6px 20px rgba(0,0,0,0.35);
 
+
+    --card-bg: rgba(10, 28, 34, 0.85);
+    --card-border: rgba(20, 184, 166, 0.14);
+
+    --header-bg: rgba(10, 28, 34, 0.85);
+    --header-border: rgba(20, 184, 166, 0.14);
+
+    --text-main: #e2f5f1;
+
     --nav-bg:#1f2937;
     --text-secondary: #7fb8ac;
 
@@ -129,9 +213,6 @@
     /* teal glow */
     --blob2: rgba(5, 150, 105, 0.09);
     /* emerald glow */
-
-    --card-bg: rgba(10, 28, 34, 0.80);
-    --card-border: rgba(20, 184, 166, 0.14);
 
     --heading: #e2f5f1;
     --subtext: #7fb8ac;
@@ -177,12 +258,11 @@
     ----spacing-x: 10px;
 
     /* setting.vue */
-    --text-main: #e2f5f1;
     --text-sub: #7fb8ac;
 
     --kbd-bg: rgba(5, 18, 22, 0.9);
 
-    --text-muted: #5a8f85;
+
 
     --item-bg: rgba(10, 28, 34, 0.6);
     --item-border: rgba(20, 184, 166, 0.14);
@@ -225,10 +305,6 @@
     --nav-active-border: #14b8a6;
 
         /* Archive.vue */
-    --card-bg: rgba(10, 28, 34, 0.85);
-    --card-border: rgba(20, 184, 166, 0.14);
-    --text-main: #e2f5f1;
-    --text-sub: #7fb8ac;
 
     --icon-bg-blue: rgba(37, 99, 235, 0.15);
     --icon-color-blue: #3b82f6;

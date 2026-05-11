@@ -1,3 +1,4 @@
+<!-- StatsCard.vue -->
 <template>
   <div
     class="rounded-xl p-4 flex items-center gap-4"
@@ -55,15 +56,19 @@ const isDark    = computed(() => settings.value?.appearance?.theme !== 'light')
 const iconComponent = computed(() => Icons[props.icon])
 
 
-   const iconClass = () => {
+    const iconClass = () => {
 
-      const colorClasses = {
-        info: 'bg-[rgba(6,182,212,0.12)] text-[#22d3ee]',
-        success: 'bg-[rgba(34,197,94,0.12)] text-[#4ade80]',
-        warning: 'bg-[rgba(180,83,9,0.12)] text-[#f59e0b]',
-        purple: 'bg-[rgba(168,85,247,0.12)] text-[#c084fc]',
-        gray: 'bg-[rgba(148,163,184,0.12)] text-[#94a3b8]',
-      }
+    const colorClasses = {
+      info: 'bg-[rgba(6,182,212,0.12)] text-[#22d3ee]',
+      success: 'bg-[rgba(34,197,94,0.12)] text-[#4ade80]',
+      warning: 'bg-[rgba(180,83,9,0.12)] text-[#f59e0b]',
+      purple: 'bg-[rgba(168,85,247,0.12)] text-[#c084fc]',
+      gray: 'bg-[rgba(148,163,184,0.12)] text-[#94a3b8]',
+
+      blue: 'bg-[rgba(59,130,246,0.12)] text-[#60a5fa]',
+      red: 'bg-[rgba(239,68,68,0.12)] text-[#f87171]',
+      green: 'bg-[rgba(34,197,94,0.12)] text-[#4ade80]',
+    }
 
     return colorClasses[props.color] || colorClasses.gray
   }

@@ -99,80 +99,38 @@ import DashboardCard from '@/components/modals/DashboardCard.vue'
 import { useRouter } from 'vue-router'
 import { useProductsStore } from '@/stores/products'
 import { formatPrice } from '@/utils/formatters'
-import ScannerIcon from '@/components/icons/ScannerIcon.svg'
-import {
-  LayoutDashboard,
-  Package,
-  DollarSign,
-  AlertCircle,
-  TrendingDown,
-  BarChart3,
-  ShoppingCart,
-  ArrowRightLeft,
-  Scale,
-  FileText,
 
-} from 'lucide-vue-next'
+const router = useRouter()
+const productsStore = useProductsStore()
 
+const stats = reactive({
+  totalItems: 0,
+  totalValue: 0,
+  lowStock: 0,
+  outOfStock: 0
+})
 
+const recentActivities = ref([
 
-    const router = useRouter()
-    const productsStore = useProductsStore()
+])
 
-    const stats = reactive({
-      totalItems: 0,
-      totalValue: 0,
-      lowStock: 0,
-      outOfStock: 0
-    })
+const calculateStats = () => {
+  stats.totalItems = productsStore.products.length
+  stats.totalValue = productsStore.products.reduce((total, product) => {
+    return total + (product.rate * (product.actual_qty || 0))
+  }, 0)
+  stats.lowStock = productsStore.products.filter(p => (p.actual_qty || 0) > 0 && (p.actual_qty || 0) < 10).length
+  stats.outOfStock = productsStore.products.filter(p => (p.actual_qty || 0) === 0).length
+}
 
-    const recentActivities = ref([
-      {
-        id: 1,
-        title: 'New item added',
-        timestamp: '2 hours ago',
-        status: 'Created',
-        bgColor: 'bg-blue-500',
-        icon: Package,
-        badgeClass: 'bg-blue-100 text-blue-800'
-      },
-      {
-        id: 2,
-        title: 'Inventory transferred',
-        timestamp: '4 hours ago',
-        status: 'Transferred',
-        bgColor: 'bg-purple-500',
-        icon: ArrowRightLeft,
-        badgeClass: 'bg-purple-100 text-purple-800'
-      },
-      {
-        id: 3,
-        title: 'Purchase receipt recorded',
-        timestamp: '6 hours ago',
-        status: 'Received',
-        bgColor: 'bg-green-500',
-        icon: ShoppingCart,
-        badgeClass: 'bg-green-100 text-green-800'
-      }
-    ])
+const navigateTo = (route) => {
+  console.log('route',route)
+  router.push({ name: route })
+}
 
-    const calculateStats = () => {
-      stats.totalItems = productsStore.products.length
-      stats.totalValue = productsStore.products.reduce((total, product) => {
-        return total + (product.rate * (product.actual_qty || 0))
-      }, 0)
-      stats.lowStock = productsStore.products.filter(p => (p.actual_qty || 0) > 0 && (p.actual_qty || 0) < 10).length
-      stats.outOfStock = productsStore.products.filter(p => (p.actual_qty || 0) === 0).length
-    }
-
-    const navigateTo = (route) => {
-      console.log('route',route)
-      router.push({ name: route })
-    }
-
-    onMounted(() => {
-      productsStore.loadProductsFromFrappeDB()
-      calculateStats()
-    })
+onMounted(() => {
+  productsStore.loadProductsFromFrappeDB()
+  calculateStats()
+})
 
 </script>
