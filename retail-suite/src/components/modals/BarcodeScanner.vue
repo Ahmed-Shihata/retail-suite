@@ -2,16 +2,28 @@
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
     @click.self="handleClose">
-    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+    <div
+      class="relative rounded-2xl shadow-2xl w-full max-w-6xl mx-4 overflow-hidden"
+      :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }">
 
       <!-- ══════════ HEADER ══════════ -->
-      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+      <div class="flex items-center justify-between px-5 py-4"
+         style="border-color: var(--divider); background: var(--card-bg);">
         <div class="flex items-center gap-2">
-          <button @click="captureFrame"
-            class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded">
+          <button
+             @click="captureFrame"
+             class="px-4 py-2 rounded"
+             style="
+              background: var(--btn-success);
+              color: white;
+            ">
             Capture
           </button>
-          <div class="p-1.5 rounded-lg transition-colors" :class="mode === 'scan' ? 'bg-green-100' : 'bg-blue-100'">
+          <div
+            class="p-1.5 rounded-lg transition-colors"
+            :class="mode === 'scan'
+            ? 'mode-scan'
+            : 'mode-assign'">
             <svg v-if="mode === 'scan'" class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m0 14v1M4 12h1m14 0h1"/>
               <rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/>
@@ -24,16 +36,20 @@
             </svg>
           </div>
           <div>
-            <h3 class="text-base font-semibold text-gray-900">
+            <h3 class="text-base font-semibold" style="color: var(--text-main)">
               {{ mode === 'scan' ? 'Barcode Scanner' : 'Assign Barcode' }}
             </h3>
-            <p class="text-xs text-gray-400">
+            <p class="text-xs" style="color: var(--text-muted)">
               {{ mode === 'scan' ? 'Scan to get product info' : 'Scan barcode then assign it to a product' }}
             </p>
           </div>
         </div>
-        <button @click="handleClose"
-          class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition">
+        <button
+            @click="handleClose"
+            class="p-1 rounded-md transition"
+            style="color: var(--text-muted)"
+            @mouseover="$el.style.background='var(--item-bg)'"
+            @mouseleave="$el.style.background='transparent'">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
           </svg>
@@ -41,352 +57,678 @@
       </div>
 
       <!-- ══════════ MODE TABS ══════════ -->
-      <div class="flex border-b border-gray-100">
-        <button @click="setMode('scan')"
-          class="flex-1 py-2.5 text-sm font-medium transition border-b-2 -mb-px"
-          :class="mode === 'scan'
-            ? 'border-green-500 text-green-700 bg-green-50'
-            : 'border-transparent text-gray-400 hover:text-gray-600'">
+      <div class="flex border-b" style="border-color: var(--divider);">
+
+        <button
+          @click="setMode('scan')"
+          class="tab-btn flex-1 py-2.5 text-sm font-medium border-b-2 -mb-px"
+          :class="mode === 'scan' ? 'tab-active-scan' : 'tab-inactive'"
+        >
           🔍 Scan
         </button>
-        <button @click="setMode('assign')"
-          class="flex-1 py-2.5 text-sm font-medium transition border-b-2 -mb-px"
-          :class="mode === 'assign'
-            ? 'border-blue-500 text-blue-700 bg-blue-50'
-            : 'border-transparent text-gray-400 hover:text-gray-600'">
+
+        <button
+          @click="setMode('assign')"
+          class="tab-btn flex-1 py-2.5 text-sm font-medium border-b-2 -mb-px"
+          :class="mode === 'assign' ? 'tab-active-assign' : 'tab-inactive'"
+        >
           🔗 Assign
         </button>
+
       </div>
 
-      <!-- ══════════ SHARED CAMERA (always visible) ══════════ -->
-      <div class="px-5 pt-4">
-        <div class="relative rounded-xl overflow-hidden bg-gray-900">
+      <div class="scanner-layout">
+          <!-- LEFT SIDE -->
+          <div class="scanner-left">
+            <!-- ══════════ SHARED CAMERA (always visible) ══════════ -->
+            <div class="px-5 pt-4">
+              <div class="relative rounded-xl overflow-hidden bg-gray-900">
 
-          <!-- ZXing video element -->
-          <video ref="videoRef" class="w-full block" autoplay muted playsinline
-            style="min-height:180px; object-fit:cover; background:#111827;"></video>
+                <!-- ZXing video element -->
+                <video ref="videoRef" class="w-full block" autoplay muted playsinline
+                  style="min-height:180px; object-fit:cover; background:#111827;"></video>
 
-          <!-- Hidden canvas for frame capture -->
-          <canvas ref="canvasRef" class="hidden"></canvas>
+                <!-- Hidden canvas for frame capture -->
+                <canvas ref="canvasRef" class="hidden"></canvas>
 
-          <!-- Torch button -->
-          <button v-if="torchSupported && scannerState === 'active'"
-            @click="toggleTorch"
-            class="absolute top-2 right-2 p-2 rounded-lg transition z-10"
-            :class="torchOn ? 'bg-yellow-400 text-gray-900' : 'bg-black/40 text-white hover:bg-black/60'"
-            title="Toggle flashlight">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m1.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-            </svg>
-          </button>
-
-          <!-- Corners overlay — color changes by mode -->
-          <div v-if="scannerState === 'active'"
-            class="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div class="relative w-52 h-28">
-              <div class="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 rounded-tl"
-                :class="mode === 'scan' ? 'border-green-400' : 'border-blue-400'"></div>
-              <div class="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 rounded-tr"
-                :class="mode === 'scan' ? 'border-green-400' : 'border-blue-400'"></div>
-              <div class="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 rounded-bl"
-                :class="mode === 'scan' ? 'border-green-400' : 'border-blue-400'"></div>
-              <div class="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 rounded-br"
-                :class="mode === 'scan' ? 'border-green-400' : 'border-blue-400'"></div>
-              <div class="absolute left-2 right-2 h-0.5 scan-line"
-                :class="mode === 'scan'
-                  ? 'bg-green-400/80 shadow-[0_0_8px_rgba(74,222,128,0.8)]'
-                  : 'bg-blue-400/80 shadow-[0_0_8px_rgba(96,165,250,0.8)]'"></div>
-            </div>
-          </div>
-
-          <!-- Loading -->
-          <div v-if="scannerState === 'loading'"
-            class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gray-900 min-h-44">
-            <svg class="w-8 h-8 animate-spin text-white" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-            </svg>
-            <span class="text-sm text-gray-300">Starting camera...</span>
-          </div>
-
-          <!-- Error -->
-          <div v-if="scannerState === 'error'"
-            class="flex flex-col items-center justify-center gap-3 text-center px-6 py-8 bg-gray-900 min-h-44">
-            <div class="p-3 bg-red-500/20 rounded-full">
-              <svg class="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-            </div>
-            <p class="text-white text-sm">{{ errorMessage }}</p>
-            <button @click="startScanner"
-              class="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs rounded-lg transition">
-              Try Again
-            </button>
-          </div>
-
-          <!-- Idle -->
-          <div v-if="scannerState === 'idle'"
-            class="flex flex-col items-center justify-center gap-3 py-8 bg-gray-900 min-h-44">
-            <div class="p-3 bg-gray-700 rounded-full">
-              <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                <circle cx="12" cy="13" r="3" stroke-width="2"/>
-              </svg>
-            </div>
-            <button @click="startScanner"
-              class="px-5 py-2 text-white text-sm font-medium rounded-lg transition"
-              :class="mode === 'scan' ? 'bg-green-500 hover:bg-green-400' : 'bg-blue-500 hover:bg-blue-400'">
-              Start Camera
-            </button>
-          </div>
-
-          <!-- Success flash -->
-          <div v-if="showSuccessFlash"
-            class="absolute inset-0 flex items-center justify-center pointer-events-none"
-            :class="mode === 'scan' ? 'bg-green-400/20' : 'bg-blue-400/20'">
-            <div class="px-4 py-2 rounded-xl font-semibold text-sm shadow-lg text-white"
-              :class="mode === 'scan' ? 'bg-green-500' : 'bg-blue-500'">
-              ✓ {{ lastScanned }}
-            </div>
-          </div>
-        </div>
-
-        <!-- Debug bar — shows live detection status -->
-        <div v-if="scannerState === 'active'"
-          class="mt-1.5 px-3 py-1.5 bg-gray-900 rounded-lg flex items-center gap-2 min-h-7">
-          <span class="w-1.5 h-1.5 rounded-full shrink-0 animate-pulse"
-            :class="debugText.startsWith('✅') ? 'bg-green-400' : 'bg-gray-500'"></span>
-          <span class="text-xs font-mono truncate"
-            :class="debugText.startsWith('✅') ? 'text-green-400' : 'text-gray-400'">
-            {{ debugText || 'Initializing...' }}
-          </span>
-        </div>
-
-        <!-- Camera switcher -->
-        <div v-if="cameras.length > 1" class="flex items-center gap-2 mt-2.5">
-          <label class="text-xs text-gray-500 shrink-0">Camera:</label>
-          <select v-model="selectedCameraId" @change="switchCamera"
-            class="flex-1 text-xs px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-300">
-            <option v-for="cam in cameras" :key="cam.id" :value="cam.id">
-              {{ cam.label || `Camera ${cam.id.slice(0, 8)}...` }}
-            </option>
-          </select>
-        </div>
-      </div>
-
-      <!-- ══════════ SCAN MODE BODY ══════════ -->
-      <div v-if="mode === 'scan'" class="px-5 pb-5 pt-4 space-y-3">
-
-        <!-- Result card — appears after scan -->
-        <transition name="slide-down">
-          <div v-if="scanResult" class="rounded-xl border overflow-hidden"
-            :class="scanResult.found ? 'border-green-200' : 'border-red-200'">
-
-            <!-- Found -->
-            <div v-if="scanResult.found" class="bg-green-50 p-4 space-y-3">
-              <div class="flex items-center gap-2">
-                <span class="w-2 h-2 bg-green-500 rounded-full"></span>
-                <span class="text-xs font-semibold text-green-700 uppercase tracking-wide">Product Found</span>
-                <button @click="scanResult = null" class="ml-auto text-green-400 hover:text-green-600 transition">
+                <!-- Torch button -->
+                <button v-if="torchSupported && scannerState === 'active'"
+                  @click="toggleTorch"
+                  class="absolute top-2 right-2 p-2 rounded-lg transition z-10"
+                  :class="torchOn ? 'bg-yellow-400 text-gray-900' : 'bg-black/40 text-white hover:bg-black/60'"
+                  title="Toggle flashlight">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m1.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
                   </svg>
                 </button>
-              </div>
-              <div class="flex items-center gap-3">
-                <img v-if="scanResult.product.image"
-                  :src="frappeUrl + scanResult.product.image"
-                  class="w-12 h-12 rounded-lg object-cover border border-green-200 shrink-0"
-                  @error="e => e.target.style.display='none'" />
-                <div class="min-w-0">
-                  <p class="font-semibold text-gray-900 text-sm truncate">{{ scanResult.product.item_name }}</p>
-                  <p class="text-xs text-gray-500 font-mono">{{ scanResult.product.item_code }}</p>
-                  <p class="text-xs text-gray-400">{{ scanResult.product.item_group }}</p>
+
+                <!-- Corners overlay — color changes by mode -->
+                <div v-if="scannerState === 'active'"
+                  class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div class="relative w-52 h-28">
+                    <div class="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 rounded-tl"
+                      :class="mode === 'scan' ? 'border-green-400' : 'border-blue-400'"></div>
+                    <div class="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 rounded-tr"
+                      :class="mode === 'scan' ? 'border-green-400' : 'border-blue-400'"></div>
+                    <div class="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 rounded-bl"
+                      :class="mode === 'scan' ? 'border-green-400' : 'border-blue-400'"></div>
+                    <div class="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 rounded-br"
+                      :class="mode === 'scan' ? 'border-green-400' : 'border-blue-400'"></div>
+                    <div class="absolute left-2 right-2 h-0.5 scan-line"
+                      :class="mode === 'scan'
+                        ? 'bg-green-400/80 shadow-[0_0_8px_rgba(74,222,128,0.8)]'
+                        : 'bg-blue-400/80 shadow-[0_0_8px_rgba(96,165,250,0.8)]'"></div>
+                  </div>
+                </div>
+
+                <!-- Loading -->
+                <div v-if="scannerState === 'loading'"
+                  class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gray-900 min-h-44">
+                  <svg class="w-8 h-8 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                  </svg>
+                  <span class="text-sm text-gray-300">Starting camera...</span>
+                </div>
+
+                <!-- Error -->
+                <div v-if="scannerState === 'error'"
+                  class="flex flex-col items-center justify-center gap-3 text-center px-6 py-8 bg-gray-900 min-h-44">
+                  <div class="p-3 bg-red-500/20 rounded-full">
+                    <svg class="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                  </div>
+                  <p class="text-white text-sm">{{ errorMessage }}</p>
+                  <button @click="startScanner"
+                    class="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs rounded-lg transition">
+                    Try Again
+                  </button>
+                </div>
+
+                <!-- Idle -->
+                <div v-if="scannerState === 'idle'"
+                  class="flex flex-col items-center justify-center gap-3 py-8 bg-gray-900 min-h-44">
+                  <div class="p-3 bg-gray-700 rounded-full">
+                    <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                      <circle cx="12" cy="13" r="3" stroke-width="2"/>
+                    </svg>
+                  </div>
+                  <button @click="startScanner"
+                    class="px-5 py-2 text-white text-sm font-medium rounded-lg transition"
+                    :class="mode === 'scan' ? 'bg-green-500 hover:bg-green-400' : 'bg-blue-500 hover:bg-blue-400'">
+                    Start Camera
+                  </button>
+                </div>
+
+                <!-- Success flash -->
+                <div v-if="showSuccessFlash"
+                  class="absolute inset-0 flex items-center justify-center pointer-events-none"
+                  :class="mode === 'scan' ? 'bg-green-400/20' : 'bg-blue-400/20'">
+                  <div class="px-4 py-2 rounded-xl font-semibold text-sm shadow-lg text-white"
+                    :class="mode === 'scan' ? 'bg-green-500' : 'bg-blue-500'">
+                    ✓ {{ lastScanned }}
+                  </div>
                 </div>
               </div>
-              <div class="flex flex-wrap gap-1.5">
-                <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                  {{ scanResult.barcode.barcode_type || '—' }}
+
+              <!-- Debug bar — shows live detection status -->
+              <div v-if="scannerState === 'active'"
+                class="mt-1.5 px-3 py-1.5 bg-gray-900 rounded-lg flex items-center gap-2 min-h-7">
+                <span class="w-1.5 h-1.5 rounded-full shrink-0 animate-pulse"
+                  :class="debugText.startsWith('✅') ? 'bg-green-400' : 'bg-gray-500'"></span>
+                <span class="text-xs font-mono truncate"
+                  :class="debugText.startsWith('✅') ? 'text-green-400' : 'text-gray-400'">
+                  {{ debugText || 'Initializing...' }}
                 </span>
-                <span v-if="scanResult.barcode.uom" class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                  {{ scanResult.barcode.uom }}
-                </span>
-                <span class="text-xs font-mono text-gray-400 ml-auto self-center">{{ scanResult.code }}</span>
               </div>
-              <button @click="addToCart"
-                class="w-full py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition flex items-center justify-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 9m5-9v9m4-9v9m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3"/>
+
+              <!-- Camera switcher -->
+              <div v-if="cameras.length > 1" class="flex items-center gap-2 mt-2.5">
+                <label class="text-xs text-gray-500 shrink-0">Camera:</label>
+                <select v-model="selectedCameraId" @change="switchCamera"
+                  class="flex-1 text-xs px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-300">
+                  <option v-for="cam in cameras" :key="cam.id" :value="cam.id">
+                    {{ cam.label || `Camera ${cam.id.slice(0, 8)}...` }}
+                  </option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <!-- RIGHT SIDE -->
+          <div class="scanner-right">
+            <!-- ══════════ SCAN MODE BODY ══════════ -->
+            <div v-if="mode === 'scan'" class="px-5 pb-5 pt-4 space-y-3">
+
+              <!-- Result card — appears after scan -->
+              <transition name="slide-down">
+                <div
+                  v-if="scanResult"
+                  class="rounded-xl border overflow-hidden"
+                  :class="scanResult.found ? 'surface-success' : 'surface-danger'"
+                >
+
+                  <!-- Found -->
+                  <div v-if="scanResult.found" class="p-4 space-y-3">
+
+                    <!-- Header -->
+                    <div class="flex items-center gap-2">
+
+                      <span class="w-2 h-2 rounded-full status-scan"></span>
+
+                      <span class="text-xs font-semibold uppercase tracking-wide tag-success-text">
+                        Product Found
+                      </span>
+
+                      <button
+                        @click="scanResult = null"
+                        class="ml-auto icon-btn"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+
+                    </div>
+
+                    <!-- Product -->
+                    <div class="flex items-center gap-3">
+
+                      <img
+                        v-if="scanResult.product.image"
+                        :src="frappeUrl + scanResult.product.image"
+                        class="w-12 h-12 rounded-lg object-cover shrink-0 product-image"
+                        @error="e => e.target.style.display='none'"
+                      />
+
+                      <div class="min-w-0">
+
+                        <p class="font-semibold text-main text-sm truncate">
+                          {{ scanResult.product.item_name }}
+                        </p>
+
+                        <p class="text-xs text-sub font-mono">
+                          {{ scanResult.product.item_code }}
+                        </p>
+
+                        <p class="text-xs text-muted">
+                          {{ scanResult.product.item_group }}
+                        </p>
+
+                      </div>
+
+                    </div>
+
+                    <!-- Tags -->
+                    <div class="flex flex-wrap gap-1.5">
+
+                      <span class="tag tag-success">
+                        {{ scanResult.barcode.barcode_type || '—' }}
+                      </span>
+
+                      <span
+                        v-if="scanResult.barcode.uom"
+                        class="tag tag-default"
+                      >
+                        {{ scanResult.barcode.uom }}
+                      </span>
+
+                      <span class="text-xs font-mono text-muted ml-auto self-center">
+                        {{ scanResult.code }}
+                      </span>
+
+                    </div>
+
+                    <!-- Button -->
+                    <button
+                      @click="addToCart"
+                      class="btn-success w-full py-2 text-sm font-medium rounded-lg transition flex items-center justify-center gap-2"
+                    >
+
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 9m5-9v9m4-9v9m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3"
+                        />
+                      </svg>
+
+                      Add to Cart
+
+                    </button>
+
+                  </div>
+
+                  <!-- Not found -->
+                  <div
+                    v-else
+                    class="p-4 flex items-center gap-3"
+                  >
+
+                    <div class="p-2 rounded-lg shrink-0 danger-icon-box">
+
+                      <svg
+                        class="w-4 h-4 danger-icon"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+
+                    </div>
+
+                    <div class="min-w-0 flex-1">
+
+                      <p class="text-sm font-medium danger-text">
+                        Not found in system
+                      </p>
+
+                      <p class="text-xs font-mono truncate text-muted">
+                        {{ scanResult.code }}
+                      </p>
+
+                    </div>
+
+                    <button
+                      @click="goToAssignWithCode(scanResult.code)"
+                      class="btn-primary shrink-0 px-3 py-1.5 text-white text-xs font-medium rounded-lg transition"
+                    >
+                      Assign →
+                    </button>
+
+                  </div>
+
+                </div>
+              </transition>
+
+              <!-- Manual input -->
+              <div>
+
+                <label class="block text-xs font-medium text-sub mb-1.5">
+                  Manual Input
+                </label>
+
+                <div class="flex gap-2">
+
+                  <input
+                    ref="manualInputRef"
+                    v-model="manualCode"
+                    @keydown.enter="submitManual"
+                    type="text"
+                    placeholder="Type or scan barcode..."
+                    class="input-ui flex-1 px-3 py-2 text-sm rounded-lg"
+                    :class="{ 'input-error': manualError }"
+                  />
+
+                  <button
+                    @click="submitManual"
+                    :disabled="!manualCode.trim()"
+                    class="btn-success px-4 py-2 text-white text-sm font-medium rounded-lg transition disabled-btn"
+                  >
+                    Submit
+                  </button>
+
+                </div>
+
+                <p
+                  v-if="manualError"
+                  class="text-xs error-text mt-1"
+                >
+                  {{ manualError }}
+                </p>
+
+              </div>
+
+            </div>
+
+            <!-- ══════════ ASSIGN MODE BODY ══════════ -->
+            <div v-if="mode === 'assign'" class="px-5 pb-5 pt-4 space-y-4">
+
+              <!-- Scanned code display -->
+              <div
+                class="flex items-center gap-3 px-4 py-3 rounded-xl border transition-all"
+                :class="assignedCode ? 'surface-info' : 'surface-muted dashed-border'"
+              >
+
+                <!-- icon -->
+                <div
+                  class="p-1.5 rounded-lg shrink-0"
+                  :class="assignedCode ? 'info-icon-box' : 'muted-icon-box'"
+                >
+
+                  <svg
+                    class="w-4 h-4"
+                    :class="assignedCode ? 'info-icon' : 'muted-icon'"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 4v1m0 14v1M4 12h1m14 0h1"/>
+                    <rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/>
+                  </svg>
+
+                </div>
+
+                <!-- text -->
+                <div class="min-w-0 flex-1">
+
+                  <p
+                    class="text-xs font-medium"
+                    :class="assignedCode ? 'info-text' : 'text-muted'"
+                  >
+                    {{ assignedCode
+                      ? 'Scanned Barcode'
+                      : 'Point camera at barcode to scan...' }}
+                  </p>
+
+                  <p
+                    v-if="assignedCode"
+                    class="text-sm font-mono font-bold truncate info-code"
+                  >
+                    {{ assignedCode }}
+                  </p>
+
+                </div>
+
+                <!-- clear -->
+                <button
+                  v-if="assignedCode"
+                  @click="assignedCode = ''"
+                  class="p-1 rounded-md transition shrink-0 icon-btn info-hover-btn"
+                >
+
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+
+                </button>
+
+              </div>
+
+              <!-- Product select -->
+              <div>
+
+                <label class="block text-sm font-medium text-sub mb-1.5">
+                  Product <span class="error-text">*</span>
+                </label>
+
+                <!-- search -->
+                <div class="relative mb-1.5">
+
+                  <svg
+                    class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"
+                    />
+                  </svg>
+
+                  <input
+                    v-model="productSearch"
+                    type="text"
+                    placeholder="Search name or SKU..."
+                    class="input-ui w-full pl-9 pr-3 py-2 text-sm rounded-lg"
+                  />
+
+                </div>
+
+                <!-- select -->
+                <select
+                  v-model="assignForm.item_code"
+                  size="4"
+                  class="input-ui w-full px-3 py-1.5 text-sm rounded-lg"
+                  :class="{ 'input-error': assignErrors.item_code }"
+                >
+
+                  <option value="" disabled>
+                    — select a product —
+                  </option>
+
+                  <option
+                    v-for="p in filteredProducts"
+                    :key="p.item_code"
+                    :value="p.item_code"
+                  >
+                    {{ p.item_name }} ({{ p.item_code }})
+                  </option>
+
+                </select>
+
+                <!-- selected product -->
+                <div
+                  v-if="selectedProduct"
+                  class="mt-2 flex items-center gap-2 px-3 py-1.5 rounded-lg surface-info"
+                >
+
+                  <span class="text-xs font-semibold truncate info-text">
+                    {{ selectedProduct.item_name }}
+                  </span>
+
+                  <span class="ml-auto text-xs font-mono shrink-0 text-muted">
+                    {{ selectedProduct.item_code }}
+                  </span>
+
+                  <span
+                    v-if="selectedProduct.barcodes?.length"
+                    class="tag tag-info shrink-0"
+                  >
+                    {{ selectedProduct.barcodes.length }}
+                    barcode{{ selectedProduct.barcodes.length > 1 ? 's' : '' }}
+                  </span>
+
+                </div>
+
+                <p
+                  v-if="assignErrors.item_code"
+                  class="text-xs error-text mt-1"
+                >
+                  {{ assignErrors.item_code }}
+                </p>
+
+              </div>
+
+              <!-- Type + UOM -->
+              <div class="grid grid-cols-2 gap-3">
+
+                <!-- type -->
+                <div>
+
+                  <label class="block text-sm font-medium text-sub mb-1.5">
+                    Type <span class="error-text">*</span>
+                  </label>
+
+                  <select
+                    v-model="assignForm.barcode_type"
+                    class="input-ui w-full px-3 py-2 text-sm rounded-lg"
+                    :class="{ 'input-error': assignErrors.barcode_type }"
+                  >
+
+                    <option value="">Select</option>
+
+                    <option
+                      v-for="t in barcodeTypes"
+                      :key="t"
+                      :value="t"
+                    >
+                      {{ t }}
+                    </option>
+
+                  </select>
+
+                  <p
+                    v-if="assignErrors.barcode_type"
+                    class="text-xs error-text mt-1"
+                  >
+                    {{ assignErrors.barcode_type }}
+                  </p>
+
+                </div>
+
+                <!-- uom -->
+                <div>
+
+                  <label class="block text-sm font-medium text-sub mb-1.5">
+                    UOM
+                  </label>
+
+                  <select
+                    v-model="assignForm.uom"
+                    class="input-ui w-full px-3 py-2 text-sm rounded-lg"
+                  >
+
+                    <option value="">— optional —</option>
+
+                    <option
+                      v-for="u in uoms"
+                      :key="u.name"
+                      :value="u.name"
+                    >
+                      {{ u.name }}
+                    </option>
+
+                  </select>
+
+                </div>
+
+              </div>
+
+              <!-- Assign button -->
+              <button
+                @click="handleAssign"
+                :disabled="isAssigning || !assignedCode"
+                class="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition btn-primary disabled-btn"
+              >
+
+                <!-- loading -->
+                <svg
+                  v-if="isAssigning"
+                  class="w-4 h-4 animate-spin"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                  />
+
+                  <path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8H4z"
+                  />
                 </svg>
-                Add to Cart
+
+                <!-- icon -->
+                <svg
+                  v-else
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+
+                {{
+                  isAssigning
+                    ? 'Assigning...'
+                    : !assignedCode
+                      ? 'Scan barcode first ↑'
+                      : 'Assign Barcode'
+                }}
+
+              </button>
+
+            </div>
+
+            <!-- ══════════ FOOTER ══════════ -->
+            <div
+              class="px-5 py-3 border-t flex justify-between items-center"
+              style="
+                background: var(--item-bg);
+                border-color: var(--divider);
+              "
+            >
+              <span class="text-xs flex items-center gap-1.5">
+
+                <template v-if="scannerState === 'active'">
+
+                  <span
+                    class="w-2 h-2 rounded-full animate-pulse inline-block"
+                    :class="mode === 'scan' ? 'status-scan' : 'status-assign'"
+                  ></span>
+
+                  <span style="color: var(--text-muted)">
+                    Camera active
+                  </span>
+
+                </template>
+
+                <span
+                  v-else-if="scannerState === 'error'"
+                  class="status-error-text"
+                >
+                  Camera unavailable
+                </span>
+
+                <span
+                  v-else
+                  style="color: var(--text-muted)"
+                >
+                  Camera off
+                </span>
+
+              </span>
+
+              <button
+                @click="handleClose"
+                class="footer-close-btn px-4 py-1.5 text-sm font-medium"
+              >
+                Close
               </button>
             </div>
 
-            <!-- Not found -->
-            <div v-else class="bg-red-50 p-4 flex items-center gap-3">
-              <div class="p-2 bg-red-100 rounded-lg shrink-0">
-                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-sm font-medium text-red-700">Not found in system</p>
-                <p class="text-xs text-red-400 font-mono truncate">{{ scanResult.code }}</p>
-              </div>
-              <button @click="goToAssignWithCode(scanResult.code)"
-                class="shrink-0 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition">
-                Assign →
-              </button>
-            </div>
-          </div>
-        </transition>
-
-        <!-- Manual input -->
-        <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1.5">Manual Input</label>
-          <div class="flex gap-2">
-            <input ref="manualInputRef" v-model="manualCode" @keydown.enter="submitManual"
-              type="text" placeholder="Type or scan barcode..."
-              class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent"
-              :class="{ 'border-red-300 bg-red-50': manualError }" />
-            <button @click="submitManual" :disabled="!manualCode.trim()"
-              class="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition">
-              Submit
-            </button>
-          </div>
-          <p v-if="manualError" class="text-xs text-red-500 mt-1">{{ manualError }}</p>
-        </div>
-      </div>
-
-      <!-- ══════════ ASSIGN MODE BODY ══════════ -->
-      <div v-if="mode === 'assign'" class="px-5 pb-5 pt-4 space-y-4">
-
-        <!-- Scanned code display -->
-        <div class="flex items-center gap-3 px-4 py-3 rounded-xl border transition-all"
-          :class="assignedCode
-            ? 'bg-blue-50 border-blue-200'
-            : 'bg-gray-50 border-dashed border-gray-300'">
-          <div class="p-1.5 rounded-lg shrink-0"
-            :class="assignedCode ? 'bg-blue-100' : 'bg-gray-200'">
-            <svg class="w-4 h-4" :class="assignedCode ? 'text-blue-600' : 'text-gray-400'"
-              fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m0 14v1M4 12h1m14 0h1"/>
-              <rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/>
-              <rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/>
-              <rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/>
-            </svg>
-          </div>
-          <div class="min-w-0 flex-1">
-            <p class="text-xs font-medium" :class="assignedCode ? 'text-blue-600' : 'text-gray-400'">
-              {{ assignedCode ? 'Scanned Barcode' : 'Point camera at barcode to scan...' }}
-            </p>
-            <p v-if="assignedCode" class="text-sm font-mono font-bold text-blue-800 truncate">{{ assignedCode }}</p>
-          </div>
-          <button v-if="assignedCode" @click="assignedCode = ''"
-            class="p-1 rounded-md hover:bg-blue-100 text-blue-400 hover:text-blue-600 transition shrink-0">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Product select -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">
-            Product <span class="text-red-500">*</span>
-          </label>
-          <div class="relative mb-1.5">
-            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-              fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
-            </svg>
-            <input v-model="productSearch" type="text" placeholder="Search name or SKU..."
-              class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-          </div>
-          <select v-model="assignForm.item_code" size="4"
-            class="w-full px-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500"
-            :class="assignErrors.item_code ? 'border-red-300 bg-red-50' : 'border-gray-300'">
-            <option value="" disabled>— select a product —</option>
-            <option v-for="p in filteredProducts" :key="p.item_code" :value="p.item_code">
-              {{ p.item_name }} ({{ p.item_code }})
-            </option>
-          </select>
-          <div v-if="selectedProduct"
-            class="mt-2 flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
-            <span class="text-xs font-semibold text-blue-700 truncate">{{ selectedProduct.item_name }}</span>
-            <span class="ml-auto text-xs text-blue-400 font-mono shrink-0">{{ selectedProduct.item_code }}</span>
-            <span v-if="selectedProduct.barcodes?.length"
-              class="text-xs bg-blue-200 text-blue-700 px-1.5 py-0.5 rounded-full font-medium shrink-0">
-              {{ selectedProduct.barcodes.length }} barcode{{ selectedProduct.barcodes.length > 1 ? 's' : '' }}
-            </span>
-          </div>
-          <p v-if="assignErrors.item_code" class="text-xs text-red-500 mt-1">{{ assignErrors.item_code }}</p>
-        </div>
-
-        <!-- Type + UOM -->
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
-              Type <span class="text-red-500">*</span>
-            </label>
-            <select v-model="assignForm.barcode_type"
-              class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500"
-              :class="assignErrors.barcode_type ? 'border-red-300 bg-red-50' : 'border-gray-300'">
-              <option value="">Select</option>
-              <option v-for="t in barcodeTypes" :key="t" :value="t">{{ t }}</option>
-            </select>
-            <p v-if="assignErrors.barcode_type" class="text-xs text-red-500 mt-1">{{ assignErrors.barcode_type }}</p>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">UOM</label>
-            <select v-model="assignForm.uom"
-              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-              <option value="">— optional —</option>
-              <option v-for="u in uoms" :key="u.name" :value="u.name">{{ u.name }}</option>
-            </select>
           </div>
         </div>
-
-        <!-- Assign button -->
-        <button @click="handleAssign"
-          :disabled="isAssigning || !assignedCode"
-          class="w-full flex items-center justify-center gap-2 py-2.5 text-white text-sm font-medium rounded-lg transition"
-          :class="assignedCode
-            ? 'bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed'
-            : 'bg-gray-300 cursor-not-allowed'">
-          <svg v-if="isAssigning" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-          </svg>
-          <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-          </svg>
-          {{ isAssigning ? 'Assigning...' : !assignedCode ? 'Scan barcode first ↑' : 'Assign Barcode' }}
-        </button>
-      </div>
-
-      <!-- ══════════ FOOTER ══════════ -->
-      <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
-        <span class="text-xs flex items-center gap-1.5">
-          <template v-if="scannerState === 'active'">
-            <span class="w-2 h-2 rounded-full animate-pulse inline-block"
-              :class="mode === 'scan' ? 'bg-green-400' : 'bg-blue-400'"></span>
-            <span class="text-gray-400">Camera active</span>
-          </template>
-          <span v-else-if="scannerState === 'error'" class="text-red-400">Camera unavailable</span>
-          <span v-else class="text-gray-400">Camera off</span>
-        </span>
-        <button @click="handleClose"
-          class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-900 font-medium transition">
-          Close
-        </button>
-      </div>
-
     </div>
   </div>
 
@@ -796,7 +1138,285 @@ onBeforeUnmount(() => {
   50%  { top: calc(100% - 2px); }
   100% { top: 0%; }
 }
+.mode-scan {
+  background: var(--icon-bg-green);
+  color: var(--icon-color-green);
+}
 
+.mode-assign {
+  background: var(--icon-bg-blue);
+  color: var(--icon-color-blue);
+}
+/* base */
+.tab-btn {
+  transition: 0.2s;
+}
+
+/* inactive */
+.tab-inactive {
+  color: var(--text-muted);
+  border-color: transparent;
+}
+
+.tab-inactive:hover {
+  color: var(--text-main);
+}
+
+/* active scan */
+.tab-active-scan {
+  border-color: var(--icon-color-green);
+  color: var(--icon-color-green);
+  background: var(--icon-bg-green);
+}
+
+/* active assign */
+.tab-active-assign {
+  border-color: var(--icon-color-blue);
+  color: var(--icon-color-blue);
+  background: var(--icon-bg-blue);
+}
+.tab-active-scan,
+.tab-active-assign {
+  border-bottom-width: 2px;
+  font-weight: 600;
+}
+
+/*  ══════════ SCAN MODE BODY ══════════  */
+
+/* surfaces */
+.surface-success {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.22);
+}
+
+.surface-danger {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.22);
+}
+
+/* texts */
+.text-main {
+  color: var(--text-main);
+}
+
+.text-sub {
+  color: var(--text-sub);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+/* buttons */
+.btn-success {
+  background: var(--btn-success);
+  color: white;
+}
+
+.btn-primary {
+  background: var(--btn-primary);
+  color: white;
+}
+
+.btn-success:hover,
+.btn-primary:hover {
+  filter: brightness(1.05);
+}
+
+/* disabled */
+.disabled-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+}
+
+/* inputs */
+.input-ui {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text-main);
+}
+
+.input-ui::placeholder {
+  color: var(--text-muted);
+}
+
+.input-ui:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+/* input error */
+.input-error {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+/* tags */
+.tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.tag-success {
+  background: rgba(34, 197, 94, 0.14);
+  color: #22c55e;
+}
+
+.tag-default {
+  background: var(--item-bg);
+  color: var(--text-sub);
+}
+
+/* status */
+.status-scan {
+  background: var(--icon-color-green);
+}
+
+/* icon buttons */
+.icon-btn {
+  color: var(--text-muted);
+  transition: 0.2s;
+}
+
+.icon-btn:hover {
+  color: var(--text-main);
+}
+
+/* product image */
+.product-image {
+  border: 1px solid rgba(34, 197, 94, 0.22);
+}
+
+/* success text */
+.tag-success-text {
+  color: var(--icon-color-green);
+}
+
+/* danger */
+.danger-icon-box {
+  background: rgba(239, 68, 68, 0.14);
+}
+
+.danger-icon {
+  color: #ef4444;
+}
+
+.danger-text {
+  color: #ef4444;
+}
+
+/* error */
+.error-text {
+  color: #ef4444;
+}
+/*  ══════════ SCAN MODE BODY ══════════  */
+/*  ══════════ ASSIGN MODE BODY ══════════  */
+
+/* muted surface */
+.surface-muted {
+  background: var(--item-bg);
+  border-color: var(--input-border);
+}
+
+/* dashed */
+.dashed-border {
+  border-style: dashed;
+}
+
+/* info */
+.surface-info {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.22);
+}
+
+/* icons */
+.info-icon-box {
+  background: rgba(59, 130, 246, 0.14);
+}
+
+.muted-icon-box {
+  background: var(--kbd-bg);
+}
+
+.info-icon {
+  color: #60a5fa;
+}
+
+.muted-icon {
+  color: var(--text-muted);
+}
+
+/* info text */
+.info-text {
+  color: #60a5fa;
+}
+
+.info-code {
+  color: #93c5fd;
+}
+
+/* icon buttons */
+.info-hover-btn:hover {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+/* tags */
+.tag-info {
+  background: rgba(59, 130, 246, 0.16);
+  color: #60a5fa;
+}
+
+/*  ══════════  ASSIGN MODE BODY  ══════════  */
+/*  ══════════ Footer ══════════  */
+/* status dots */
+.status-scan {
+  background: var(--icon-color-green);
+}
+
+.status-assign {
+  background: var(--icon-color-blue);
+}
+
+/* error */
+.status-error-text {
+  color: #ef4444;
+}
+
+/* footer button */
+.footer-close-btn {
+  color: var(--text-sub);
+  transition: 0.2s;
+}
+
+.footer-close-btn:hover {
+  color: var(--text-main);
+}
+
+.scanner-layout {
+  display: flex;
+  height: 100%;
+}
+
+/* LEFT SIDE */
+.scanner-left {
+  width: 40%;
+  min-width: 280px;
+  border-right: 1px solid var(--divider);
+  background: var(--card-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+/* RIGHT SIDE */
+.scanner-right {
+  width: 60%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 .slide-down-enter-active, .slide-down-leave-active { transition: all .25s ease; }
 .slide-down-enter-from, .slide-down-leave-to { opacity: 0; transform: translateY(-8px); }
 </style>
