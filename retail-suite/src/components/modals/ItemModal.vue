@@ -1,91 +1,146 @@
+<!-- ItemModal.vue -->
 <template>
-  <div v-if="show" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-      <!-- Header -->
-      <div class="flex items-center justify-between p-6 border-b border-gray-200">
-        <h3 class="text-lg font-semibold text-gray-900">
+  <div
+    v-if="show"
+    class="fixed inset-0 flex items-center justify-center z-50 p-4"
+    style="background: rgba(0,0,0,0.5);"
+    @click.self="$emit('close')"
+  >
+    <div
+      class="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl"
+      style="scrollbar-width: thin;"
+      :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
+    >
+      <!-- ══════════ HEADER ══════════ -->
+      <div
+        class="flex items-center justify-between px-5 py-3 sticky top-0 z-10"
+        :style="{ background: 'var(--card-bg)', borderBottom: '1px solid var(--card-border)' }"
+      >
+        <h3 class="text-sm font-semibold" :style="{ color: 'var(--text-main)' }">
           {{ isEditing ? 'Edit Item' : 'Add New Item' }}
         </h3>
         <button
           @click="$emit('close')"
-          class="text-gray-500 hover:text-gray-700 text-2xl"
+          class="w-6 h-6 flex items-center justify-center rounded transition-colors"
+          :style="{ color: 'var(--text-muted)' }"
+          @mouseover="$event.currentTarget.style.background = 'var(--nav-item-hover-bg)'"
+          @mouseleave="$event.currentTarget.style.background = 'transparent'"
         >
-          ✕
+          <X class="w-4 h-4" />
         </button>
       </div>
 
-      <!-- Form -->
-      <form @submit.prevent="handleSubmit" class="p-6 space-y-6">
-        <!-- Item Code & Name Row -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Item Code (Edit mode only) -->
+      <!-- ══════════ FORM ══════════ -->
+      <form @submit.prevent="handleSubmit" class="p-5 space-y-4">
+
+        <!-- Series / Item Code + Item Name -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+          <!-- Item Code (Edit only) -->
           <div v-if="isEditing">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Item Code</label>
+            <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--text-muted)' }">Item Code</label>
             <input
               type="text"
               :value="form.item_code"
               disabled
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+              class="w-full px-3 py-1.5 rounded-md text-xs cursor-not-allowed opacity-60"
+              :style="{
+                background: 'var(--item-bg)',
+                color: 'var(--text-sub)',
+                border: '1px solid var(--item-border)'
+              }"
             />
           </div>
 
-          <!-- Series (Add mode only) -->
+          <!-- Series (Add only) -->
           <div v-else>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Series <span class="text-red-700">*</span></label>
+            <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--text-muted)' }">
+              Series <span style="color: #ef4444;">*</span>
+            </label>
             <select
               v-model="form.naming_series"
               required
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              class="w-full px-3 py-1.5 rounded-md text-xs focus:outline-none"
+              :style="{
+                background: 'var(--input-bg)',
+                color: 'var(--text-main)',
+                border: '1px solid var(--input-border)'
+              }"
             >
               <option disabled value="">Select Series</option>
               <option v-for="s in getSeriesArray()" :key="s" :value="s">{{ s }}</option>
             </select>
           </div>
 
-          <!-- Item Name (Both modes) -->
+          <!-- Item Name -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Item Name <span class="text-red-700">*</span></label>
+            <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--text-muted)' }">
+              Item Name <span style="color: #ef4444;">*</span>
+            </label>
             <input
               v-model="form.item_name"
               type="text"
               required
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="e.g., Coffee Beans"
+              class="w-full px-3 py-1.5 rounded-md text-xs focus:outline-none"
+              :style="{
+                background: 'var(--input-bg)',
+                color: 'var(--text-main)',
+                border: '1px solid var(--input-border)'
+              }"
             />
           </div>
         </div>
 
         <!-- Description -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+          <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--text-muted)' }">Description</label>
           <textarea
             v-model="form.description"
             rows="3"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Item description"
-          ></textarea>
+            class="w-full px-3 py-1.5 rounded-md text-xs focus:outline-none resize-none"
+            :style="{
+              background: 'var(--input-bg)',
+              color: 'var(--text-main)',
+              border: '1px solid var(--input-border)'
+            }"
+          />
         </div>
 
-        <!-- Category & UOM Row -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Category + UOM -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Category <span class="text-red-700">*</span></label>
+            <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--text-muted)' }">
+              Category <span style="color: #ef4444;">*</span>
+            </label>
             <select
               v-model="form.item_group"
               required
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              class="w-full px-3 py-1.5 rounded-md text-xs focus:outline-none"
+              :style="{
+                background: 'var(--input-bg)',
+                color: 'var(--text-main)',
+                border: '1px solid var(--input-border)'
+              }"
             >
               <option value="">Select Category</option>
               <option v-for="cat in categories" :key="cat.name" :value="cat.name">{{ cat.name }}</option>
             </select>
           </div>
           <div>
-
-            <label class="block text-sm font-medium text-gray-700 mb-2">Unit of Measure <span class="text-red-700">*</span></label>
+            <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--text-muted)' }">
+              Unit of Measure <span style="color: #ef4444;">*</span>
+            </label>
             <select
               v-model="form.stock_uom"
               required
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              class="w-full px-3 py-1.5 rounded-md text-xs focus:outline-none"
+              :style="{
+                background: 'var(--input-bg)',
+                color: 'var(--text-main)',
+                border: '1px solid var(--input-border)'
+              }"
             >
               <option value="">Select UOM</option>
               <option v-for="uom in uoms" :key="uom.name" :value="uom.name">{{ uom.name }}</option>
@@ -93,60 +148,77 @@
           </div>
         </div>
 
-        <!-- Valuation Rate -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Valuation Rate + Disabled -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Valuation Rate</label>
+            <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--text-muted)' }">Valuation Rate</label>
             <input
               v-model.number="form.valuation_rate"
               type="number"
               step="0.01"
               min="0"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="0.00"
+              class="w-full px-3 py-1.5 rounded-md text-xs focus:outline-none"
+              :style="{
+                background: 'var(--input-bg)',
+                color: 'var(--text-main)',
+                border: '1px solid var(--input-border)'
+              }"
             />
           </div>
-
-          <!-- Disabled checkbox (Edit only) -->
-          <div v-if="isEditing" class="flex items-end">
+          <div v-if="isEditing" class="flex items-end pb-1">
             <label class="flex items-center gap-2 cursor-pointer">
               <input
                 v-model="form.disabled"
                 type="checkbox"
-                class="w-4 h-4 rounded border-gray-300 cursor-pointer"
+                class="w-3.5 h-3.5 rounded"
+                :style="{ accentColor: 'var(--focus-ring)' }"
               />
-              <span class="text-sm font-medium text-gray-700">Disabled</span>
+              <span class="text-xs font-medium" :style="{ color: 'var(--text-sub)' }">Disabled</span>
             </label>
           </div>
         </div>
 
         <!-- Image Upload -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Image</label>
+          <label class="block text-xs font-medium mb-1" :style="{ color: 'var(--text-muted)' }">Image</label>
           <div
-            class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition cursor-pointer"
+            class="rounded-lg p-5 text-center cursor-pointer transition-colors"
+            :style="{
+              background: 'var(--item-bg)',
+              border: '2px dashed var(--card-border)'
+            }"
             @click="$refs.imageInput?.click()"
+            @mouseover="$event.currentTarget.style.borderColor = 'var(--focus-ring)'"
+            @mouseleave="$event.currentTarget.style.borderColor = 'var(--card-border)'"
           >
-            <div v-if="!form.image" class="text-gray-500">
-              <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            <!-- No image -->
+            <div v-if="!form.image">
+              <svg class="w-7 h-7 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                :style="{ color: 'var(--text-muted)' }">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
               </svg>
-              <p class="text-sm">Click to upload or drag and drop</p>
-              <p class="text-xs text-gray-400">PNG, JPG, GIF up to 5MB</p>
+              <p class="text-xs" :style="{ color: 'var(--text-muted)' }">Click to upload or drag and drop</p>
+              <p class="text-xs mt-0.5" :style="{ color: 'var(--text-muted)', opacity: 0.6 }">PNG, JPG, GIF up to 5MB</p>
             </div>
 
-            <div v-else class="mt-2">
+            <!-- Has image -->
+            <div v-else class="flex flex-col items-center">
               <img
                 :src="getImageSrc()"
                 :alt="form.item_name"
-                class="h-32 w-32 object-cover rounded mx-auto mb-3"
+                class="h-28 w-28 object-cover rounded-lg mb-2"
+                :style="{ border: '1px solid var(--card-border)' }"
                 @error="handleImageError"
               />
-              <p class="text-sm text-gray-600 mb-2">{{ getImageFileName() }}</p>
+              <p class="text-xs mb-1.5" :style="{ color: 'var(--text-muted)' }">{{ getImageFileName() }}</p>
               <button
                 type="button"
                 @click.stop="form.image = ''"
-                class="text-xs text-red-600 hover:text-red-700 font-medium"
+                class="text-xs font-medium px-2 py-0.5 rounded transition-colors"
+                style="color: #ef4444;"
+                @mouseover="$event.currentTarget.style.background = '#fef2f2'"
+                @mouseleave="$event.currentTarget.style.background = 'transparent'"
               >
                 Remove Image
               </button>
@@ -161,23 +233,35 @@
           />
         </div>
 
-        <!-- Footer Buttons -->
-        <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+        <!-- ══════════ FOOTER ══════════ -->
+        <div
+          class="flex justify-end gap-2 pt-3"
+          :style="{ borderTop: '1px solid var(--card-border)' }"
+        >
           <button
             type="button"
             @click="$emit('close')"
-            class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            class="px-4 py-1.5 text-xs rounded-md transition-colors"
+            :style="{
+              background: 'var(--item-bg)',
+              color: 'var(--text-sub)',
+              border: '1px solid var(--item-border)'
+            }"
+            @mouseover="$event.currentTarget.style.background = 'var(--nav-item-hover-bg)'"
+            @mouseleave="$event.currentTarget.style.background = 'var(--item-bg)'"
           >
             Cancel
           </button>
           <button
             type="submit"
             :disabled="isSaving || !isFormValid()"
-            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-4 py-1.5 text-xs text-white rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            :style="{ background: 'var(--focus-ring)' }"
           >
             {{ isSaving ? 'Saving...' : (isEditing ? 'Update' : 'Add') }} Item
           </button>
         </div>
+
       </form>
     </div>
   </div>
@@ -185,224 +269,136 @@
 
 <script setup>
 import { ref, reactive, watch } from 'vue'
+import { X } from 'lucide-vue-next'
 import config from '@/config/frappe'
 
-  const props = defineProps( {
-    show: {
-      type: Boolean,
-      default: false
-    },
-    item: {
-      type: Object,
-      default: null
-    },
-    isEditing: {
-      type: Boolean,
-      default: false
-    },
-    categories: {
-      type: Array,
-      default: () => []
-    },
-    uoms: {
-      type: Array,
-      default: () => []
-    },
-    series: {
-      type: String,
-      default: ''
-    }
-  })
-  const emit = defineEmits(['save', 'close'])
+const props = defineProps({
+  show:       { type: Boolean, default: false },
+  item:       { type: Object,  default: null  },
+  isEditing:  { type: Boolean, default: false },
+  categories: { type: Array,   default: () => [] },
+  uoms:       { type: Array,   default: () => [] },
+  series:     { type: String,  default: ''    },
+})
 
-    const isSaving = ref(false)
-    const imageInput = ref(null)
-    const previousItem = ref(null)
+const emit = defineEmits(['save', 'close'])
 
-    const defaultForm = {
-      naming_series: '',
-      item_code: '',
-      item_name: '',
-      description: '',
-      item_group: '',
-      stock_uom: 'Nos',
-      valuation_rate: 0,
-      image: '',
-      disabled: false
-    }
+const isSaving     = ref(false)
+const imageInput   = ref(null)
+const previousItem = ref(null)
 
-    const form = reactive({ ...defaultForm })
+const defaultForm = {
+  naming_series:  '',
+  item_code:      '',
+  item_name:      '',
+  description:    '',
+  item_group:     '',
+  stock_uom:      'Nos',
+  valuation_rate: 0,
+  image:          '',
+  disabled:       false,
+}
 
-    // Better watcher: Only update when item actually changes
-    watch(
-      () => props.item,
-      (newItem) => {
-        // تجنب تحديث الـ form إذا لم يتغير الـ item فعلياً
-        if (newItem && JSON.stringify(newItem) !== JSON.stringify(previousItem.value)) {
-          previousItem.value = newItem
+const form = reactive({ ...defaultForm })
 
-          if (props.isEditing) {
-            // Fill form with all item data for editing
-            Object.assign(form, {
-              naming_series: newItem.naming_series || '',
-              item_code: newItem.item_code || '',
-              item_name: newItem.item_name || '',
-              description: newItem.description || '',
-              item_group: newItem.item_group || '',
-              stock_uom: newItem.stock_uom || 'Nos',
-              valuation_rate: newItem.valuation_rate || 0,
-              image: newItem.image || '',
-              disabled: Boolean(newItem.disabled)
-            })
-          } else {
-            // Reset for new item
-            Object.assign(form, defaultForm)
-          }
-        } else if (!newItem) {
-          // Close modal, reset form
-          previousItem.value = null
-          Object.assign(form, defaultForm)
-        }
-      },
-      { immediate: true }
-    )
-
-    // Parse series string safely
-    const getSeriesArray = () => {
-      if (!props.series) return []
-      if (typeof props.series === 'string') {
-        return props.series.split(' ').filter(s => s.trim())
-      }
-      return Array.isArray(props.series) ? props.series : []
-    }
-
-    // Handle image source properly
-    const getImageSrc = () => {
-      if (!form.image) return ''
-      // If it's already a data URL
-      if (form.image.startsWith('data:')) {
-        return form.image
-      }
-      // If it's a file path from server
-      if (form.image.startsWith('/files/') || form.image.startsWith('/app/')) {
-        return config.FRAPPE_URL + form.image
-      }
-      // Return as is
-      return config.FRAPPE_URL + form.image || form.image
-    }
-
-    // Get image file name for display
-    const getImageFileName = () => {
-      if (!form.image) return ''
-      if (form.image.startsWith('data:')) {
-        return 'New image selected'
-      }
-      const parts = form.image.split('/')
-      return parts[parts.length - 1]
-    }
-
-    // Handle image load error
-    const handleImageError = (event) => {
-      console.warn('Image failed to load:', event)
-    }
-
-    // Validate form before submit
-    const isFormValid = () => {
+watch(
+  () => props.item,
+  (newItem) => {
+    if (newItem && JSON.stringify(newItem) !== JSON.stringify(previousItem.value)) {
+      previousItem.value = newItem
       if (props.isEditing) {
-        return form.item_name && form.item_group && form.stock_uom
+        Object.assign(form, {
+          naming_series:  newItem.naming_series  || '',
+          item_code:      newItem.item_code      || '',
+          item_name:      newItem.item_name      || '',
+          description:    newItem.description    || '',
+          item_group:     newItem.item_group     || '',
+          stock_uom:      newItem.stock_uom      || 'Nos',
+          valuation_rate: newItem.valuation_rate || 0,
+          image:          newItem.image          || '',
+          disabled:       Boolean(newItem.disabled),
+        })
+      } else {
+        Object.assign(form, defaultForm)
       }
-      return (
-        form.naming_series &&
-        form.item_name &&
-        form.item_group &&
-        form.stock_uom
-      )
+    } else if (!newItem) {
+      previousItem.value = null
+      Object.assign(form, defaultForm)
     }
+  },
+  { immediate: true }
+)
 
-    const handleImageUpload = (event) => {
-      const file = event.target.files?.[0]
-      if (!file) return
+const getSeriesArray = () => {
+  if (!props.series) return []
+  if (typeof props.series === 'string') return props.series.split(' ').filter(s => s.trim())
+  return Array.isArray(props.series) ? props.series : []
+}
 
-      // Validate file size (5MB limit)
-      const MAX_SIZE = 5 * 1024 * 1024
-      if (file.size > MAX_SIZE) {
-        alert('File size must be less than 5MB')
-        return
-      }
+const getImageSrc = () => {
+  if (!form.image) return ''
+  if (form.image.startsWith('data:')) return form.image
+  if (form.image.startsWith('/files/') || form.image.startsWith('/app/')) return config.FRAPPE_URL + form.image
+  return config.FRAPPE_URL + form.image || form.image
+}
 
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        alert('Please select a valid image file')
-        return
-      }
+const getImageFileName = () => {
+  if (!form.image) return ''
+  if (form.image.startsWith('data:')) return 'New image selected'
+  return form.image.split('/').pop()
+}
 
-      // Convert to base64
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const result = e.target?.result
-        if (typeof result === 'string') {
-          form.image = result
-          console.log('Image uploaded successfully',form.image)
-        }
+const handleImageError = (e) => { console.warn('Image failed to load:', e) }
+
+const isFormValid = () => {
+  if (props.isEditing) return form.item_name && form.item_group && form.stock_uom
+  return form.naming_series && form.item_name && form.item_group && form.stock_uom
+}
+
+const handleImageUpload = (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  if (file.size > 5 * 1024 * 1024) { alert('File size must be less than 5MB'); return }
+  if (!file.type.startsWith('image/')) { alert('Please select a valid image file'); return }
+  const reader = new FileReader()
+  reader.onload  = (e) => { if (typeof e.target?.result === 'string') form.image = e.target.result }
+  reader.onerror = ()  => { alert('Failed to read file') }
+  reader.readAsDataURL(file)
+}
+
+const handleSubmit = async () => {
+  if (!isFormValid()) { alert('Please fill in all required fields'); return }
+  isSaving.value = true
+  try {
+    let payload = {}
+    if (props.isEditing && props.item) {
+      payload = {
+        item_code:      form.item_code,
+        item_name:      form.item_name,
+        description:    form.description,
+        item_group:     form.item_group,
+        stock_uom:      form.stock_uom,
+        valuation_rate: form.valuation_rate,
+        disabled:       form.disabled,
       }
-      reader.onerror = () => {
-        alert('Failed to read file')
+      if (form.image && form.image !== props.item.image) payload.image = form.image
+    } else {
+      payload = {
+        naming_series:  form.naming_series,
+        item_name:      form.item_name,
+        description:    form.description,
+        item_group:     form.item_group,
+        stock_uom:      form.stock_uom,
+        valuation_rate: form.valuation_rate || 0,
       }
-      reader.readAsDataURL(file)
+      if (form.image) payload.image = form.image
     }
-
-    const handleSubmit = async () => {
-      // Validate before submit
-      if (!isFormValid()) {
-        alert('Please fill in all required fields')
-        return
-      }
-
-      isSaving.value = true
-
-      try {
-        let payload = {}
-
-        if (props.isEditing && props.item) {
-          // For edit: send only the fields we want to update
-          payload = {
-            item_code: form.item_code,
-            item_name: form.item_name,
-            description: form.description,
-            item_group: form.item_group,
-            stock_uom: form.stock_uom,
-            valuation_rate: form.valuation_rate,
-            disabled: form.disabled
-          }
-
-          // Only include image if it changed
-          if (form.image && form.image !== props.item.image) {
-            payload.image = form.image
-          }
-        } else {
-          // For new item: send all required fields
-          payload = {
-            naming_series: form.naming_series,
-            item_name: form.item_name,
-            description: form.description,
-            item_group: form.item_group,
-            stock_uom: form.stock_uom,
-            valuation_rate: form.valuation_rate || 0
-          }
-
-          if (form.image) {
-            payload.image = form.image
-          }
-        }
-
-        console.log('Submitting payload:', payload)
-        emit('save', payload)
-      } catch (error) {
-        console.error('Error submitting form:', error)
-        alert('Error saving item. Please try again.')
-      } finally {
-        isSaving.value = false
-      }
-    }
-
+    emit('save', payload)
+  } catch (error) {
+    console.error('Error submitting form:', error)
+    alert('Error saving item. Please try again.')
+  } finally {
+    isSaving.value = false
+  }
+}
 </script>

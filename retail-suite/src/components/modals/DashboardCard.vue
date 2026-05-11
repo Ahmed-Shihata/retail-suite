@@ -20,9 +20,10 @@
 
       <!-- Icon -->
       <div
-        :class="['w-8 h-8 rounded-lg mb-2 flex items-center justify-center', `bg-${color}-100`]"
+        class="w-8 h-8 rounded-lg mb-2 flex items-center justify-center"
+        :class="iconClass()"
       >
-        <component :is="iconComponent" :class="['w-4 h-4', `text-${color}-600`]" />
+        <component :is="iconComponent" :class="['w-5 h-5', `text-${color}-600`]" />
       </div>
 
       <!-- Title -->
@@ -54,35 +55,15 @@
 import { computed } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import ScannerIcon from '@/components/icons/ScannerIcon.svg'
-import {
-  Package,
-  BarChart3,
-  ShoppingCart,
-  ArrowRightLeft,
-  Scale,
-  FileText,
-  ArrowRight,
-  FileCheck,
-  Users,
-  Truck,
-  Tag
-} from 'lucide-vue-next'
+import * as Icons from 'lucide-vue-next'
 
-const iconMap = {
-  Package,
-  BarChart3,
-  ShoppingCart,
-  ArrowRightLeft,
-  Scale,
-  FileText,
-  ScannerIcon,
-  FileCheck,
-  Users,
-  Truck,
-  Tag
-}
+console.log('Icon initialized:', Icons['Search'], typeof Icons['Search'], typeof Icons)
 
+// 1- add new icon ScannerIcon to the Icons object lucide-vue-next
 
+const IconsExtended = { ...Icons, ScannerIcon }
+
+console.log('Extended Icons:', Object.keys(IconsExtended))
   const props = defineProps({
         title: {type: String, required: true},
         description: {type: String, required: true},
@@ -93,24 +74,41 @@ const iconMap = {
    const settingsStore = useSettingsStore()
 
   // ─── Theme ────────────────────────────────────────────────────────────────────
-  const settings = computed(() => settingsStore.settings)
-  const isDark    = computed(() => settings.value?.appearance?.theme !== 'light')
-    const iconComponent = computed(() => {
-      return iconMap[props.icon] || Package
-    })
+const settings = computed(() => settingsStore.settings)
+const isDark    = computed(() => settings.value?.appearance?.theme !== 'light')
+const iconComponent = computed(() => IconsExtended[props.icon])
 
-    const getColorClass = (color) => {
-      const colors = {
-        blue: '#0ea5e9',
-        purple: '#a855f7',
-        green: '#10b981',
-        indigo: '#6366f1',
-        orange: '#f97316',
-        cyan: '#06b6d4',
-        gray:  '#6b7280',
-      }
-      return colors[color] || colors.blue
+const iconClass = () => {
+
+const colorClasses = {
+    info: 'bg-[rgba(6,182,212,0.12)] text-[#22d3ee]',
+    success: 'bg-[rgba(34,197,94,0.12)] text-[#4ade80]',
+    warning: 'bg-[rgba(180,83,9,0.12)] text-[#f59e0b]',
+    purple: 'bg-[rgba(168,85,247,0.12)] text-[#c084fc]',
+    gray: 'bg-[rgba(148,163,184,0.12)] text-[#94a3b8]',
+
+    blue: 'bg-[rgba(59,130,246,0.12)] text-[#60a5fa]',
+    red: 'bg-[rgba(239,68,68,0.12)] text-[#f87171]',
+    green: 'bg-[rgba(34,197,94,0.12)] text-[#4ade80]',
     }
+
+return colorClasses[props.color] || colorClasses.gray
+}
+
+
+const getColorClass = (color) => {
+  const colors = {
+    blue: '#0ea5e9',
+    purple: '#a855f7',
+    green: '#10b981',
+    indigo: '#6366f1',
+    orange: '#f97316',
+    cyan: '#06b6d4',
+    gray:  '#6b7280',
+    red: '#ef4444',
+  }
+  return colors[color] || colors.blue
+}
 
 </script>
 
@@ -128,3 +126,5 @@ transition-all {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 </style>
+
+
