@@ -1,0 +1,24 @@
+test.js
+# env
+.env
+*.env
+
+# node
+node_modules/
+dist/
+
+# certificates
+certs/
+*.pem
+*.key
+
+# binaries
+*.deb
+mkcert-v1.4.4-linux-amd64
+cloudflared-linux-amd64.deb
+
+# logs
+*.log
+
+# cache
+.cache/
