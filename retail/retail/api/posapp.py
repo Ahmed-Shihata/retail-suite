@@ -1,3 +1,5 @@
+import frappe
+from frappe import _
 import socket
 import json
 from weasyprint import HTML, CSS
@@ -23,8 +25,11 @@ from retail.retail.doctype.pos_coupon.pos_coupon import check_coupon_code
 from retail.retail.doctype.delivery_charges.delivery_charges import (
     get_applicable_delivery_charges as _get_applicable_delivery_charges,
 )
+
 from frappe.utils.caching import redis_cache
 from retail.retail.api.pricing_rule import apply_pricing_rules_for_pos
+
+
 @frappe.whitelist()
 def get_opening_dialog_data():
     data = {}

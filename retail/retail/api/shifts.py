@@ -1,16 +1,9 @@
-from frappe.utils import today, formatdate, flt
-import datetime
 import frappe
 import math
+
+from frappe.utils import today, formatdate, flt, datetime
 import calendar
 from retail.retail.api.payment_utils import get_shift_payments_entries, get_shift_unallocated_payments, get_shift_invoice_payments, get_shift_pos_invoices
-
-# date = datetime.date.today() = date.today()
-# number of day  = date.today().day
-# month = date.today().month
-# year = date.today().year
-# weekday = date.today().weekday()  # Monday is 0 and Sunday is 6
-# first_day_of_month = date.replace(day=1) # first day of month if Date object is date
 
 @frappe.whitelist()
 def process_auto_attendance_api(shift_name):

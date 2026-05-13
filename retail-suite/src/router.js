@@ -4,25 +4,6 @@ import { createRouter, createWebHistory } from "vue-router";
 //
 import { session, checkSession } from '@/services/auth'
 
-
-// ========== IMPORTS ==========
-// Website Pages
-import Supermarket from '@/pages/website/Supermarket.vue'
-//  test super
-import supermarket2 from '@/pages/website/supermarket2.vue'
-import supermarket3 from '@/pages/website/supermarket3.vue'
-import ProductPage from '@/pages/website/ProductPage.vue'
-import Cart from '@/pages/website/Cart.vue'
-import CustomerOrders from '@/pages/website/CustomerOrders.vue'
-import Loyalty from '@/pages/website/LoyaltyPoints.vue'
-import ContactUs from '@/pages/website/ContactUs.vue'
-import Register from '@/pages/website/Register.vue'
-import MyAccount from '@/pages/website/MyAccount.vue'
-// Single Pages
-// import Login from '@/pages/auth/Login.vue'
-// import MyOrders from '@/pages/website/MyOrders.vue'
-// import Loyalty from '@/pages/website/Loyalty.vue'
-// import About from '@/pages/website/About.vue'
 import MobileScan from "@/pages/MobileScan.vue";
 import POS from "@/pages/POS.vue";
 import Pay from "@/pages/Pay.vue";
@@ -89,72 +70,6 @@ import ForbiddenView from "@/pages/ForbiddenView.vue";
 
 const routes = [
 
-    // ============================
-  // Router: Website Pages (Protected)
-  // ============================
-
-    {
-    path: "/",
-    name: "Supermarket",
-    component: Supermarket,
-    meta: { requiresAuth: false }
-  },
-  {
-    path: "/supermarket2",
-    name: "supermarket2",
-    component: supermarket2
-  },
-    {
-    path: "/supermarket3",
-    name: "supermarket3",
-    component: supermarket3
-  },
-  // ProductPage
-    {
-      path: '/product/:id',
-      name: 'ProductPage',
-      component: ProductPage,
-      props: true
-    },
-  {
-    path: '/cart',
-    name: 'Cart',
-    component: Cart,
-    meta: { requiresAuth: false }
-  },
-    {
-    path: '/Customer-orders',
-    name: 'CustomerOrders',
-    component: CustomerOrders,
-    meta: { requiresAuth: false }
-  },
-  {
-    path: '/loyalty',
-    name: 'Loyalty',
-    component: Loyalty,
-    meta: { requiresAuth: false }
-  },
-  {
-    path: '/contact-us',
-    name: 'ContactUs',
-    component: ContactUs,
-    meta: { requiresAuth: false }
-  },
-   {
-    path: '/register',
-    name: 'Register',
-    component: Register,
-    meta: {
-      title: 'Register - Hypermarket',
-      requiresGuest: true  // Only accessible when logged out
-    }
-  },
-  { path: '/my-account', name: 'MyAccount', component:MyAccount, meta: { requiresAuth: true } },
-  {
-  path: '/track/:id',
-  name: 'TrackOrder',
-  component: () => import('@/pages/website/TrackOrder.vue')
-},
   // ============================
   // Router: Single Pages (Protected)
   // ============================
@@ -166,7 +81,7 @@ const routes = [
   { path: "/notification-center", name:"NotificationCenter", component: NotificationCenter, meta: { requiresAuth: true } },
   { path: "/mobile-scan", name: "MobileScan", component: MobileScan, meta: { requiresAuth: false }},
   // Public
-  { path: "/login", name:"Login", component: Login },
+  { path: "/", name:"Login", component: Login },
   {path: '/403',name: 'Forbidden',component: ForbiddenView},
   // ============================
   // Inventory Management

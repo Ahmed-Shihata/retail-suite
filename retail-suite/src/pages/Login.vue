@@ -134,7 +134,7 @@ const handleLogin = async () => {
       success.value = '✅ تم تسجيل الدخول بنجاح! جاري التحويل...'
 
       setTimeout(() => {
-        router.push('/staff')
+        router.push('/POS')
       }, 1500)
     } else {
       error.value = 'فشل تسجيل الدخول. تحقق من بيانات المستخدم.'
