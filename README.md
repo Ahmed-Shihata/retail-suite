@@ -163,7 +163,7 @@ If you find this project useful, please give it a ⭐ on GitHub!
 
 ### 🛠️ Development Setup — Retail Suite
 
-## 1. Install Dependencies
+### 1. Install Dependencies
 
 ```bash
 cd ~/Music/frappe-bench-v15/apps/retail/retail-suite
@@ -172,7 +172,7 @@ npm install
 
 ---
 
-## 2. Create `.env` File
+### 2. Create `.env` File
 
 Create a `.env` file inside `retail-suite/`:
 
@@ -191,31 +191,131 @@ VITE_CERTS_DIR=/home/frappe/Music/frappe-bench-v15/certs
 
 ---
 
-## 3. SSL Certificates
+### 3. SSL Certificates (mkcert)
 
-`vite.config.js` reads certs from the path defined in `VITE_CERTS_DIR`.
+The app requires a **trusted HTTPS certificate** for mobile barcode scanning and realtime to work correctly. Self-signed certificates will cause `Network Error` on mobile devices.
 
-Make sure these files exist:
-```
-{VITE_CERTS_DIR}/{VITE_FRAPPE_HOST}+1-key.pem
-{VITE_CERTS_DIR}/{VITE_FRAPPE_HOST}+1.pem
-```
+#### 3.1 Install mkcert
 
-Example:
-```
-/home/frappe/Music/frappe-bench-v15/certs/192.168.8.5+1-key.pem
-/home/frappe/Music/frappe-bench-v15/certs/192.168.8.5+1.pem
-```
-
-If missing, generate them with [mkcert](https://github.com/FiloSottile/mkcert):
 ```bash
+sudo apt install libnss3-tools
+wget -O mkcert https://github.com/FiloSottile/mkcert/releases/download/v1.4.4/mkcert-v1.4.4-linux-amd64
+chmod +x mkcert
+sudo mv mkcert /usr/local/bin/
+```
+
+#### 3.2 Generate Trusted Certificate
+
+```bash
+# First time only — creates local CA
+mkcert -install
+
+# Generate certificate for your server IP
 cd /home/frappe/Music/frappe-bench-v15/certs
 mkcert 192.168.8.5 localhost
 ```
 
+This creates two files:
+```
+192.168.8.5+1.pem       ← certificate
+192.168.8.5+1-key.pem   ← private key
+```
+
+These paths match what `vite.config.js` expects via `VITE_CERTS_DIR` and `VITE_FRAPPE_HOST`.
+
+#### 3.3 Configure Nginx to Use the Certificate
+
+Edit your nginx config:
+
+```bash
+sudo nano /etc/nginx/conf.d/frappe-bench-v15.conf
+```
+
+Inside the `server` block for port 81, update the certificate paths:
+
+```nginx
+ssl_certificate     /home/frappe/Music/frappe-bench-v15/certs/192.168.8.5+1.pem;
+ssl_certificate_key /home/frappe/Music/frappe-bench-v15/certs/192.168.8.5+1-key.pem;
+```
+
+Then reload nginx:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+#### 3.4 Trust the Certificate on Your Laptop (Chrome/Ubuntu)
+
+```bash
+# Install CA into system & Chrome trust store
+mkcert -install
+
+# Then fully restart Chrome
+pkill chrome
+```
+
+Or manually in Chrome:
+
+```
+chrome://settings/certificates → Authorities → Import
+```
+
+Select: `~/.local/share/mkcert/rootCA.pem`
+Check: **Trust this certificate for identifying websites** → OK
+
+#### 3.5 Trust the Certificate on Android
+
+Start a temporary HTTP server to serve the CA file:
+
+```bash
+cd $(mkcert -CAROOT)
+cp rootCA.pem rootCA.crt
+python3 -m http.server 9999
+```
+
+Open on Android browser:
+```
+http://192.168.8.5:9999/rootCA.crt
+```
+
+Then: **Settings → Security → More security settings → Install certificate → CA Certificate** → select the downloaded file.
+
+> If port 9999 is blocked: `sudo ufw allow 9999`
+> After installing, stop the server with `Ctrl+C`
+
+#### 3.6 Trust the Certificate on iOS (iPhone/iPad)
+
+Start the temporary server (same as Android):
+
+```bash
+cd $(mkcert -CAROOT)
+cp rootCA.pem rootCA.crt
+python3 -m http.server 9999
+```
+
+Open **Safari** (not Chrome) on your iPhone:
+```
+http://192.168.8.5:9999/rootCA.crt
+```
+
+Safari will prompt: **"Allow download?"** → tap **Allow**
+
+**Step 1 — Install Profile:**
+```
+Settings → General → VPN & Device Management → (profile under "Downloaded Profile") → Install
+```
+
+**Step 2 — Enable Full Trust (required):**
+```
+Settings → General → About → Certificate Trust Settings
+```
+Find **"mkcert ..."** → enable the toggle → tap **Continue**
+
+> ⚠️ Without Step 2, the certificate installs but is NOT trusted — HTTPS will still fail.
+
 ---
 
-## 4. Run Dev Server
+### 4. Run Dev Server
 
 ```bash
 npm run dev
@@ -228,7 +328,7 @@ https://192.168.8.5:5173/
 
 ---
 
-## 5. Login First
+### 5. Login First
 
 Before opening the app, log in to Frappe first:
 
@@ -245,7 +345,7 @@ https://192.168.8.5:5173/
 
 ---
 
-## 6. Build for Production
+### 6. Build for Production
 
 ```bash
 npm run build
@@ -256,101 +356,9 @@ Output will be placed in:
 ../retail/public/retail_suite/
 ```
 
-## 1. Install Dependencies
-
-```bash
-cd ~/Music/frappe-bench-v15/apps/retail/retail-suite
-npm install
-```
-
 ---
 
-## 2. Create `.env` File
-
-في نفس المجلد `retail-suite/` أنشئ ملف `.env`:
-
-```env
-VITE_FRAPPE_HOST=192.168.8.5
-VITE_FRAPPE_URL_LOCAL=https://192.168.8.5:81
-VITE_VUE_URL=https://192.168.8.5:5173
-VITE_ENV=development
-VITE_SITE_NAME=site.com
-VITE_SOCKET_URL=http://192.168.8.5:9000
-SOCKET_PORT=9000
-VITE_CERTS_DIR=/home/frappe/Music/frappe-bench-v15/certs
-```
-
-> ⚠️ غيّر `site.com` باسم الـ site الفعلي عندك (نفس اللي في Frappe).
-
----
-
-## 3. SSL Certificates
-
-الـ `vite.config.js` بيقرأ الـ certs من المسار في `VITE_CERTS_DIR`.
-
-تأكد إن الملفات دي موجودة:
-```
-{VITE_CERTS_DIR}/{VITE_FRAPPE_HOST}+1-key.pem
-{VITE_CERTS_DIR}/{VITE_FRAPPE_HOST}+1.pem
-```
-
-مثال:
-```
-/home/frappe/Music/frappe-bench-v15/certs/192.168.8.5+1-key.pem
-/home/frappe/Music/frappe-bench-v15/certs/192.168.8.5+1.pem
-```
-
-لو مش موجودة، أنشئها بـ [mkcert](https://github.com/FiloSottile/mkcert):
-```bash
-cd /home/frappe/Music/frappe-bench-v15/certs
-mkcert 192.168.8.5 localhost
-```
-
----
-
-## 4. Run Dev Server
-
-```bash
-npm run dev
-```
-
-Dev server هيشتغل على:
-```
-https://192.168.8.5:5173/
-```
-
----
-
-## 5. Login أول مرة
-
-قبل ما تفتح التطبيق، سجّل دخول على Frappe أولاً:
-
-```
-https://192.168.8.5:81/login
-```
-
-بعدين افتح:
-```
-https://192.168.8.5:5173/
-```
-
-> السبب: التطبيق بيعتمد على Frappe session cookie، ولازم تكون موجودة قبل ما يشتغل.
-
----
-
-## 6. Build for Production
-
-```bash
-npm run build
-```
-
-الـ output هيتحط في:
-```
-../retail/public/retail_suite/
-```
-
-
-## 🚀 Production Deployment
+## Production Deployment — Retail Suite
 
 ### 1. Build the Vue App
 ```bash
