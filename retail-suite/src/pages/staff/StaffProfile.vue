@@ -1,6 +1,6 @@
 <!-- StaffProfile.vue -->
 <template>
-  <MainLayout>
+
     <div class=" bg-gray-50">
       <!-- Loading State -->
       <div v-if="loading" class="flex items-center justify-center py-20">
@@ -332,13 +332,13 @@
         </section>
       </div>
     </div>
-  </MainLayout>
+
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
-import MainLayout from '@/layout/MainLayout.vue'
+
 import { useStaffStore } from "@/stores/staff";
 
     /*=========================================

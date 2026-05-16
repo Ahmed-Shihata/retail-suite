@@ -1,5 +1,5 @@
 <template>
-  <MainLayout>
+
     <div class="w-full flex min-h-screen bg-gray-50">
 
       <!-- Main Content -->
@@ -333,10 +333,10 @@
 
       </main>
     </div>
-  </MainLayout>
+
 </template>
 <script setup>
-import MainLayout from '@/layout/MainLayout.vue'
+
 import { ref, toRaw, computed, onMounted, watch } from 'vue'
 import { useShiftStore } from '@/stores/shift.js'
 import { useSuppliersStore } from '@/stores/suppliers.js'

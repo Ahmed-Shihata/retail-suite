@@ -1,5 +1,4 @@
 <template>
-  <MainLayout>
    <div>
       <Header pageTitle="Archive & History" icon="ArchiveIcon" color="blue" />
       <!-- Content -->
@@ -104,11 +103,9 @@
         </div>
       </main>
     </div>
-  </MainLayout>
 </template>
 
 <script setup>
-import MainLayout from '@/layout/MainLayout.vue'
 import ArchiveIcon from '@/components/icons/ArchiveIcon.svg'
 import ExportIcon from '@/components/icons/ExportIcon.svg'
 import RefreshIcon from '@/components/icons/RefreshIcon.svg'

@@ -68,13 +68,13 @@ const routes = [
   // ============================
   // Router: Single Pages (Protected)
   // ============================
-  { path: "/pos", name: "POS", component: POS, meta: { requiresAuth: true } },
+  { path: "/pos", name: "POS", component: POS, meta: { requiresAuth: false, layout: 'none' }},
   { path: "/settings", name: "Settings", component: Setting, meta: { requiresAuth: true } },
   { path: "/archive", name: "Archive", component: Archive, meta: { requiresAuth: true } },
   { path: "/payment", name: "Payment", component: Pay, meta: { requiresAuth: true } },
   { path: "/newpayment", name: "Newpayment", component: NewPayment, meta: { requiresAuth: true } },
   { path: "/notification-center", name:"NotificationCenter", component: NotificationCenter, meta: { requiresAuth: true } },
-  { path: "/mobile-scan", name: "MobileScan", component: MobileScan, meta: { requiresAuth: false }},
+  { path: "/mobile-scan", name: "MobileScan", component: MobileScan, meta: { requiresAuth: false, layout: 'none' }},
   {path: '/403',name: 'Forbidden',component: ForbiddenView},
   // ============================
   // Inventory Management
@@ -246,36 +246,37 @@ const router = createRouter({
 });
 
 let sessionChecked = false;
-
-
 router.beforeEach(async (to, from, next) => {
 
-  // ✅ Check session مرة واحدة بس
   if (!sessionChecked) {
     await checkSession()
     sessionChecked = true
   }
 
-  // ✅ لو رايح login وهو already logged
-  if (to.path === '/login' && session.isAuthenticated) {
+  const isAuth = !!session.user
+  console.log('🔀 Guard:', to.path)
+  console.log('👤 session.user:', session.user)
+  console.log('✅ isAuth:', isAuth)
+
+  if (to.path === '/') {
+    return next(isAuth ? '/pos' : false)
+
+  }
+
+  if (to.path === '/login' && isAuth) {
     return next('/pos')
   }
 
-  // ✅ لو صفحة protected ومش logged
-  if (to.meta.requiresAuth && !session.isAuthenticated) {
-    return next('/login')
+  if (to.meta.requiresAuth && !isAuth) {
+    const base = import.meta.env.VITE_FRAPPE_URL_LOCAL || ''
+    window.location.href = `${base}/login`
+    return next(false)
   }
 
-  // ✅ Role-Based Protection
   if (to.meta.roles && to.meta.roles.length > 0) {
-    // جيب الـ roles من session
     const userRoles = session.roles || []
-    console.log("userRoles",userRoles)
     const hasAccess = to.meta.roles.some(role => userRoles.includes(role))
-
-    if (!hasAccess) {
-      return next({ name: 'Forbidden' })
-    }
+    if (!hasAccess) return next({ name: 'Forbidden' })
   }
 
   next()

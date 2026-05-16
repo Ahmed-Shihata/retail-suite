@@ -1,7 +1,7 @@
 
 <!-- CheckinList.vue -->
 <template>
-  <MainLayout>
+
     <div class="w-full flex min-h-screen" :style="{ background: 'var(--item-bg)' }">
       <!-- Main Content -->
       <main class="w-full flex flex-col min-h-screen">
@@ -452,11 +452,11 @@
       </div>
     </div>
     </div>
-  </MainLayout>
+
 </template>
 
 <script setup>
-import MainLayout from '@/layout/MainLayout.vue'
+
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { Users, Plus, Clock, LogIn, LogOut, Edit2, Trash2, User, X } from 'lucide-vue-next'
 import {

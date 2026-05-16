@@ -1,5 +1,4 @@
 <template>
-  <MainLayout>
     <div fluid>
       <div v-show="!dialog" class="w-full min-h-screen flex" :style="{ background: 'var(--item-bg)' }">
 
@@ -804,12 +803,11 @@
     </div>
   </div>
 </Teleport>
-  </MainLayout>
 </template>
 <script setup>
 import OpenShiftModal from '@/components/modals/OpenShiftModal.vue'
 import Customer from '@/components/cart/CustomerSection.vue'
-import MainLayout from '@/layout/MainLayout.vue'
+
 import { useShiftStore } from '@/stores/shift'
 import { useToast } from "vue-toastification"
 import { ref, computed, watch, onMounted } from 'vue'

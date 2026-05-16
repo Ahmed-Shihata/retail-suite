@@ -1,5 +1,5 @@
 <template>
-  <MainLayout>
+
     <div class="w-full flex min-h-screen" :style="{ background: 'var(--item-bg)' }">
       <main class="flex flex-col flex-1 min-h-screen">
 
@@ -356,14 +356,14 @@
       :staff="selectedStaff"
       @close="() => { showProfileModal = false; salaryHistory = []; attendanceRecords = [] }"
     />
-  </MainLayout>
+
 </template>
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import router from '@/router'
 import StaffModal from '@/components/modals/StaffModal.vue'
 import StaffProfileModal from '@/components/modals/StaffProfileModal.vue'
-import MainLayout from '@/layout/MainLayout.vue'
+
 import { Users, Plus, Download, Edit2, Eye, Trash2, ArrowLeft } from 'lucide-vue-next'
 import { formatCurrency } from '@/utils/formatters.js'
 import { useSettingsStore } from '@/stores/settings.js'

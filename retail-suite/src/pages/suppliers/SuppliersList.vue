@@ -1,6 +1,6 @@
 <!-- SuppliersList.vue -->
 <template>
-  <MainLayout>
+
     <div class="w-full flex min-h-screen bg-gray-50">
       <!-- Main Content -->
       <main class="flex flex-col flex-1 min-h-screen">
@@ -197,13 +197,13 @@
       :supplier="selectedSupplier"
       @close="showProfileModal = false"
     />
-  </MainLayout>
+
 </template>
 <script setup>
 import { ref, computed, onMounted, toRaw } from 'vue'
 import { useRouter } from 'vue-router'
 
-import MainLayout from '@/layout/MainLayout.vue'
+
 import SupplierModal from '@/components/modals/SupplierModal.vue'
 import SupplierProfileModal from '@/components/modals/SupplierProfileModal.vue'
 

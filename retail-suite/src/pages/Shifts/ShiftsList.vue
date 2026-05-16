@@ -1,6 +1,6 @@
 <!-- ShiftList.vue -->
 <template>
-  <MainLayout>
+
     <div class="w-full flex" style="font-size: 13px;" :style="{ background: 'var(--item-bg)' }">
       <main class="flex flex-col flex-1">
 
@@ -581,11 +581,11 @@
 
       </main>
     </div>
-  </MainLayout>
+
 </template>
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import MainLayout from '@/layout/MainLayout.vue'
+
 import { Eye } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import ExportIcon from '@/components/icons/ExportIcon.svg'

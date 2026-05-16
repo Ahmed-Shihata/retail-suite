@@ -1,5 +1,5 @@
 <template>
-  <MainLayout>
+
     <div>
       <main class="flex flex-col flex-1 min-h-screen">
         <!-- Header -->
@@ -287,7 +287,7 @@
       :type="toastType"
       @close="showToast = false"
     />
-  </MainLayout>
+
 </template>
 
 <script setup>
@@ -295,7 +295,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, Edit2, Trash2, Check, Loader, ArrowLeft, Search} from 'lucide-vue-next'
 
-import MainLayout from '@/layout/MainLayout.vue'
+
 import ShiftModal from '@/components/modals/ShiftModal.vue'
 import ProcessingModal from '@/components/modals/ProcessingModal.vue'
 import DetailItem from '@/components/modals/DetailItem.vue'

@@ -1,6 +1,6 @@
 <!-- Reports/IncomeStatement.vue -->
 <template>
-  <MainLayout>
+
     <div class="w-full flex min-h-screen" style="font-size: 13px;" :style="{ background: 'var(--item-bg)' }">
       <main class="flex flex-col flex-1">
 
@@ -285,13 +285,13 @@
 
       </main>
     </div>
-  </MainLayout>
+
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import MainLayout from '@/layout/MainLayout.vue'
+
 import StatsCard from '@/layout/StatsCard.vue'
 import { ArrowLeft, Download, TrendingUp, TrendingDown, ChevronRight } from 'lucide-vue-next'
 import {

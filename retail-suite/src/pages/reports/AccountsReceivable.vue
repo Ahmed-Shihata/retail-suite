@@ -1,5 +1,5 @@
 <template>
-  <MainLayout>
+
        <div class="w-full flex min-h-screen" style="font-size: 13px;" :style="{ background: 'var(--item-bg)' }">
       <main class="flex flex-col flex-1">
         <!--══════════════════ Header ═══════════════════════ -->
@@ -435,13 +435,13 @@
         </section>
       </main>
     </div>
-  </MainLayout>
+
 </template>
 
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import MainLayout from '@/layout/MainLayout.vue'
+
 import { ArrowLeft, Download } from 'lucide-vue-next'
 import { getDefaultCompany } from '@/services/api'
 import { getAccountsReceivableReport, exportAccountsReceivableReport } from '@/composables/reports'

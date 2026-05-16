@@ -443,7 +443,6 @@
 </style>
 
 <script setup>
-console.log("📱 MobileScan")
 import { ScanBarcodeApi } from '@/composables/barcode'
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'

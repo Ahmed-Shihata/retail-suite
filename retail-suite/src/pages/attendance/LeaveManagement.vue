@@ -1,5 +1,5 @@
 <template>
-  <MainLayout>
+
     <div class="w-full flex min-h-screen" :style="{ background: 'var(--item-bg)' }">
       <main class="w-full flex flex-col min-h-screen">
 
@@ -621,11 +621,11 @@
       </div>
 
     </div>
-  </MainLayout>
+
 </template>
 <script setup>
 import { ref, computed, reactive, onMounted } from 'vue'
-import MainLayout from '@/layout/MainLayout.vue'
+
 import { useAttendanceStore } from '@/stores/attendence'
 import { useShiftStore } from '@/stores/shift'
 import { useStaffStore } from '@/stores/staff'

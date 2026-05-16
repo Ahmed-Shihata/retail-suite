@@ -1,6 +1,6 @@
 // auth.js
 import { reactive, computed } from 'vue'
-import { createResource, frappeRequest } from 'frappe-ui'
+import { createResource, frappeRequest,call } from 'frappe-ui'
 import router from '../router'
 
 // ==========================================
@@ -11,22 +11,22 @@ function sessionUser() {
   const user = cookies.get("user_id")
   return user === "Guest" ? null : user
 }
+
 // ==========================================
 // Session State
 // ==========================================
 export const session = reactive({
-  user: sessionUser(),
+  user: null,
   isAuthenticated: computed(() => !!session.user),
   full_name: null,
   email: null,
+
   login: createResource({
     url: 'login',
     makeParams({ username, password }) {
-      console.log("🔥 makeParams:", values)
       return { usr: username, pwd: password }
     },
     async onSuccess(data) {
-      console.log("Data login: ", data)
       session.user = sessionUser()
       session.full_name = data?.full_name || null
       session.email = data?.email || null
@@ -54,28 +54,33 @@ export const session = reactive({
 })
 
 // ==========================================
-// Check Existing Session
+// Check Existing Session (API-based)
 // ==========================================
 export async function checkSession() {
-  const user = sessionUser()
-  if (!user) {
+  try {
+    const data = await frappeRequest({
+      url: '/api/method/frappe.auth.get_logged_user',
+    })
+    console.log("👤 Logged in user:", data)
+    const user = data
+    if (!user || user === 'Guest') {
+      session.user = null
+      return false
+    }
+
+    session.user = user
+    return true
+
+  } catch (err) {
+    // 403 or network error = not logged in
     session.user = null
     return false
   }
-  session.user = user
-
-  return true
 }
 
 // ==========================================
 // API Methods
 // ==========================================
-// GET — There is no request body; the data must be tracked in the URL:
-// api.get(..., { params }) → Query String في الـ URL
-
-// // api.post(..., { params }) → JSON Body
-// POST /api/method/my.method
-// Body: { "opening_shift_name": "POS-001" }
 export const api = {
   get: (url, { params } = {}) => frappeRequest({ url, params }),
   post: (url, data) => frappeRequest({ url, method: 'POST', body: data }),

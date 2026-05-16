@@ -341,10 +341,10 @@
       <!-- Main Content with Sidebar -->
       <div class="flex flex-1 overflow-hidden">
         <!-- Sidebar Component -->
-        <Sidebar :is-collapsed="isSidebarCollapsed" @toggle="toggleSidebar" />
+        <Sidebar :is-collapsed="isSidebarCollapsed" @toggle="toggleSidebar" :style="{ background: 'var(--app-bg)' }" />
 
         <!-- Page Content -->
-        <div class="flex-1 overflow-auto bg-gray-50 dark:bg-gray-800">
+        <div class="flex-1 overflow-auto" :style="{ background: 'var(--app-bg)' }">
           <main class="p-6">
             <slot />
           </main>

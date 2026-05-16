@@ -1,6 +1,6 @@
 <!-- Settings.vue -->
 <template>
-  <MainLayout>
+
     <div :class="isDark ? 'theme-dark' : 'theme-light'">
       <!-- Header -->
       <header
@@ -817,7 +817,7 @@
       @confirm="onConfirmOk"
       @cancel="onConfirmCancel"
     />
-  </MainLayout>
+
 </template>
 <script setup>
 import MainLayout             from "@/layout/MainLayout.vue";

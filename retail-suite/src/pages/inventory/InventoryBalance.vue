@@ -1,6 +1,6 @@
 <!-- inventoryBalance.vue -->
 <template>
-  <MainLayout>
+
      <div class="w-full flex min-h-screen" style="font-size: 13px;" :style="{ background: 'var(--item-bg)' }">
       <main class="flex flex-col flex-1">
         <!-- ══════════════════ HEADER ══════════════════ -->
@@ -355,7 +355,7 @@
 
       </main>
     </div>
-  </MainLayout>
+
 </template>
 
 <script setup>

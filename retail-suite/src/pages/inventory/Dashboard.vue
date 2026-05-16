@@ -1,6 +1,6 @@
 <!-- Dashboard Inventory.vue -->
 <template>
-  <MainLayout>
+
     <div>
       <!-- Main Content -->
       <main class="flex flex-col flex-1 min-h-screen">
@@ -87,12 +87,12 @@
 
       </main>
     </div>
-  </MainLayout>
+
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
-import MainLayout from '@/layout/MainLayout.vue'
+
 import Sidebar from '@/layout/Sidebar.vue'
 import StatsCard from '@/layout/StatsCard.vue'
 import DashboardCard from '@/components/modals/DashboardCard.vue'

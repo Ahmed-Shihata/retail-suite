@@ -1,6 +1,5 @@
 <!-- Dashboard Accounting.vue -->
 <template>
-  <MainLayout>
     <div>
       <main class="flex flex-col flex-1">
 
@@ -97,12 +96,10 @@
 
       </main>
     </div>
-  </MainLayout>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import MainLayout from '@/layout/MainLayout.vue'
 import Sidebar from '@/layout/Sidebar.vue'
 import StatsCard from '@/layout/StatsCard.vue'
 import DashboardCard from '@/components/modals/DashboardCard.vue'

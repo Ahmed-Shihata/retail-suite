@@ -1,6 +1,6 @@
 <!-- Reports/Dashboard.vue -->
 <template>
-  <MainLayout>
+
     <div class="w-full flex min-h-screen bg-gray-50">
       <main class="flex flex-col flex-1 min-h-screen">
         <!-- Header -->
@@ -106,13 +106,13 @@
         </section>
       </main>
     </div>
-  </MainLayout>
+
 </template>
 
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import MainLayout from '@/layout/MainLayout.vue'
+
 import DashboardCard from '@/components/modals/DashboardCard.vue'
 import StatsCard from '@/layout/StatsCard.vue'
 import { formatPrice } from '@/utils/formatters'

@@ -1,6 +1,6 @@
 
 <template>
-  <MainLayout>
+
     <div class="w-full flex min-h-screen bg-gray-50">
 
       <!-- Main Content -->
@@ -367,10 +367,10 @@
 
       </main>
     </div>
-  </MainLayout>
+
 </template>
 <script setup>
-import MainLayout from '@/layout/MainLayout.vue'
+
 import { ref, defineComponent, computed, onMounted, watch } from 'vue'
 import { useInvoicesStore } from '@/stores/invoices'
 import { formatNumber,formatDate, formatPrice } from '../../utils/formatters';

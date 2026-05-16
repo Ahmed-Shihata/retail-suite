@@ -1,6 +1,6 @@
 <!-- ShiftShow.vue — Enhanced Analytics Dashboard -->
 <template>
-  <MainLayout>
+
 
     <!-- ═══════════════════════════════════════════
          LOADING
@@ -599,13 +599,13 @@
       <span class="ss-loader__text">لا توجد بيانات للوردية</span>
     </div>
 
-  </MainLayout>
+
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import MainLayout from '@/layout/MainLayout.vue'
+
 import StatsCard from '@/layout/StatsCard.vue'
 import { getShiftDetails } from '../../composables/shift'
 import { formatCurrency } from '@/utils/formatters'

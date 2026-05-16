@@ -1,5 +1,5 @@
 <template>
-  <MainLayout>
+
     <div class="w-full min-h-screen flex" :style="{ background: 'var(--item-bg)' }">
       <div class="flex-1 p-4">
         <div class="max-w-2xl mx-auto">
@@ -233,7 +233,7 @@
       @error="(err) => console.error(err)"
       @close="showOpenShiftModal = false"
     />
-  </MainLayout>
+
 </template>
 
 <script setup>

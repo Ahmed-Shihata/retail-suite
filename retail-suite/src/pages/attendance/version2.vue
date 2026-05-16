@@ -1,5 +1,5 @@
 <template>
-  <MainLayout>
+
     <div class="w-full flex min-h-screen bg-gray-50">
       <!-- Main Content -->
       <main class="flex flex-col flex-1 min-h-screen">
@@ -379,12 +379,12 @@
         </form>
       </div>
     </div>
-  </MainLayout>
+
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import MainLayout from '@/layout/MainLayout.vue'
+
 import StatsCard from '@/layout/StatsCard.vue'
 import {
   Clock,

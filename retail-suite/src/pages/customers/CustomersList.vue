@@ -1,6 +1,6 @@
 <!-- CustomerList.vue -->
 <template>
-  <MainLayout>
+
     <div class="w-full flex min-h-screen bg-gray-50">
       <!-- Main Content -->
       <main class="flex flex-col flex-1">
@@ -195,13 +195,13 @@
       :customer="selectedCustomer"
       @close="showProfileModal = false"
     />
-  </MainLayout>
+
 </template>
 
 <script setup>
 import { useRouter } from 'vue-router'
 import { ref, computed, onMounted, watch, toRaw } from 'vue'
-import MainLayout from '@/layout/MainLayout.vue'
+
 import CustomerModal from '@/components/modals/CustomerModal.vue'
 import CustomerProfileModal from '@/components/modals/CustomerProfileModal.vue'
 import { Users, Plus, Download, Edit2, Eye, Trash2 } from 'lucide-vue-next'

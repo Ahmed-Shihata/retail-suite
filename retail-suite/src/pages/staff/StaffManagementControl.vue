@@ -1,6 +1,6 @@
 <!-- StaffManagementControl.vue -->
 <template>
-  <MainLayout>
+
     <div class="w-full flex min-h-screen" :style="{ background: 'var(--item-bg)' }">
       <main class="flex flex-col flex-1 min-h-screen">
 
@@ -341,7 +341,7 @@
       </div>
     </template>
 
-  </MainLayout>
+
 </template>
 <script setup>
 import { ref, computed, onMounted } from 'vue'
@@ -350,7 +350,7 @@ import { useRouter } from 'vue-router'
 import { useStaffStore } from '@/stores/staff'
 import { getDefaultCompany } from '@/services/api'
 import Swal from 'sweetalert2'
-import MainLayout from '@/layout/MainLayout.vue'
+
 
 // State
 const modalError = ref("")

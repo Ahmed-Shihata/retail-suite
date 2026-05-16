@@ -1,7 +1,7 @@
 <!-- CashFlow.vue -->
 
 <template>
-  <MainLayout>
+
     <div class="w-full flex min-h-screen" style="font-size: 13px;" :style="{ background: 'var(--item-bg)' }">
       <main class="flex flex-col flex-1">
 
@@ -260,13 +260,13 @@
 
       </main>
     </div>
-  </MainLayout>
+
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import MainLayout from '@/layout/MainLayout.vue'
+
 import StatsCard from '@/layout/StatsCard.vue'
 import { ArrowLeft, Download } from 'lucide-vue-next'
 import { getDefaultCompany } from '@/services/api'

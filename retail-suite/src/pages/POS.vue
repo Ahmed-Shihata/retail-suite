@@ -1,6 +1,6 @@
 <!-- POS.vue -->
 <template>
-  <div class="">
+  <div :class="isDark ? 'theme-dark' : 'theme-light'">
     <!-- Shift Control Bar -->
     <ShiftControl
       @shift-opened="handleShiftOpened"
@@ -8,7 +8,11 @@
       @shift-error="handleShiftError"
     />
 
-    <div class="hide-print flex flex-row h-screen antialiased" :style="{ color: 'var(--text-main)' }">
+    <div class="hide-print flex flex-row h-screen antialiased"
+        :style="{
+        background: isDark ? 'var(--bg)' : 'var(--card-bg)',
+        color: 'var(--text-main)'
+      }">
 
       <!-- Left Sidebar -->
       <Sidebar
@@ -169,27 +173,28 @@ import ReturnInvoiceBox from '@/components/modals/ReturnInvoiceBox.vue'
 import { formatPrice } from '../utils/formatters'
 import WarningIcon from '@/components/icons/WarningIcon.svg'
 
-    const activeMenu = ref('pos')
-    const searchKeyword = ref('')
-    const showFirstTimeModal = ref(false)
-    const showReceiptModal = ref(false)
-    const showOpenShiftModal = ref(false)
-    const receiptData = ref(null)
-    const selectedInvoice = ref(null)
-    const user = ref(null)
-    const productsStore = useProductsStore()
-    const cartStore = useCartStore()
-    const shiftStore = useShiftStore()
-    const { isShiftOpen } = storeToRefs(shiftStore)
-    const isCheckingShift = ref(true)
-    const invoicesStore = useInvoicesStore()
+const activeMenu = ref('pos')
+const searchKeyword = ref('')
+const showFirstTimeModal = ref(false)
+const showReceiptModal = ref(false)
+const showOpenShiftModal = ref(false)
+const receiptData = ref(null)
+const selectedInvoice = ref(null)
+const user = ref(null)
+const productsStore = useProductsStore()
+const cartStore = useCartStore()
+const shiftStore = useShiftStore()
+const { isShiftOpen } = storeToRefs(shiftStore)
+const isCheckingShift = ref(true)
+const invoicesStore = useInvoicesStore()
 
-    const returnInvoice = ref(null)
-    const mode = ref('sale')
-    const showReturnInvoiceBox = ref(false)
+const returnInvoice = ref(null)
+const mode = ref('sale')
+const showReturnInvoiceBox = ref(false)
 
-    const settingsStore = useSettingsStore()
-
+const settingsStore = useSettingsStore()
+// Dark Mode from Settings Store
+const isDark = computed(() => settingsStore.settings.appearance.theme === 'dark')
 
     // Handle menu change
     const handleMenuChange = (menu) => {
@@ -275,7 +280,7 @@ import WarningIcon from '@/components/icons/WarningIcon.svg'
         }
     }
 
-    // ✅ دالة منفصلة للبيع
+
     const handleSaleTransaction = async (transactionData) => {
       try {
         console.log('💰 handleSaleTransaction: Starting...')

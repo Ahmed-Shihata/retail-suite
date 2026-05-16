@@ -1,6 +1,6 @@
 <!-- CustomerProfile.vue -->
 <template>
-  <MainLayout>
+
     <div class="w-full flex min-h-screen bg-gray-50">
       <main class="flex flex-col flex-1 min-h-screen">
 
@@ -290,13 +290,13 @@
         </div>
       </main>
     </div>
-  </MainLayout>
+
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import MainLayout from '@/layout/MainLayout.vue'
+
 import StatsCard from '@/layout/StatsCard.vue'
 import InfoField from '@/components/modals/InfoField.vue'
 import { useCustomersStore } from '@/stores/customers.js'

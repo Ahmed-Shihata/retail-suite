@@ -1,6 +1,6 @@
 <!-- SupplierProfile.vue -->
 <template>
-  <MainLayout>
+
     <div class="w-full flex min-h-screen bg-gray-50">
       <!-- Main Content -->
       <main class="flex flex-col flex-1 min-h-screen">
@@ -366,14 +366,14 @@
       @save="saveSupplier"
       @close="showModal = false"
     />
-  </MainLayout>
+
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
-import MainLayout from '@/layout/MainLayout.vue'
+
 import StatsCard from '@/layout/StatsCard.vue'
 import InfoField from '@/components/modals/InfoField.vue'
 import SupplierModal from '@/components/modals/SupplierModal.vue'

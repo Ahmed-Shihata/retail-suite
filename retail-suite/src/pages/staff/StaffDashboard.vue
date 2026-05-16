@@ -1,6 +1,6 @@
 <!-- Dashboard Staff.vue -->
 <template>
-<MainLayout>
+
   <div :class="isDark ? 'theme-dark' : 'theme-light'">
     <main class="flex flex-col flex-1">
 
@@ -47,12 +47,12 @@
 
     </main>
   </div>
-</MainLayout>
+
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
-import MainLayout from '@/layout/MainLayout.vue'
+
 import StatsCard from '@/layout/StatsCard.vue'
 import Header from '@/layout/Header.vue'
 import DashboardCard from '@/components/modals/DashboardCard.vue'
