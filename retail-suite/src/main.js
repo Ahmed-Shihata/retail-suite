@@ -2,69 +2,102 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
+
 import './index.css'
 import './main.css'
-import * as icons from "@/components/icons/index.js"
-import Toast, { useToast } from 'vue-toastification'
+
+// plugins (keep but optimize)
+import Toast from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
+
+// Vuetify (keep but optimized import style)
 import { createVuetify } from 'vuetify'
+import 'vuetify/styles'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
-// استيراد CSS الأساسي لـ Vuetify
-import 'vuetify/styles'
+
+// router
 import router from './router.js'
-// (اختياري) لاستخدام أيقونات Material Design
-import { aliases, mdi } from 'vuetify/iconsets/mdi'
-import '@mdi/font/css/materialdesignicons.css'
-// إنشاء instance من Vuetify
+
+// frappe-ui
+import {
+  frappeRequest,
+  setConfig,
+} from 'frappe-ui'
+
+// socket (lazy init)
 import { initSocket } from "./socket"
+
+/* ─────────────────────────────────────────────
+   CORE APP SETUP
+───────────────────────────────────────────── */
+
+const pinia = createPinia()
+
 const vuetify = createVuetify({
   components,
   directives,
-  icons: {
-    defaultSet: 'mdi',
-    aliases,
-    sets: { mdi },
-  },
 })
 
-// Pinia store
-const pinia = createPinia()
-
-// Create Vue app
 const app = createApp(App)
 
+/* ─────────────────────────────────────────────
+   CONFIG
+───────────────────────────────────────────── */
 
-// Use plugins
+setConfig('resourceFetcher', frappeRequest)
+
+/* ─────────────────────────────────────────────
+   PLUGINS
+───────────────────────────────────────────── */
+
 app.use(router)
 app.use(pinia)
 app.use(Toast)
-
-// Use vuetify
 app.use(vuetify)
 
-Object.entries(icons).forEach(([name, component]) => {
-  app.component(name, component)
-})
-// to reach from every Place
-window.$toast = useToast()
+/* ─────────────────────────────────────────────
+   GLOBAL TOAST (safe init)
+───────────────────────────────────────────── */
 
-// ─── Socket Initialization ───────────────────────────────
-async function initializeSocket() {
-  try {
-    const siteName = import.meta.env.VITE_SITE_NAME || window.location.hostname
+// delay toast init to avoid early hydration cost
+setTimeout(async () => {
+  const { useToast } = await import('vue-toastification')
+  window.$toast = useToast()
+}, 0)
 
-    if (!window.frappe) window.frappe = {}
-    window.frappe.realtime = initSocket(siteName)
-    window.frappe.realtime.connect()
+/* ─────────────────────────────────────────────
+   SOCKET (lazy + non-blocking)
+───────────────────────────────────────────── */
 
-  } catch (err) {
-    console.warn("[main] socket init failed:", err)
-  }
+function initializeSocketLazy() {
+  requestIdleCallback(() => {
+    try {
+      const siteName =
+        import.meta.env.VITE_SITE_NAME ||
+        window.location.hostname
+
+      if (!window.frappe) window.frappe = {}
+
+      const socket = initSocket(siteName)
+
+      // connect after idle (important)
+      setTimeout(() => {
+        socket.connect()
+      }, 0)
+
+      window.frappe.realtime = socket
+
+    } catch (err) {
+      console.warn("[socket] init failed:", err)
+    }
+  })
 }
 
-initializeSocket()
-// ─────────────────────────────────────────────────────────
+initializeSocketLazy()
 
-// Mount app
+/* ─────────────────────────────────────────────
+   MOUNT APP
+───────────────────────────────────────────── */
+
 app.mount('#app')

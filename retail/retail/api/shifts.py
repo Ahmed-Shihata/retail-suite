@@ -176,17 +176,26 @@ def get_shifts(name=None,status=None):
     print("result",result)
     # return result
     if result is not None:
-    # Enrich with closing shift data
 
-        frappe.response["status"] = "success"
         frappe.response["http_status_code"] = 200
-        frappe.response["message"] = "Shifts fetched successfully"
-        frappe.response["data"] = result
+
+        frappe.response["message"] = {
+            "status": "success",
+            "http_status_code":200,
+            "message": "Shifts fetched successfully",
+            "data": result
+        }
+
     else:
-        frappe.response["status"] = "error"
+
         frappe.response["http_status_code"] = 404
-        frappe.response["message"] = "Error fetching shifts"
-        frappe.response["data"] = []
+
+        frappe.response["message"] = {
+            "status": "error",
+            "http_status_code":404,
+            "message": "Error fetching shifts",
+            "data": []
+        }
 
 
 @frappe.whitelist()

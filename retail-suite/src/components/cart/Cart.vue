@@ -150,7 +150,7 @@
 
 import CartIcon from '@/components/icons/CartIcon.svg'
 import TrashIcon from '@/components/icons/TrashIcon.svg'
-import { ref, computed, nextTick, onMounted, watch } from 'vue'
+import { ref, computed, nextTick, watch } from 'vue'
 import CartItem from './CartItem.vue'
 import PaymentSection from './PaymentSection.vue'
 import ReturnSection from './ReturnSection.vue'

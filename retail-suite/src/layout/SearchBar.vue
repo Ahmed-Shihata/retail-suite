@@ -97,7 +97,7 @@ import { ref, onMounted, onUnmounted, nextTick, computed, watch } from 'vue'
 import { useShiftStore } from '../stores/shift'
 import { useSettingsStore } from '../stores/settings'
 import { useCartStore } from '@/stores/cart'
-import { getItemsFromFrappeDB } from '@/services/api'
+import { getItemsFromFrappeDB } from '@/composables/pos'
 import qrBot from '@/services/qrBot.js'
 
 

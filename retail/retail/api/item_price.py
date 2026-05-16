@@ -101,19 +101,23 @@ def get_item_prices(price_list=None, item_code=None, currency=None):
 @frappe.whitelist()
 def get_item_price(item_code, price_list):
     """Return a single Item Price for an item in a given price list."""
-    if not item_code or not price_list:
-        frappe.throw(_("item_code and price_list are required"))
-
+    filters = {}
+    if item_code:
+        filters["item_code"] = item_code
+    if price_list:
+        filters["price_list"] = price_list
     price = frappe.db.get_value(
         "Item Price",
-        {"item_code": item_code, "price_list": price_list},
+        filters,
         ["name", "item_code", "item_name", "price_list",
          "price_list_rate", "currency", "uom", "valid_from", "valid_upto"],
         as_dict=True,
         order_by="creation desc"
     )
-    return price or {}
-
+    price_list = []
+    if price:
+        price_list.append(price)
+    return price_list or []
 
 @frappe.whitelist()
 def create_item_price(

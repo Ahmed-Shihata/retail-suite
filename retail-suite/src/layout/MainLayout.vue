@@ -395,7 +395,7 @@ import {
 import config from '@/config/frappe'
 import { useSettingsStore } from '@/stores/settings.js'
 import Sidebar from './Sidebar.vue'
-import { authAPI } from '@/services/auth'; // استورد من ملف auth.js بتاعك
+import { session } from '@/services/auth'; // استورد من ملف auth.js بتاعك
 // Settings Store
 const settingsStore = useSettingsStore()
 
@@ -537,10 +537,9 @@ const selectedResultIndex = ref(0)
       }
     }
 
-    const logout = async() => {
-      await authAPI.logout()
+    const logout = () => {
+      session.logout.submit()
     }
-
     const markAsRead = async (notificationId) => {
       const notification = notifications.value.find(n => n.id === notificationId)
       if (notification) {
@@ -634,6 +633,7 @@ const selectedResultIndex = ref(0)
 
       // Load notifications
       const notificationsData = await getNotifications(userName.value)
+      console.log("notificationsData",notificationsData)
       if (notificationsData.length > 0) {
         notifications.value = notificationsData.map((n, index) => ({
           id: n.name,

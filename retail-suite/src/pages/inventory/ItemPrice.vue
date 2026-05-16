@@ -673,11 +673,15 @@ const loadAll = async () => {
     const [plRes, posRes, priceRes] = await Promise.all([
       getAllPriceLists(),
       getPOSPriceList(),
-      getItemPrices({ price_list: selectedPriceList.value }),
+      getItemPrices({item_code: form.value.item_code, price_list: selectedPriceList.value }),
     ])
-    priceLists.value   = unwrap(plRes)    || []
-    posPriceList.value = unwrap(posRes)   || null
-    itemPrices.value   = unwrap(priceRes) || []
+    console.log("plRes",plRes)
+    console.log("posPriceList",posRes)
+    console.log("itemPrices",priceRes)
+    console.log("itemPrices",unwrap(priceRes))
+    priceLists.value   = plRes   || []
+    posPriceList.value = posRes  || null
+    itemPrices.value   = priceRes || []
   } catch (e) {
     console.error('Error loading item prices:', e)
   } finally {
@@ -689,8 +693,9 @@ const loadItemPrices = async () => {
   loading.value = true
   resetPage()
   try {
-    const res = await getItemPrices({ price_list: selectedPriceList.value })
-    itemPrices.value = unwrap(res) || []
+    const res = await getItemPrices({item_code: form.value.item_code, price_list: selectedPriceList.value })
+    console.log("item prices: ",res)
+    itemPrices.value = res || []
   } catch (e) {
     console.error(e)
   } finally {

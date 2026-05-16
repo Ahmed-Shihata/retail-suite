@@ -263,7 +263,7 @@ import CheckIcon from '@/components/icons/CheckIcon.svg'
 import TrendingDownIcon from '@/components/icons/TrendingDownIcon.svg'
 import LoadingSpinner from '@/components/icons/LoadingSpinner.vue'
 import { formatPrice } from '../../utils/formatters'
-import { get_shift_payment_summary } from '@/services/api'
+import { get_shift_payment_summary } from '@/composables/shift'
   const emit = defineEmits(['close', 'success', 'error'])
 
     const shiftStore = useShiftStore()

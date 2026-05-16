@@ -149,6 +149,7 @@
 
 <script setup>
 import { ref, onMounted, watch, watchEffect, reactive, computed } from 'vue'
+import { createResource } from 'frappe-ui'
 import { storeToRefs } from 'pinia'
 import ShiftControl from '@/components/shift/ShiftControl.vue'
 import Sidebar from '@/layout/Sidebar.vue'
@@ -188,6 +189,7 @@ import WarningIcon from '@/components/icons/WarningIcon.svg'
     const showReturnInvoiceBox = ref(false)
 
     const settingsStore = useSettingsStore()
+
 
     // Handle menu change
     const handleMenuChange = (menu) => {

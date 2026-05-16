@@ -591,7 +591,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MainLayout from '@/layout/MainLayout.vue'
 import StatsCard from '@/layout/StatsCard.vue'
-import { getShiftDetails } from '../../services/api'
+import { getShiftDetails } from '../../composables/shift'
 import { formatCurrency } from '@/utils/formatters'
 import { useSettingsStore } from "@/stores/settings"
 import CloseShiftModal from '@/components/modals/CloseShiftModal.vue'

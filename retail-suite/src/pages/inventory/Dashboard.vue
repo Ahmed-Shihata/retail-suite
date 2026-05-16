@@ -15,7 +15,7 @@
         >
           <div class="px-4 py-3 flex justify-between items-center">
             <div class="flex items-center gap-3">
-              <LayoutDashboard class="w-8 h-8" :style="{ color: 'var(--focus-ring)' }" />
+              <Package class="w-8 h-8" :style="{color: primaryColor}" />
               <h1 class="text-lg font-bold" :style="{ color: 'var(--text-main)' }">
                 Inventory Management Dashboard
               </h1>
@@ -91,7 +91,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import MainLayout from '@/layout/MainLayout.vue'
 import Sidebar from '@/layout/Sidebar.vue'
 import StatsCard from '@/layout/StatsCard.vue'
@@ -99,7 +99,11 @@ import DashboardCard from '@/components/modals/DashboardCard.vue'
 import { useRouter } from 'vue-router'
 import { useProductsStore } from '@/stores/products'
 import { formatPrice } from '@/utils/formatters'
+import { Package } from 'lucide-vue-next'
+import { useSettingsStore } from '@/stores/settings'
 
+const settingsStore = useSettingsStore()
+const primaryColor = computed(() => settingsStore.settings.appearance.primaryColor || '#06b6d4')
 const router = useRouter()
 const productsStore = useProductsStore()
 

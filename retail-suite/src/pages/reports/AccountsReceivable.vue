@@ -405,14 +405,14 @@
               <StatsCard
                 title="Paid"
                 :value="statusCounts.paid"
-                :subtitle="'$' + statusAmounts.paid.toLocaleString()"
+                :subtitle="'$' + (statusAmounts?.paid ?? 0).toLocaleString()"
                 icon="CheckCircle"
                 color="green"
               />
               <StatsCard
                 title="Due"
                 :value="statusCounts.due"
-                :subtitle="'$' + statusAmounts.due.toLocaleString()"
+                :subtitle="'$' + (statusAmounts?.due ?? 0).toLocaleString()"
                 icon="Clock"
                 color="blue"
               />
@@ -426,7 +426,7 @@
               <StatsCard
                 title="Disputed"
                 :value="statusCounts.disputed"
-                :subtitle="'$' + statusAmounts.disputed.toLocaleString()"
+                :subtitle="'$' + (statusAmounts?.disputed ?? 0).toLocaleString()"
                 icon="XCircle"
                 color="red"
               />
@@ -443,7 +443,8 @@ import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import MainLayout from '@/layout/MainLayout.vue'
 import { ArrowLeft, Download } from 'lucide-vue-next'
-import { getAccountsReceivableReport, getDefaultCompany, exportAccountsReceivableReport } from '@/services/api'
+import { getDefaultCompany } from '@/services/api'
+import { getAccountsReceivableReport, exportAccountsReceivableReport } from '@/composables/reports'
 import StatsCard from '@/layout/StatsCard.vue'
     const loading = ref(true)
     const error = ref(null)

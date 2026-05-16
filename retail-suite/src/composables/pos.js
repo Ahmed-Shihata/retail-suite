@@ -1,0 +1,172 @@
+import { call } from 'frappe-ui'
+
+// ============================================================
+// Get Items
+// ============================================================
+export const itemList = async()=>{
+ try {
+
+    const fields = [
+      "*"
+    ]
+    const items = await call('frappe.client.get_list', {
+
+        doctype:'Item',
+        fields: JSON.stringify(fields)
+
+    })
+
+    console.log("Get items API",items)
+    return items || []
+  } catch (err) {
+    console.error("Get items:", err)
+    throw err
+  }
+
+}
+
+// ============================================================
+// Get Items
+// ============================================================
+export const getItemsFromFrappeDB = async (
+  currentPOSProfile,
+  currentPriceList,
+  currentCustomer,
+  searchValue = '',
+  selectedWarehouse = null
+) => {
+  try {
+    const response = await call('retail.retail.api.posapp.get_items',{
+                    pos_profile: JSON.stringify(currentPOSProfile),
+                    price_list: currentPriceList,
+                    search_value: searchValue,
+                    item_group: '',
+                    customer: currentCustomer,
+                    warehouse: selectedWarehouse || '',
+                })
+
+
+    const items = response?.message || response || []
+    console.log("response items",items)
+
+    return items
+  } catch (error) {
+    console.error('❌ getItemsFromFrappeDB:', error)
+    return []
+  }
+}
+
+/* ==========================================================================
+  Get - Item Group  Statistics
+========================================================================== */
+export const getItemGroup = async () => {
+  try {
+    const res = await call(
+      'retail.retail.api.posapp.get_items_groups'
+    )
+
+    return {
+      status: 'success',
+      data: res.message || {},
+      message: 'Groups fetched successfully'
+    }
+  } catch (error) {
+    console.error('Error fetching Groups:', error)
+    throw error
+  }
+}
+
+// ====================================================================
+// Api Create Sales Order
+// ====================================================================
+export const createSalesOrder = async (customer, transactionData) => {
+  try {
+    const response = await call('retail.retail.api.posapp.create_order', {
+            customer: customer,
+            items_json: JSON.stringify(transactionData.items),
+            total: transactionData.summary.total,
+            shipping_address: transactionData.mode.shipping_address,
+            delivery_date: transactionData.mode.delivery_date,
+            delivery_slot: transactionData.mode.delivery_slot,
+            notes: transactionData.mode.notes || null
+    });
+
+    return response;
+  } catch (error) {
+    console.error('Error creating sales order:', error);
+    throw error;
+  }
+};
+
+// ====================================================================
+//  Api Create Sales Return
+// ====================================================================
+export const createSalesReturn = async (invoice_name, items, pos_profile_name) => {
+
+    try {
+        const response = await call('retail.retail.api.invoice.create_sales_return',
+            {
+                invoice_name: invoice_name,
+                items: items,
+                pos_profile_name:pos_profile_name
+            }
+        )
+        return response;
+
+    } catch (error) {
+        console.error('Error fetching shifts statistics:', error);
+        throw error;
+    }
+}
+// ====================================================================
+//  Api Get Returnable Invoices
+// ====================================================================
+
+export const getReturnableInvoices = async () => {
+    // get_returnable_invoices
+    try {
+        const response = await call('retail.retail.api.invoice.get_returnable_invoices_api')
+        console.log("api Get Returnable Invoices", response)
+        return response;
+
+    } catch (error) {
+        console.error('Error Api Get Returnable Invoices:', error);
+        throw error;
+    }
+}
+
+// ====================================================================
+//  Api Get POS Invoices
+// ====================================================================
+
+export const getPosInvoices = async (filters = {}) => {
+  try {
+      const response = await call(
+          'retail.retail.doctype.pos_closing_shift.pos_closing_shift.get_all_pos_invoices',
+          { params: filters }
+      );
+        console.log("Api Get POS Invoices", response)
+      return response;
+  } catch (error) {
+      console.error('Error Api Get POS Invoices:', error);
+      throw error;
+  }
+}
+
+// ====================================================================
+//  Api Submit POS Invoices
+// ====================================================================
+
+export const submitInvoice = async (invoice, data) => {
+    try {
+        const response = await call('retail.retail.api.posapp.submit_invoice', {
+            invoice: JSON.stringify(invoice),
+            data: data
+        });
+        console.log('Api Submit POS Invoices:', response);
+        return response;
+    } catch (error) {
+        console.error('Error Api Submit POS Invoices:', error);
+        throw error;
+    }
+}

@@ -365,15 +365,11 @@ const handleNotificationClick = (notification) => {
   }
 }
 
-// Open document
 const openDocument = (notification) => {
-  try {
-    if (typeof frappe !== 'undefined') {
-      frappe.set_route('Form', notification.document_type, notification.document_name)
-    }
-  } catch (err) {
-    console.error('Error navigating to document:', err)
-  }
+  if (!notification.document_type || !notification.document_name) return
+
+  const url = `/app/${notification.document_type.toLowerCase().replace(/ /g, '-')}/${notification.document_name}`
+  window.open(url, '_blank')
 }
 
 // Notification counter

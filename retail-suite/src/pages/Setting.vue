@@ -4,12 +4,16 @@
     <div :class="isDark ? 'theme-dark' : 'theme-light'">
       <!-- Header -->
       <header
-        class="mx-3 mt-3 sticky top-0 z-10 rounded-xl shadow-sm border-b border-gray-200"
-        style="background: var(--nav-bg);">
-        <div class="px-6 py-4 flex justify-between items-center">
+          class="mx-3 mt-1 sticky top-0 z-10 rounded-xl shadow-sm"
+          :style="{
+            background: 'var(--card-bg)',
+            borderBottom: '1px solid var(--card-border)'
+          }"
+        >
+        <div class="px-4 py-3 flex justify-between items-center">
           <div class="flex items-center gap-3">
-              <SettingsIcon class="w-8 h-8 text-cyan-600" />
-              <h1 class="text-lg font-bold text-gray-900">Settings</h1>
+              <SettingsIcon class="w-8 h-8" :style="{color: primaryColor}" />
+              <h1 class="text-lg font-bold" :style="{ color: 'var(--text-main)' }">Settings</h1>
             </div>
             <button
               @click="saveAllSettings"
@@ -804,119 +808,152 @@
         </div>
       </main>
     </div>
+    <!-- Confirm Modal -->
+    <ConfirmModal
+      :show="confirmModal.show"
+      :type="confirmModal.type"
+      :doc-name="confirmModal.docName"
+      :loading="confirmModal.loading"
+      @confirm="onConfirmOk"
+      @cancel="onConfirmCancel"
+    />
   </MainLayout>
 </template>
 <script setup>
-import { ref, reactive, onMounted, computed, watch } from "vue";
-import MainLayout from "@/layout/MainLayout.vue";
-import { useShiftStore } from "../stores/shift";
-import { useProductsStore } from "../stores/products";
-import { useSettingsStore } from "../stores/settings";
-import SaveIcon from "@/components/icons/SaveIcon.svg";
-import SunIcon from "@/components/icons/SunIcon.svg";
-import MoonIcon from "@/components/icons/MoonIcon.svg";
-import SettingsIcon from "@/components/icons/SettingsIcon.svg";
-import ToggleSwitch from "@/components/toggles/ToggleSwitch.vue";
+import MainLayout             from "@/layout/MainLayout.vue";
+import { useShiftStore }      from "../stores/shift";
+import { useProductsStore }   from "../stores/products";
+import { useSettingsStore }   from "../stores/settings";
+import SaveIcon               from "@/components/icons/SaveIcon.svg";
+import SunIcon                from "@/components/icons/SunIcon.svg";
+import MoonIcon               from "@/components/icons/MoonIcon.svg";
+import SettingsIcon           from "@/components/icons/SettingsIcon.svg";
+import ToggleSwitch           from "@/components/toggles/ToggleSwitch.vue";
 import { useDark, useToggle } from "@vueuse/core";
+import ConfirmModal           from '@/components/modals/ConfirmModal.vue'
+import { ref, reactive, onMounted, computed, watch } from "vue";
 
-    const isDark = useDark({
-      selector: "html",
-      attribute: "class",
-      valueDark: "dark",
-      valueLight: "",
-    });
-    const toggleDark = useToggle(isDark);
-    const activeCategory = ref("store");
-    const isSaving = ref(false);
-    const shiftsStore = useShiftStore();
-    const productsStore = useProductsStore();
-    const settingsStore = useSettingsStore();
+const confirmModal = reactive({
+  show: false, type: 'submit', docName: '', loading: false, _resolve: null,
+})
+// ─── Confirm Modal ────────────────────────────────────
+const askConfirm = (type, docName) => {
+  confirmModal.type    = type
+  confirmModal.docName = docName
+  confirmModal.show    = true
+  return new Promise(resolve => { confirmModal._resolve = resolve })
+}
+const onConfirmOk     = async () => { confirmModal.loading = true; confirmModal._resolve?.(true) }
+const onConfirmCancel = ()       => { confirmModal.show = false; confirmModal.loading = false; confirmModal._resolve?.(false) }
+const closeConfirm    = ()       => { confirmModal.show = false; confirmModal.loading = false, confirmModal._resolve?.(false) }
 
-    // ✅ ربط مباشر مع Store
-    const settings = computed(() => settingsStore.settings);
-    const primaryColor = computed(() => settings.value?.appearance?.primaryColor || '#06b6d4')
-    const settingsCategories = [
-      { id: "store", name: "Store Info", icon: "StoreIcon" },
-      { id: "receipt", name: "Receipt", icon: "ReceiptIcon" },
-      { id: "pricing", name: "Pricing & Tax", icon: "DollarIcon" },
-      { id: "appearance", name: "Appearance", icon: "PaletteIcon" },
-      { id: "system", name: "System", icon: "CogIcon" },
-      { id: "printer", name: "Printer", icon: "Printer" },
-      { id: "keyboard Shortcuts", name: "Keyboard Shortcuts", icon: "KeyboardIcon" }
-    ];
+const isDark = useDark({
+  selector: "html",
+  attribute: "class",
+  valueDark: "dark",
+  valueLight: "",
+});
+const toggleDark = useToggle(isDark);
+const activeCategory = ref("store");
+const isSaving = ref(false);
+const shiftsStore = useShiftStore();
+const productsStore = useProductsStore();
+const settingsStore = useSettingsStore();
 
-    const colorOptions = [
-      { name: "Ocean Blue", value: "#0a7ea4", class: "bg-[#0a7ea4]" },
-      { name: "Deep Teal", value: "#1a9b8e", class: "bg-[#1a9b8e]" },
-      { name: "Chocolate Mauve", value: "#5C3A3B", class: "bg-[#5C3A3B]" },
-      { name: "Teal", value: "#14b8a6", class: "bg-teal-500" },
-      { name: "Petrol", value: "#0f766e", class: "bg-teal-700" },
-      { name: "Emerald", value: "#059669", class: "bg-emerald-600" },
-      { name: "Steel", value: "#2563eb", class: "bg-blue-600" },
-      { name: "Cyan", value: "#06b6d4", class: "bg-cyan-500" },
-      { name: "Blue", value: "#0084ff", class: "bg-blue-500" },
-      { name: "Powder Blue", value: "#B0E0E6", class: "bg-[#B0E0E6]" },
-      { name: "Midnight Petrol", value: "#0b3a3f", class: "bg-[#0b3a3f]" },
-      { name: "Graphite", value: "#111827", class: "bg-gray-900" },
-      { name: "Royal Indigo", value: "#1e1b4b", class: "bg-indigo-950" },
-      { name: "Gold", value: "#D4AF37", class: "bg-[#D4AF37]" },
-      { name: "Amber", value: "#FFB300", class: "bg-[#FFB300]" },
-      { name: "Mustard", value: "#E1AD01", class: "bg-[#E1AD01]" },
-      { name: "Green", value: "#10b981", class: "bg-green-500" },
-      { name: "Purple", value: "#a855f7", class: "bg-purple-500" },
-      { name: "Pink", value: "#ec4899", class: "bg-pink-500" },
-      { name: "Orange", value: "#f97316", class: "bg-orange-500" },
-      { name: "Red", value: "#ef4444", class: "bg-red-500" },
-      { name: "Indigo", value: "#6366f1", class: "bg-indigo-500" },
-      { name: "RockStar", value: "#f49e00", class: "bg-[#f49e00]" },
-      { name: "Dusty Rose", value: "#A1797A", class: "bg-[#A1797A]" },
-      { name: "Black", value: "#161a1f", class: "bg-[#161a1f]" }
-    ];
-  const keyboardShortcuts = ref([
-      { id: 1, action: 'إتمام البيع', key: 'Enter' },
-      { id: 2, action: 'إلغاء المعاملة', key: 'Esc' },
-      { id: 3, action: 'بحث السريع', key: 'Ctrl + F' },
-      { id: 4, action: 'جديد', key: 'Ctrl + N' },
-      { id: 5, action: 'حفظ', key: 'Ctrl + S' },
-      { id: 6, action: 'طباعة', key: 'Ctrl + P' }
-    ])
-    // ✅ مراقبة التغييرات وحفظها فوراً
-    watch(
-      () => settings.value,
-      () => {
-        console.log("⚡ Settings changed, auto-saving...");
-        // تطبيق الـ Theme من settingsStore
-        const theme = settingsStore.settings.appearance.theme;
-        if (theme === "dark") {
-          isDark.value = true;
-          document.documentElement.classList.add("dark");
-        } else {
-          isDark.value = false;
-          document.documentElement.classList.remove("dark");
-        }
-        settingsStore.saveSettings();
-      },
-      { deep: true, debounce: 500 }
-    );
 
-    // حفظ يدوي عند الضغط على الزر
+const settings = computed(() => settingsStore.settings);
+const primaryColor = computed(() => settings.value?.appearance?.primaryColor || '#06b6d4')
+const settingsCategories = [
+  { id: "store", name: "Store Info", icon: "StoreIcon" },
+  { id: "receipt", name: "Receipt", icon: "ReceiptIcon" },
+  { id: "pricing", name: "Pricing & Tax", icon: "DollarIcon" },
+  { id: "appearance", name: "Appearance", icon: "PaletteIcon" },
+  { id: "system", name: "System", icon: "CogIcon" },
+  { id: "printer", name: "Printer", icon: "Printer" },
+  { id: "keyboard Shortcuts", name: "Keyboard Shortcuts", icon: "KeyboardIcon" }
+];
+
+const colorOptions = [
+  { name: "Ocean Blue", value: "#0a7ea4", class: "bg-[#0a7ea4]" },
+  { name: "Deep Teal", value: "#1a9b8e", class: "bg-[#1a9b8e]" },
+  { name: "Chocolate Mauve", value: "#5C3A3B", class: "bg-[#5C3A3B]" },
+  { name: "Teal", value: "#14b8a6", class: "bg-teal-500" },
+  { name: "Petrol", value: "#0f766e", class: "bg-teal-700" },
+  { name: "Emerald", value: "#059669", class: "bg-emerald-600" },
+  { name: "Steel", value: "#2563eb", class: "bg-blue-600" },
+  { name: "Cyan", value: "#06b6d4", class: "bg-cyan-500" },
+  { name: "Blue", value: "#0084ff", class: "bg-blue-500" },
+  { name: "Powder Blue", value: "#B0E0E6", class: "bg-[#B0E0E6]" },
+  { name: "Midnight Petrol", value: "#0b3a3f", class: "bg-[#0b3a3f]" },
+  { name: "Graphite", value: "#111827", class: "bg-gray-900" },
+  { name: "Royal Indigo", value: "#1e1b4b", class: "bg-indigo-950" },
+  { name: "Gold", value: "#D4AF37", class: "bg-[#D4AF37]" },
+  { name: "Amber", value: "#FFB300", class: "bg-[#FFB300]" },
+  { name: "Mustard", value: "#E1AD01", class: "bg-[#E1AD01]" },
+  { name: "Green", value: "#10b981", class: "bg-green-500" },
+  { name: "Purple", value: "#a855f7", class: "bg-purple-500" },
+  { name: "Pink", value: "#ec4899", class: "bg-pink-500" },
+  { name: "Orange", value: "#f97316", class: "bg-orange-500" },
+  { name: "Red", value: "#ef4444", class: "bg-red-500" },
+  { name: "Indigo", value: "#6366f1", class: "bg-indigo-500" },
+  { name: "RockStar", value: "#f49e00", class: "bg-[#f49e00]" },
+  { name: "Dusty Rose", value: "#A1797A", class: "bg-[#A1797A]" },
+  { name: "Black", value: "#161a1f", class: "bg-[#161a1f]" }
+];
+const keyboardShortcuts = ref([
+  { id: 1, action: 'إتمام البيع', key: 'Enter' },
+  { id: 2, action: 'إلغاء المعاملة', key: 'Esc' },
+  { id: 3, action: 'بحث السريع', key: 'Ctrl + F' },
+  { id: 4, action: 'جديد', key: 'Ctrl + N' },
+  { id: 5, action: 'حفظ', key: 'Ctrl + S' },
+  { id: 6, action: 'طباعة', key: 'Ctrl + P' }
+])
+
+watch(
+  () => settings.value,
+  () => {
+    console.log("⚡ Settings changed, auto-saving...");
+    // تطبيق الـ Theme من settingsStore
+    const theme = settingsStore.settings.appearance.theme;
+    if (theme === "dark") {
+      isDark.value = true;
+      document.documentElement.classList.add("dark");
+    } else {
+      isDark.value = false;
+      document.documentElement.classList.remove("dark");
+    }
+    settingsStore.saveSettings();
+  },
+  { deep: true, debounce: 500 }
+);
+
+
     const saveAllSettings = async () => {
+      const ok = await askConfirm('submit', 'Settings')
+      if (!ok) {
+        closeConfirm()
+        return
+      }
+      confirmModal.loading = true
       isSaving.value = true;
       try {
         await new Promise((resolve) => setTimeout(resolve, 500));
         const result = settingsStore.saveSettings();
 
         if (result) {
-          alert("✅ تم حفظ الإعدادات بنجاح!");
           console.log("✅ Settings saved successfully");
+
         } else {
-          alert("❌ فشل حفظ الإعدادات. حاول مرة أخرى.");
+           console.error("Failed to save settings:", error)
+
         }
       } catch (error) {
         console.error("Failed to save settings:", error);
-        alert("❌ حدث خطأ أثناء حفظ الإعدادات.");
+
       } finally {
         isSaving.value = false;
+        confirmModal.loading = false
+        closeConfirm()
       }
     };
 

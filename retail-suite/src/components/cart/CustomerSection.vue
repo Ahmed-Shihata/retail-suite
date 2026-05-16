@@ -84,7 +84,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import UpdateCustomer from '../modals/UpdateCustomer.vue'
-import { getCustomersFromFrappeDB } from '../../services/api.js'
+import { getCustomersFromFrappeDB } from '../../composables/shift'
 import { useShiftStore } from '../../stores/shift.js'
 import { useSettingsStore } from '@/stores/settings'
 const emit = defineEmits(['customer-selected'])

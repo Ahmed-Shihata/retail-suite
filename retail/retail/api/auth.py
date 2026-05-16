@@ -5,15 +5,10 @@ from frappe.utils import now
 import secrets
 import string
 
-import frappe
-from frappe.utils import now
 
 @frappe.whitelist(allow_guest=True)
 def get_logged_user():
     return frappe.session.user
-
-
-
 
 @frappe.whitelist(allow_guest=True)
 def authenticate_and_generate_api_key(username, password):

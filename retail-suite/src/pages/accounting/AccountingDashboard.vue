@@ -20,9 +20,6 @@
         <!-- Cards Grid -->
         <section class="px-2 pb-2">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            <DashboardCard title="Customers" description="Manage and view customer profiles" icon="Users" color="purple" @click="navigateTo('CustomersList')" />
-            <DashboardCard title="Suppliers" description="Manage and view supplier profiles" icon="Truck" color="purple" @click="navigateTo('SuppliersList')" />
-            <DashboardCard title="Closing Period" description="Closing Period Fiscal Year" icon="Calendar" color="red" @click="navigateTo('ClosingPeriod')" />
             <DashboardCard title="Customers Invoices" description="Create, View and manage customer invoices" icon="FileCheck" color="green" @click="navigateTo('Invoices')" />
             <DashboardCard title="Suppliers Invoices" description="Create, View and manage supplier invoice" icon="FileCheck" color="orange" @click="navigateTo('SuppliersInvoices')" />
             <DashboardCard
@@ -31,31 +28,6 @@
               icon="PieChart"
               @click="navigateTo('Expenses')"
             />
-            <!-- Income Statement -->
-            <DashboardCard
-              title="Income Statement"
-              description="Revenue, expenses & profit analysis"
-              icon="BarChart3"
-              @click="navigateTo('IncomeStatement')"
-            />
-
-
-            <!-- Cash Flow Statement -->
-            <DashboardCard
-              title="Cash Flow Statement"
-              description="Inflow & outflow analysis"
-              icon="DollarSign"
-              @click="navigateTo('CashFlowStatement')"
-            />
-
-            <!-- Balance Sheet -->
-            <DashboardCard
-              title="Balance Sheet"
-              description="Assets, liabilities & equity"
-              icon="Scale"
-              @click="navigateTo('BalanceSheet')"
-            />
-
             <!-- Accounts Receivable -->
             <DashboardCard
               title="Accounts Receivable"
@@ -136,7 +108,6 @@ import StatsCard from '@/layout/StatsCard.vue'
 import DashboardCard from '@/components/modals/DashboardCard.vue'
 import { useRouter } from 'vue-router'
 import Header from '@/layout/Header.vue'
-// import { useAccountingStore } from '@/stores/accounting'
 import { formatCurrency } from '@/utils/formatters'
 import {
   BarChart3,

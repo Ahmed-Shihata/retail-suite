@@ -6,7 +6,7 @@
         {{ dynamicMessage }}
       </p>
       <router-link
-        to="/"
+        to="/pos"
         class="px-4 py-2 bg-black text-white rounded-lg"
       >
         Go Back Home

@@ -494,28 +494,28 @@ FRONTEND - AccountsPayable.vue Component
                             <StatsCard
                 title="Paid"
                 :value="statusCounts.paid"
-                :subtitle="'$' + statusAmounts.paid.toLocaleString()"
+                :subtitle="'$' + (statusAmounts?.paid ?? 0).toLocaleString()"
                 icon="CheckCircle2"
                 color="green"
               />
               <StatsCard
                 title="Due"
                 :value="statusCounts.due"
-                :subtitle="'$' + statusAmounts.due.toLocaleString()"
+                :subtitle="'$' + (statusAmounts?.due ?? 0).toLocaleString()"
                 icon="Clock"
                 color="blue"
               />
               <StatsCard
                 title="Overdue"
                 :value="statusCounts.overdue"
-                :subtitle="'$' + statusAmounts.overdue.toLocaleString()"
+                :subtitle="'$' + (statusAmounts?.overdue ?? 0).toLocaleString()"
                 icon="AlertTriangle"
                 color="orange"
               />
               <StatsCard
                 title="In Dispute"
                 :value="statusCounts.disputed"
-               :subtitle="'$' + statusAmounts.disputed.toLocaleString()"
+               :subtitle="'$' + (statusAmounts?.disputed ?? 0).toLocaleString()"
                 icon="MessageSquare"
                 color="red"
               />
@@ -568,7 +568,7 @@ import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import MainLayout from '@/layout/MainLayout.vue'
 import { ArrowLeft, Download } from 'lucide-vue-next'
-import { getAccountsPayableReport, exportAccountsPayableReport } from '@/services/api'
+import { getAccountsPayableReport, exportAccountsPayableReport } from '@/composables/reports'
 import StatsCard from '@/layout/StatsCard.vue'
 
     const router = useRouter()
@@ -684,7 +684,7 @@ import StatsCard from '@/layout/StatsCard.vue'
         loading.value = true
         error.value = null
 
-        const data = await getAccountsPayableReport()
+        const data = await getAccountsPayableReport({})
         console.log("AP Data =>", data)
 
         payables.value = data.payables || []

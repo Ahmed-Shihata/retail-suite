@@ -291,8 +291,8 @@ import MainLayout from '@/layout/MainLayout.vue'
 import StatsCard from '@/layout/StatsCard.vue'
 import { BarChart3 } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
-import { getSalesAnalytics, getCompanies } from '@/services/api'
-
+import { getCompanies } from '@/services/api'
+import { getSalesAnalytics } from '@/composables/reports'
 const toast = useToast()
 const loading         = ref(false)
 const companies       = ref([])

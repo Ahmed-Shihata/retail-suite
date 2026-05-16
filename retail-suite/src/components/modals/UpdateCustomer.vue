@@ -236,13 +236,11 @@
 import { ref, watch, computed, nextTick } from 'vue'
 import { useToast } from 'vue-toastification'
 import {
-  createUpdateCustomerInFrappeDB,
   getCustomerAddressesApi,
-  getCustomersFromFrappeDB,
   getTerritoriesApi,
   getCountriesApi
 } from '../../services/api'
-
+import { createUpdateCustomerInFrappeDB, getCustomersFromFrappeDB } from '@/composables/shift'
 const toast = useToast()
 
 const props = defineProps({

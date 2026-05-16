@@ -2,7 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch, toRaw } from 'vue'
 import { api } from '@/services/auth.js';
 import { useShiftStore } from '@/stores/shift'
-import { generateBarcodePreview,addItemBarcode, getBarcodesFromFrappeDB, getItemsFromFrappeDB, handleDeleteBarcodeFrappe } from '@/services/api'
+import {itemList} from '@/composables/pos'
+import { generateBarcodePreview,addItemBarcode, getBarcodesFromFrappeDB, handleDeleteBarcodeFrappe } from '@/composables/barcode'
 export const useInventoryStore = defineStore('inventory', () => {
     // State
     const items = ref([])
@@ -21,26 +22,6 @@ export const useInventoryStore = defineStore('inventory', () => {
 
 
     const pos_profile = computed(() => shiftStore.pos_profile)
-    // watch(
-    //     pos_profile,
-    //     async (val) => {
-    //         if (!val) return   // ⛔ لسه مش جاهز
-
-    //         console.log('pos_profile updated:', val)
-    //         console.log('selling_price_list:', val.selling_price_list)
-
-    //         const fetchedProducts = await getItemsFromFrappeDB(
-    //             toRaw(val),
-    //             val.selling_price_list,
-    //             null,
-    //             ''
-    //         )
-
-    //         console.log('Fetched Products:', fetchedProducts)
-    //         items.value = fetchedProducts || []
-    //     },
-    //     { immediate: true } // 👈 لو القيمة موجودة أصلاً
-    //     )
 
     // Computed
     const totalValue = computed(() => {
@@ -82,26 +63,11 @@ export const useInventoryStore = defineStore('inventory', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await api.get('/api/resource/Item', {
-                params: {
-                    fields: JSON.stringify([
-                        "name",
-                        "item_name",
-                        "item_code",
-                        "description",
-                        "item_group",
-                        "image",
-                        "stock_uom",
-                        "disabled",
-                        "valuation_rate"
-                    ]),
-                limit_page_length: 0
-                }
-            })
+            const response = await itemList()
             // response.data.data في ERPNext عادة بيكون array
-            items.value = response.data.data || []
+            items.value = response || []
             console.log("Items loaded: API:", items.value)
-            return response.data.data
+            return response
         } catch (err) {
             error.value = err.message
             console.error('Error loading items:', err)

@@ -14,7 +14,7 @@
     >
       <!-- Application Logo -->
       <router-link
-        to="/"
+        to="/pos"
         class="flex items-center justify-center h-10 w-10 rounded-full transition-all duration-200 hover:scale-110"
         :style="{
           backgroundColor: lightenColor(primaryColor, 40),

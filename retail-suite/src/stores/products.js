@@ -1,12 +1,8 @@
 import { defineStore } from 'pinia'
 import { toRaw } from 'vue'
-import { getItemsFromFrappeDB, getPriceLists, getWarehouses, createSampleItems, deleteSampleItems, getItemsFromWebsite } from '../services/api'
+import { getPriceLists, getWarehouses, createSampleItems, deleteSampleItems } from '../services/api'
 import { useShiftStore } from './shift'
-
-// getItemsFromFrappeDB This fetch Product list
-//   based on:
-//  the current active POS Profile (shift) &  applied filters (pricelist, warehouse)
-
+import { getItemsFromFrappeDB} from '@/composables/pos'
 export const useProductsStore = defineStore('products', {
   state: () => ({
     products: [],
@@ -79,24 +75,6 @@ export const useProductsStore = defineStore('products', {
         this.warehouses = wh || []
       } catch (e) {
         console.error('❌ loadFilterOptions:', e)
-      }
-    },
-
-    // ================= WEBSITE LOAD PRODUCTS =================
-    async loadWebsiteProducts(websitePriceList, websiteCustomer) {
-      try {
-        console.log("🌍 Loading Website Products...")
-        const products = await getItemsFromWebsite(
-          websitePriceList,
-          websiteCustomer
-        )
-        console.log("🌍 Loading Website Products...",products)
-        this.products = products
-
-        return products
-      } catch (error) {
-        console.error("❌ Error loading website products:", error)
-        return []
       }
     },
 

@@ -50,7 +50,7 @@
 
         <!-- Dashboard -->
         <router-link
-          to="/"
+          to="/pos"
           :class="[
             'mx-2 px-4 py-3 rounded-lg transition flex items-center gap-3',
             isActive('/') ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'

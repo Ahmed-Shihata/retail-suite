@@ -397,7 +397,7 @@
 <script setup>
 import { ref, computed, reactive } from 'vue'
 import { useToast } from 'vue-toastification'
-import { generateBarcodePreview, generateBarcodeValue } from '../../services/api'
+import { generateBarcodePreview, generateBarcodeValue } from '../../composables/barcode'
 import { X, Search, RefreshCcw } from 'lucide-vue-next'
 import StepIndicator from '@/components/modals/StepIndicator.vue'
 import { formatPrice } from '@/utils/formatters'

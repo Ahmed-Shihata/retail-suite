@@ -11,16 +11,16 @@
         >
           <div class="px-4 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
-              <ShoppingCart class="w-5 h-5" :style="{ color: 'var(--focus-ring)' }" />
+              <ShoppingCart class="w-5 h-5" :style="{color: primaryColor}" />
               <div>
                 <h1 class="text-sm font-bold" :style="{ color: 'var(--text-main)' }">Purchase Receipts</h1>
                 <p class="text-xs" :style="{ color: 'var(--text-muted)' }">{{ purchases.length }} total receipts</p>
               </div>
             </div>
             <button
+             :style="{background: primaryColor}"
               @click="showAddModal = true"
               class="inline-flex items-center gap-1.5 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
-              :style="{ background: 'var(--focus-ring)' }"
             >
               <Plus class="w-3 h-3" /> New Receipt
             </button>
@@ -484,6 +484,7 @@ import ReceiptDetailModal     from '@/components/modals/ReceiptDetailModal.vue'
 import ConfirmModal           from '@/components/modals/ConfirmModal.vue'
 import PurchaseInvoiceModal   from '@/components/modals/PurchaseInvoiceModal.vue'
 import { useInventoryStore }  from '@/stores/inventory'
+import { useSettingsStore }   from "@/stores/settings";
 import { formatPrice }        from '@/utils/formatters'
 import { ShoppingCart, Plus, Eye, Edit2, Trash2, CheckCircle, XCircle, FileText, Search } from 'lucide-vue-next'
 import {
@@ -495,9 +496,9 @@ import {
   submitPurchaseReceipt,
   createPurchaseInvoiceFromReceipt,
 } from '@/services/api'
-
 // ─── State ────────────────────────────────────────────
 const inventoryStore  = useInventoryStore()
+const settingsStore = useSettingsStore();
 const purchases       = ref([])
 const loading         = ref(false)
 const uoms            = ref([])
@@ -541,6 +542,9 @@ const loadReceipts = async () => {
 }
 
 // ─── Computed ─────────────────────────────────────────
+
+const settings = computed(() => settingsStore.settings);
+const primaryColor = computed(() => settings.value?.appearance?.primaryColor || '#06b6d4')
 const filteredPurchases = computed(() => {
   let data = [...purchases.value]
   if (searchReceiptNo.value)

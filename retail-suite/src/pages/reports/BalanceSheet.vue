@@ -320,8 +320,8 @@ import { useRouter } from 'vue-router'
 import MainLayout from '@/layout/MainLayout.vue'
 import StatsCard from '@/layout/StatsCard.vue'
 import { ArrowLeft, Download, ChevronRight } from 'lucide-vue-next'
-import { getBalanceSheetReport, getDefaultCompany } from '@/services/api'
-
+import { getDefaultCompany } from '@/services/api'
+import { getBalanceSheetReport } from '@/composables/reports'
 const router           = useRouter()
 const loading          = ref(false)
 const error            = ref(null)

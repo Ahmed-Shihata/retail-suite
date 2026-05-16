@@ -1,14 +1,11 @@
 // src/router/router.js
 import { createRouter, createWebHistory } from "vue-router";
-
-//
 import { session, checkSession } from '@/services/auth'
 
 import MobileScan from "@/pages/MobileScan.vue";
 import POS from "@/pages/POS.vue";
 import Pay from "@/pages/Pay.vue";
 import NewPayment from "@/pages/NewPayment.vue";
-import Login from "@/pages/Login.vue";
 import Setting from "@/pages/Setting.vue";
 import InvoicesList from "@/pages/invoices/InvoicesList.vue";
 import SuppliersInvoicesList from "@/pages/invoices/SuppliersInvoices.vue";
@@ -47,8 +44,7 @@ import Expenses from'@/pages/reports/Expenses.vue';
 
 import Accounting from "@/pages/accounting/Accounting.vue";
 import AccountingDashboard from "@/pages/accounting/AccountingDashboard.vue";
-import ClosingPeriod from '@/pages/accounting/ClosingPeriod.vue';
-//
+
 import PromotionsList from '@/pages/promotions/PromotionsList.vue'
 import CouponsList from '@/pages/promotions/CouponsList.vue'
 import DiscountRules from '@/pages/promotions/DiscountRules.vue'
@@ -60,7 +56,6 @@ import ShiftSchedule from '@/pages/attendance/ShiftSchedule.vue'
 import CheckinList from '@/pages/attendance/CheckinList.vue'
 
 import UserProfile from '@/pages/users/UserProfile.vue';
-import UserDashboard from '@/pages/users/UserDashboard.vue'
 
 import NotificationCenter from '@/pages/alerts/NotificationCenter.vue'
 
@@ -80,8 +75,6 @@ const routes = [
   { path: "/newpayment", name: "Newpayment", component: NewPayment, meta: { requiresAuth: true } },
   { path: "/notification-center", name:"NotificationCenter", component: NotificationCenter, meta: { requiresAuth: true } },
   { path: "/mobile-scan", name: "MobileScan", component: MobileScan, meta: { requiresAuth: false }},
-  // Public
-  { path: "/", name:"Login", component: Login },
   {path: '/403',name: 'Forbidden',component: ForbiddenView},
   // ============================
   // Inventory Management
@@ -137,12 +130,6 @@ const routes = [
     name: "AccountingReposts",
     component: Accounting,
     meta: { title: "Accounts", requiresAuth: true },
-  },
-  {
-    path:"/closing-period",
-    name: "ClosingPeriod",
-    component: ClosingPeriod,
-    meta: { requiresAuth: true },
   },
   {
     path:"/accounting-dashboard",
@@ -233,7 +220,6 @@ const routes = [
   // ==========================
   // User
   // ==========================
-  { path: '/user-dashboard', name: 'UserDashboard', component: UserDashboard, meta: { requiresAuth: true } },
   {path: '/user-profile',  name: 'user-profile', component: UserProfile, meta: { requiresAuth: true }},
 
   // ==========================

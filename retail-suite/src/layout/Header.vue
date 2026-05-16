@@ -9,7 +9,7 @@
     >
       <div class="px-4 py-3 flex justify-between items-center">
         <div class="flex items-center gap-3">
-          <component :is="iconComponent" :class="iconColor" class="w-8 h-8" />
+          <component :is="iconComponent" :style="{color: primaryColor}" />
           <h1 class="text-lg font-bold" :style="{ color: 'var(--text-main)' }">
             {{ pageTitle }}
           </h1>
@@ -25,6 +25,7 @@ import { useSettingsStore } from '@/stores/settings'
 import InvoiceLogo from '@/components/icons/InvoiceIcon.svg'
 import SaveIcon from "@/components/icons/SaveIcon.svg";
 import ArchiveIcon from '@/components/icons/ArchiveIcon.svg'
+
 import {
   Users,
   User,
@@ -39,7 +40,7 @@ import {
   AlertTriangle
 } from 'lucide-vue-next'
 
-
+const primaryColor = computed(() => settings.value?.appearance?.primaryColor || '#06b6d4')
 const props = defineProps({
         pageTitle: { type: String, required: true },
         icon:      { type: String, default: 'BarChart3' },
@@ -65,17 +66,8 @@ const iconComponent = computed(() => {
     }
   return icons[props.icon] || BarChart3
   })
-const iconColor = () => {
-    const colorClasses = {
-      blue: 'text-blue-600',
-      green: 'text-green-600',
-      yellow: 'text-yellow-600',
-      purple: 'text-purple-600',
-      gray: 'text-gray-600'
-    }
 
-    return colorClasses[props.color] || colorClasses.blue
-  }
+
 const settingsStore = useSettingsStore()
     console.log("props.color", props.color)
 // ─── Theme ────────────────────────────────────────────────────────────────────

@@ -247,7 +247,7 @@ import { ref, computed, onMounted } from 'vue'
 import { get_currency_symbol }      from '../utils/formatters'
 import { storeToRefs } from 'pinia'
 import { toRaw }       from 'vue'
-import { processPayment, getPaymentModes } from '../services/api'  // ← أضف getPaymentModes في api.js
+import { processPayment, getPaymentModes } from '../composables/payment'
 
 // ─── Store ────────────────────────────────────────────────────────
 const shiftStore      = useShiftStore()

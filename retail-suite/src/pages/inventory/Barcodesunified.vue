@@ -867,17 +867,16 @@ import { useCartStore }        from '@/stores/cart'
 import { useInventoryStore }   from '@/stores/inventory'
 import { useToast }            from 'vue-toastification'
 import config from '@/config/frappe'
+import {getItemsFromFrappeDB, getItemGroup} from '@/composables/pos'
 import {
   generateBarcodePreview,
   generateBarcodeValue,
   addItemBarcode,
   updateItemBarcode,
   getBarcodesFromFrappeDB,
-  getItemsFromFrappeDB,
-  getItemGroup,
   getBarcodeTypes,
   handleDeleteBarcodeFrappe
-} from '@/services/api'
+} from '@/composables/barcode'
 
 // ────────────────────────────────────────────
 // STORES & HELPERS

@@ -1,7 +1,7 @@
 // Store invoice.js
 import { defineStore } from 'pinia'
 import { initDB } from '../db/indexedDB'
-import { getPosInvoices, getReturnableInvoices, submitInvoice } from '../services/api'
+import { getPosInvoices, getReturnableInvoices, submitInvoice } from '@/composables/pos'
 import { useShiftStore } from './shift'
 // 2️⃣ Options Store (Options API) ✅
 export const useInvoicesStore = defineStore('invoices', {

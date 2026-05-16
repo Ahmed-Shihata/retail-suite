@@ -817,7 +817,8 @@ import { get_currency_symbol } from '../utils/formatters'
 import { storeToRefs } from 'pinia'
 import { toRaw } from 'vue'
 import WarningIcon from '@/components/icons/WarningIcon.svg'
-import { getOutstandingInvoices, get_unallocated_payments, processPayment } from '../services/api'
+
+import { getOutstandingInvoices, get_unallocated_payments, processPayment, getPaymentModes } from '../composables/payment'
 
     // Reconcile Modal
     const showReconcileModal = ref(false)
@@ -1032,7 +1033,7 @@ const get_outstanding_invoices = async () => {
       pos_profile.value.name
     )
     console.log("OutStanding response", response)
-    outstanding_invoices.value = toRaw((response.message || response || []).map(inv => ({
+    outstanding_invoices.value = toRaw((response || []).map(inv => ({
       ...inv,
       name: inv.name
     })))

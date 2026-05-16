@@ -209,7 +209,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useShiftStore } from '@/stores/shift'
-import { get_opening_dialog_data, open_shift } from '@/services/api'
+import { get_opening_dialog_data, open_shift } from '@/composables/shift'
 import ClockIcon from '@/components/icons/ClockIcon.svg'
 import PlayIcon from '@/components/icons/PlayIcon.svg'
 import LoadingSpinner from '@/components/icons/LoadingSpinner.vue'
@@ -302,14 +302,14 @@ import AlertIcon from '@/components/icons/AlertIcon.svg'
         form.value.userId = shiftStore.users[0].id
       }
         // Fetch additional data if needed
-        const { data } = await get_opening_dialog_data()
-        console.log("Open Dialog Data", data.message)
+        const data  = await get_opening_dialog_data()
+        console.log("Open Dialog Data", data)
 
-        // احفظ الشركات
-        companies.value = data.message.companies.map(el => el.name)
+        companies.value = data.companies.map(el => el.name)
         console.log("companies", companies)
-        pos_profiles_data.value = data.message.pos_profiles_data
-        payments_method_data.value = data.message.payments_method
+
+        pos_profiles_data.value = data.pos_profiles_data
+        payments_method_data.value = data.payments_method
 
 
     })

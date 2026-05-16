@@ -1,4 +1,6 @@
 import logging
+import csv
+from io import StringIO
 import frappe
 from frappe import _
 from datetime import datetime, timedelta
@@ -1352,7 +1354,7 @@ def get_top_suppliers(payables):
 
 def get_status_summary(invoices):
     """Get count and amount by status"""
-    statuses = ['Paid', 'Due', 'Overdue', 'Disputed']
+    statuses = [inv.get("status") for inv in invoices]
     counts = {status.lower(): 0 for status in statuses}
     amounts = {status.lower(): 0 for status in statuses}
 
@@ -1363,12 +1365,20 @@ def get_status_summary(invoices):
 
     return {'counts': counts, 'amounts': amounts}
 
+def normalize_status_summary(summary):
+    fixed = {
+        "paid": 0,
+        "overdue": 0,
+        "due": 0,
+        "draft": 0
+    }
 
-import frappe
-from frappe import _
-from datetime import datetime
-import csv
-from io import StringIO
+    for k, v in summary.get("amounts", {}).items():
+        key = k.lower()
+        if key in fixed:
+            fixed[key] = v
+
+    return fixed
 
 @frappe.whitelist()
 def export_ar_report():
@@ -1415,19 +1425,38 @@ def export_ar_report():
 # ===========================================================
 
 @frappe.whitelist()
-def get_accounts_payable_data():
+def get_accounts_payable_data(filters=None):
     """
     Fetch Accounts Payable data from ERPNext
     Returns comprehensive PR analytics and invoice details
     """
     try:
+        # Parse filters
+        if isinstance(filters, str):
+            filters = frappe.parse_json(filters)
+        filters = filters or {}
+
+        # Build filters
+        invoice_filters = {}
+        # Optional filters
+        if filters.get("supplier"):
+            invoice_filters["supplier"] = filters.get("supplier")
+
+        if filters.get("from_date") and filters.get("to_date"):
+            invoice_filters["posting_date"] = [
+                "between",
+                [filters.get("from_date"), filters.get("to_date")]
+            ]
+        if filters.get("status"):
+            invoice_filters["status"] = filters.get("status")
+
+        if filters.get("invoice_no"):
+            invoice_filters["name"] = filters.get("invoice_no")
+
         # Get all unpaid and partially paid invoices
         invoices = frappe.get_list(
             'Purchase Invoice',
-            filters={
-                'docstatus': 1,  # Submitted documents only
-                'status': ['!=', 'Cancelled']
-            },
+            filters=invoice_filters,
             fields=[
                 'name',
                 'supplier',
@@ -1446,16 +1475,11 @@ def get_accounts_payable_data():
         today = getdate()
 
         for invoice in invoices:
-            if invoice['outstanding_amount'] <= 0:
-                status = 'Paid'
-            elif getdate(invoice['due_date']) >= today:
-                status = 'Due'
-            else:
-                status = 'Overdue'
-
             days_overdue = 0
-            if status == 'Overdue':
-                days_overdue = (today - getdate(invoice['due_date'])).days
+            if invoice.get("status") == 'Overdue' and invoice.get("due_date"):
+                days_overdue = (
+                    today - getdate(invoice['due_date'])
+                ).days
 
             payables.append({
                 'id': invoice['name'],
@@ -1463,7 +1487,7 @@ def get_accounts_payable_data():
                 'invoiceNo': invoice['name'],
                 'amount': int(invoice['outstanding_amount']),
                 'dueDate': str(invoice['due_date']),
-                'status': status,
+                'status': invoice.get("status"),
                 'daysOverdue': days_overdue,
                 'totalAmount': int(invoice['grand_total']),
                 'paidAmount': int(invoice['grand_total'] - invoice['outstanding_amount'])
@@ -1498,8 +1522,8 @@ def get_accounts_payable_data():
             'overdueAmount': overdue_amount,
             'collectionRate': collection_rate,
             'topSuppliers': top_suppliers,
-            'statusCounts': status_summary['counts'],
-            'statusAmounts': status_summary['amounts'],
+            'statusCounts': normalize_status_summary(status_summary),
+            'statusAmounts': normalize_status_summary(status_summary),
             'lastUpdated': str(today)
         }
 

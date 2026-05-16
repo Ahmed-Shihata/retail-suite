@@ -2,25 +2,30 @@ import { defineStore } from 'pinia'
 import { toRaw } from 'vue'
 import {
 
-  get_available_pos_profiles,
   getCurrentUserInfoApi,
-  getShiftStatistics, get_opening_shift,
-  make_closing_shift_from_opening_shift,
-  submit_closing_shift, get_shift_summary,
-  getAllShifts,
 
-  createShiftApi,
-  updateShiftApi,
-  deleteShiftApi,
-  fetchShiftsApi,
-  loadHolidayListsApi,
+
   processAutoAttendanceApi,
-
   fetchShiftAssignmentsApi,
   createShiftAssignmentApi,
   updateShiftAssignmentApi,
   deleteShiftAssignmentApi,
- } from '@/services/api'
+} from '@/services/api'
+
+import {
+  getAllShifts,
+  fetchShiftsApi,
+  make_closing_shift_from_opening_shift,
+  loadHolidayListsApi,
+  get_user_opening_shift,
+  createShiftApi,
+  updateShiftApi,
+  deleteShiftApi,
+  submit_closing_shift,
+  get_shift_summary,
+  getShiftStatistics,
+  get_available_pos_profiles,
+} from '@/composables/shift'
 export const useShiftStore = defineStore('shift', {
   state: () => ({
     currentShift: null,
@@ -130,7 +135,7 @@ export const useShiftStore = defineStore('shift', {
       try {
         const currentUserInfo = await this.getCurrentUserInfo()
         const currentUser = currentUserInfo.user
-        const result = await get_opening_shift(currentUser);
+        const result = await get_user_opening_shift(currentUser);
 
         if (result) {
           console.log('✅ Opening shift found:', result);

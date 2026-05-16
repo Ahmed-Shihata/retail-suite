@@ -1,7 +1,7 @@
 // Store cart.js
 import { defineStore } from 'pinia'
 import { ref, toRaw } from 'vue'
-import { createSalesReturn, createSalesOrder } from '../services/api'
+import { createSalesReturn, createSalesOrder } from '@/composables/pos'
 export const useCartStore = defineStore('cart', {
   state: () => ({
     cart: [],
