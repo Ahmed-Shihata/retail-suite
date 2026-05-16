@@ -160,3 +160,257 @@ MIT License
 ## 🌟 Show Your Support
 
 If you find this project useful, please give it a ⭐ on GitHub!
+
+### 🛠️ Development Setup — Retail Suite
+
+## 1. Install Dependencies
+
+```bash
+cd ~/Music/frappe-bench-v15/apps/retail/retail-suite
+npm install
+```
+
+---
+
+## 2. Create `.env` File
+
+Create a `.env` file inside `retail-suite/`:
+
+```env
+VITE_FRAPPE_HOST=192.168.8.5
+VITE_FRAPPE_URL_LOCAL=https://192.168.8.5:81
+VITE_VUE_URL=https://192.168.8.5:5173
+VITE_ENV=development
+VITE_SITE_NAME=site.com
+VITE_SOCKET_URL=http://192.168.8.5:9000
+SOCKET_PORT=9000
+VITE_CERTS_DIR=/home/frappe/Music/frappe-bench-v15/certs
+```
+
+> ⚠️ Replace `site.com` with your actual Frappe site name.
+
+---
+
+## 3. SSL Certificates
+
+`vite.config.js` reads certs from the path defined in `VITE_CERTS_DIR`.
+
+Make sure these files exist:
+```
+{VITE_CERTS_DIR}/{VITE_FRAPPE_HOST}+1-key.pem
+{VITE_CERTS_DIR}/{VITE_FRAPPE_HOST}+1.pem
+```
+
+Example:
+```
+/home/frappe/Music/frappe-bench-v15/certs/192.168.8.5+1-key.pem
+/home/frappe/Music/frappe-bench-v15/certs/192.168.8.5+1.pem
+```
+
+If missing, generate them with [mkcert](https://github.com/FiloSottile/mkcert):
+```bash
+cd /home/frappe/Music/frappe-bench-v15/certs
+mkcert 192.168.8.5 localhost
+```
+
+---
+
+## 4. Run Dev Server
+
+```bash
+npm run dev
+```
+
+Dev server will be available at:
+```
+https://192.168.8.5:5173/
+```
+
+---
+
+## 5. Login First
+
+Before opening the app, log in to Frappe first:
+
+```
+https://192.168.8.5:81/login
+```
+
+Then open the app:
+```
+https://192.168.8.5:5173/
+```
+
+> The app relies on a Frappe session cookie — it must exist before the app loads.
+
+---
+
+## 6. Build for Production
+
+```bash
+npm run build
+```
+
+Output will be placed in:
+```
+../retail/public/retail_suite/
+```
+
+## 1. Install Dependencies
+
+```bash
+cd ~/Music/frappe-bench-v15/apps/retail/retail-suite
+npm install
+```
+
+---
+
+## 2. Create `.env` File
+
+في نفس المجلد `retail-suite/` أنشئ ملف `.env`:
+
+```env
+VITE_FRAPPE_HOST=192.168.8.5
+VITE_FRAPPE_URL_LOCAL=https://192.168.8.5:81
+VITE_VUE_URL=https://192.168.8.5:5173
+VITE_ENV=development
+VITE_SITE_NAME=site.com
+VITE_SOCKET_URL=http://192.168.8.5:9000
+SOCKET_PORT=9000
+VITE_CERTS_DIR=/home/frappe/Music/frappe-bench-v15/certs
+```
+
+> ⚠️ غيّر `site.com` باسم الـ site الفعلي عندك (نفس اللي في Frappe).
+
+---
+
+## 3. SSL Certificates
+
+الـ `vite.config.js` بيقرأ الـ certs من المسار في `VITE_CERTS_DIR`.
+
+تأكد إن الملفات دي موجودة:
+```
+{VITE_CERTS_DIR}/{VITE_FRAPPE_HOST}+1-key.pem
+{VITE_CERTS_DIR}/{VITE_FRAPPE_HOST}+1.pem
+```
+
+مثال:
+```
+/home/frappe/Music/frappe-bench-v15/certs/192.168.8.5+1-key.pem
+/home/frappe/Music/frappe-bench-v15/certs/192.168.8.5+1.pem
+```
+
+لو مش موجودة، أنشئها بـ [mkcert](https://github.com/FiloSottile/mkcert):
+```bash
+cd /home/frappe/Music/frappe-bench-v15/certs
+mkcert 192.168.8.5 localhost
+```
+
+---
+
+## 4. Run Dev Server
+
+```bash
+npm run dev
+```
+
+Dev server هيشتغل على:
+```
+https://192.168.8.5:5173/
+```
+
+---
+
+## 5. Login أول مرة
+
+قبل ما تفتح التطبيق، سجّل دخول على Frappe أولاً:
+
+```
+https://192.168.8.5:81/login
+```
+
+بعدين افتح:
+```
+https://192.168.8.5:5173/
+```
+
+> السبب: التطبيق بيعتمد على Frappe session cookie، ولازم تكون موجودة قبل ما يشتغل.
+
+---
+
+## 6. Build for Production
+
+```bash
+npm run build
+```
+
+الـ output هيتحط في:
+```
+../retail/public/retail_suite/
+```
+
+
+## 🚀 Production Deployment
+
+### 1. Build the Vue App
+```bash
+npm run build
+```
+Output will be at: `../retail/public/retail_suite/`
+
+### 2. Link Assets to Frappe
+```bash
+cd /path/to/frappe-bench
+bench build --app retail
+bench clear-cache
+```
+
+### 3. Configure Nginx
+
+Open your site's nginx config:
+```bash
+sudo nano /etc/nginx/conf.d/frappe-bench-v15.conf
+```
+
+Add these two blocks **before** `location /` inside your site's server block (port 81):
+
+```nginx
+location /retail_suite {
+    alias /path/to/frappe-bench/sites/assets/retail/retail_suite/;
+    try_files $uri $uri/ /retail_suite/index.html;
+    index index.html;
+}
+
+location /pos {
+    alias /path/to/frappe-bench/sites/assets/retail/retail_suite/;
+    try_files $uri /retail_suite/index.html;
+    index index.html;
+}
+
+location /socket.io {
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Frappe-Site-Name dms.com;
+
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_pass http://frappe-bench-v15-socketio-server;
+}
+```
+
+### 4. Reload Nginx
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### 5. Access the App
+```bash
+https://your-server-ip:81/pos
+```
+
+> **Note:** Make sure you are logged in to Frappe (`/app`) before accessing `/pos`,
+> as authentication is handled by Frappe's session.
