@@ -213,6 +213,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { getNotifications, getCurrentUserInfoApi, updateNotificationStatus, deleteNotificationAPI } from '@/services/api'
+import { useConfirm } from '@/composables/useConfirm'
+const { confirm } = useConfirm()
 
 const ITEMS_PER_PAGE = 10
 
@@ -340,7 +342,13 @@ const deleteNotification = async (notification) => {
 
 // Delete all notifications
 const deleteAllNotifications = async () => {
-  if (confirm('هل أنت متأكد من رغبتك في حذف جميع الإخطارات؟')) {
+  const confirmed = await confirm({
+    type: 'delete',
+    title: 'حذف جميع الإخطارات',
+    message: 'هل أنت متأكد من رغبتك في حذف جميع الإخطارات؟',
+    confirmLabel: 'حذف',
+  })
+  if (!confirmed) return
     try {
       for (const notification of notifications.value) {
         await deleteNotificationAPI(notification.name)
@@ -350,7 +358,7 @@ const deleteAllNotifications = async () => {
       console.error('Error deleting all notifications:', err)
       error.value = 'خطأ في حذف الإخطارات'
     }
-  }
+
 }
 
 

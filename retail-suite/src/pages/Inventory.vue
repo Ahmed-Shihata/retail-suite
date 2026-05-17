@@ -351,221 +351,203 @@ import  PlusIcon from '@/components/icons/PlusIcon.svg'
 import InventoryIcon from '@/components/icons/InventoryIcon2.svg'
 import  CopyIcon from '@/components/icons/CopyIcon.svg'
 import  EditIcon from '@/components/icons/EditIcon.svg'
-
+import { useConfirm } from '@/composables/useConfirm'
 import { TrendingUp, Calendar, BarChart3, DollarSign } from 'lucide-vue-next'
 
-    const productsStore = useProductsStore()
+const { confirm } = useConfirm()
+const productsStore = useProductsStore()
 
-    // Reactive state
-    const searchQuery = ref('')
-    const selectedCategory = ref('')
-    const sortBy = ref('name')
-    const showAddModal = ref(false)
-    const showEditModal = ref(false)
-    const isSaving = ref(false)
-    const editingProduct = ref(null)
-    const newCategory = ref('')
-
-
-    const defaultImage = '/src/assets/img/default-product.jpg'
-    const defaultImageSrc = `${config.VUE_URL}${defaultImage}`
+// Reactive state
+const searchQuery = ref('')
+const selectedCategory = ref('')
+const sortBy = ref('name')
+const showAddModal = ref(false)
+const showEditModal = ref(false)
+const isSaving = ref(false)
+const editingProduct = ref(null)
+const newCategory = ref('')
 
 
-    const currentSrc = ref(
-      product?.image
-        ?  `${config.VUE_URL}${product?.image}`
-        : defaultImageSrc
+const defaultImage = '/src/assets/img/default-product.jpg'
+const defaultImageSrc = `${config.VUE_URL}${defaultImage}`
+
+
+const currentSrc = ref(
+  product?.image
+    ?  `${config.VUE_URL}${product?.image}`
+    : defaultImageSrc
+)
+
+// Product form
+const productForm = reactive({
+  name: '',
+  description: '',
+  price: 0,
+  stock: 0,
+  category: '',
+  image: ''
+})
+
+// Computed properties
+const categories = computed(() => {
+  const cats = new Set()
+  productsStore.products.forEach(product => {
+    if (product.category) {
+      cats.add(product.category)
+    }
+  })
+  return Array.from(cats).sort()
+})
+
+const filteredProducts = computed(() => {
+  let products = [...productsStore.products]
+
+  // Search filter
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    products = products.filter(product =>
+      product.name.toLowerCase().includes(query) ||
+      (product.description || '').toLowerCase().includes(query) ||
+      (product.category || '').toLowerCase().includes(query)
     )
+  }
 
-    // Product form
-    const productForm = reactive({
-      name: '',
-      description: '',
-      price: 0,
-      stock: 0,
-      category: '',
-      image: ''
-    })
+  // Category filter
+  if (selectedCategory.value) {
+    products = products.filter(product => product.category === selectedCategory.value)
+  }
+  return products
+})
 
-    // Computed properties
-    const categories = computed(() => {
-      const cats = new Set()
-      productsStore.products.forEach(product => {
-        if (product.category) {
-          cats.add(product.category)
+const lowStockCount = computed(() => {
+  return productsStore.products.filter(product => (product.stock || 0) < 10).length
+})
+
+const totalInventoryValue = computed(() => {
+  return productsStore.products.reduce((total, product) => {
+    return total + (product.rate * (product.stock || 0))
+  }, 0)
+})
+
+const getCategoryClass = (category) => {
+  const classes = {
+    'Coffee': 'bg-brown-100 text-brown-800',
+    'Tea': 'bg-green-100 text-green-800',
+    'Food': 'bg-yellow-100 text-yellow-800',
+    'Pastry': 'bg-pink-100 text-pink-800',
+    'Cold Drinks': 'bg-blue-100 text-blue-800',
+    'Dessert': 'bg-purple-100 text-purple-800'
+  }
+  return classes[category] || 'bg-gray-100 text-gray-800'
+}
+
+const getStockClass = (stock) => {
+  if (stock === 0) return 'text-red-600 font-medium'
+  if (stock < 10) return 'text-yellow-600 font-medium'
+  return 'text-green-600 font-medium'
+}
+const getStatusClass = (stock) => {
+  if (stock === 0) return 'bg-red-100 text-red-800'
+  if (stock < 10) return 'bg-yellow-100 text-yellow-800'
+  return 'bg-green-100 text-green-800'
+}
+const getStatusText = (stock) => {
+  if (stock === 0) return 'Out of Stock'
+  if (stock < 10) return 'Low Stock'
+  return 'In Stock'
+}
+const handleImageError = (event) => {
+  event.target.src = 'https://via.placeholder.com/150?text=No+Image'
+}
+const resetForm = () => {
+  productForm.name = ''
+  productForm.description = ''
+  productForm.rate = 0
+  productForm.stock = 0
+  productForm.category = ''
+  productForm.image = ''
+  newCategory.value = ''
+  editingProduct.value = null
+}
+const closeModal = () => {
+  showAddModal.value = false
+  showEditModal.value = false
+  isSaving.value = false
+  resetForm()
+}
+const saveProduct = async () => {
+    if (!productForm.name || productForm.rate <= 0) {
+        return
         }
-      })
-      return Array.from(cats).sort()
-    })
-
-    const filteredProducts = computed(() => {
-      let products = [...productsStore.products]
-
-      // Search filter
-      if (searchQuery.value) {
-        const query = searchQuery.value.toLowerCase()
-        products = products.filter(product =>
-          product.name.toLowerCase().includes(query) ||
-          (product.description || '').toLowerCase().includes(query) ||
-          (product.category || '').toLowerCase().includes(query)
-        )
-      }
-
-      // Category filter
-      if (selectedCategory.value) {
-        products = products.filter(product => product.category === selectedCategory.value)
-      }
-
-      // Sort
-      // products.sort((a, b) => {
-      //   switch (sortBy.value) {
-      //     case 'name':
-      //       return a.name.localeCompare(b.name)
-      //     case 'price':
-      //       return (a.rate || 0) - (b.rate || 0)
-      //     case 'category':
-      //       return (a.category || '').localeCompare(b.category || '')
-      //     case 'stock':
-      //       return (a.stock || 0) - (b.stock || 0)
-      //     case 'created':
-      //       return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-      //     default:
-      //       return 0
-      //   }
-      // })
-
-      return products
-    })
-
-    const lowStockCount = computed(() => {
-      return productsStore.products.filter(product => (product.stock || 0) < 10).length
-    })
-
-    const totalInventoryValue = computed(() => {
-      return productsStore.products.reduce((total, product) => {
-        return total + (product.rate * (product.stock || 0))
-      }, 0)
-    })
-
-    const getCategoryClass = (category) => {
-      const classes = {
-        'Coffee': 'bg-brown-100 text-brown-800',
-        'Tea': 'bg-green-100 text-green-800',
-        'Food': 'bg-yellow-100 text-yellow-800',
-        'Pastry': 'bg-pink-100 text-pink-800',
-        'Cold Drinks': 'bg-blue-100 text-blue-800',
-        'Dessert': 'bg-purple-100 text-purple-800'
-      }
-      return classes[category] || 'bg-gray-100 text-gray-800'
+    isSaving.value = true
+    // Handle new category
+    if (productForm.category === 'custom' && newCategory.value.trim()) {
+        productForm.category = newCategory.value.trim()
+    } else if (productForm.category === 'custom') {
+        isSaving.value = false
+        return
     }
-
-    const getStockClass = (stock) => {
-      if (stock === 0) return 'text-red-600 font-medium'
-      if (stock < 10) return 'text-yellow-600 font-medium'
-      return 'text-green-600 font-medium'
-    }
-    const getStatusClass = (stock) => {
-      if (stock === 0) return 'bg-red-100 text-red-800'
-      if (stock < 10) return 'bg-yellow-100 text-yellow-800'
-      return 'bg-green-100 text-green-800'
-    }
-    const getStatusText = (stock) => {
-      if (stock === 0) return 'Out of Stock'
-      if (stock < 10) return 'Low Stock'
-      return 'In Stock'
-    }
-    const handleImageError = (event) => {
-      event.target.src = 'https://via.placeholder.com/150?text=No+Image'
-    }
-    const resetForm = () => {
-      productForm.name = ''
-      productForm.description = ''
-      productForm.rate = 0
-      productForm.stock = 0
-      productForm.category = ''
-      productForm.image = ''
-      newCategory.value = ''
-      editingProduct.value = null
-    }
-    const closeModal = () => {
-      showAddModal.value = false
-      showEditModal.value = false
-      isSaving.value = false
-      resetForm()
-    }
-    const saveProduct = async () => {
-        if (!productForm.name || productForm.rate <= 0) {
-            alert('Please fill in the required fields.')
-            return
-            }
-        isSaving.value = true
-        // Handle new category
-        if (productForm.category === 'custom' && newCategory.value.trim()) {
-            productForm.category = newCategory.value.trim()
-        } else if (productForm.category === 'custom') {
-            alert('Please enter a name for the new category.')
-            isSaving.value = false
-            return
+    try {
+        if (showEditModal.value && editingProduct.value) {
+            // Update existing product
+            await productsStore.updateProduct(editingProduct.value.id, { ...productForm })
+        } else {
+            // Add new product
+            await productsStore.addProduct({ ...productForm })
         }
-        try {
-            if (showEditModal.value && editingProduct.value) {
-                // Update existing product
-                await productsStore.updateProduct(editingProduct.value.id, { ...productForm })
-                alert('Product updated successfully.')
-            } else {
-                // Add new product
-                await productsStore.addProduct({ ...productForm })
-                alert('Product added successfully.')
-            }
-            closeModal()
-        } catch (error) {
-            console.error('Error saving product:', error)
-            alert('An error occurred while saving the product.')
-            isSaving.value = false
-        }
+        closeModal()
+    } catch (error) {
+        console.error('Error saving product:', error)
+        isSaving.value = false
     }
-    const editProduct = (product) => {
-        editingProduct.value = product
-        productForm.name = product.name
-        productForm.description = product.description || ''
-        productForm.price = product.rate || 0
-        productForm.stock = product.stock || 0
-        productForm.category = product.category || ''
-        productForm.image = product.image || ''
-        newCategory.value = ''
-        showEditModal.value = true
-    }
-    const duplicateProduct = async (product) => {
-        const confirmed = confirm(`Are you sure you want to duplicate the product "${product.name}"
-?`)
-        if (!confirmed) return
-        try {
-            const newProduct = { ...product }
-            delete newProduct.item_code
-            newProduct.name = `${newProduct.name} (Copy)`
-            await productsStore.addProduct(newProduct)
-            alert('Product duplicated successfully.')
-        } catch (error) {
-            console.error('Error duplicating product:', error)
-            alert('An error occurred while duplicating the product.')
-        }
-    }
-    const deleteProduct = async (product) => {
-        const confirmed = confirm(`Are you sure you want to delete the product "${product.name}"? This action cannot be undone.`)
-        if (!confirmed) return
-        try {
-            await productsStore.deleteProduct(product.item_code)
-        alert('Product deleted successfully.')
-        } catch (error) {
-            console.error('Error deleting product:', error)
-            alert('An error occurred while deleting the product.')
-        }
-    }
-    // Fetch products on mount
-    onMounted(() => {
-        // productsStore.loadProductsFromIDB()
-        productsStore.loadProductsFromFrappeDB()
+}
+const editProduct = (product) => {
+    editingProduct.value = product
+    productForm.name = product.name
+    productForm.description = product.description || ''
+    productForm.price = product.rate || 0
+    productForm.stock = product.stock || 0
+    productForm.category = product.category || ''
+    productForm.image = product.image || ''
+    newCategory.value = ''
+    showEditModal.value = true
+}
+const duplicateProduct = async (product) => {
+    const confirmed = confirm({
+        type: 'info',
+        title: 'Duplicate Product',
+        message: `Are you sure you want to duplicate the product "${product.name}"?`,
+        confirmLabel: 'Duplicate',
     })
+    if (!confirmed) return
+    try {
+        const newProduct = { ...product }
+        delete newProduct.item_code
+        newProduct.name = `${newProduct.name} (Copy)`
+        await productsStore.addProduct(newProduct)
+    } catch (error) {
+        console.error('Error duplicating product:', error)
+    }
+}
+const deleteProduct = async (product) => {
+    const confirmed = confirm({
+        type: 'delete',
+        title: 'Delete Product',
+        message: `Are you sure you want to delete the product "${product.name}"? This action cannot be undone.`,
+        confirmLabel: 'Delete',
+    })
+    if (!confirmed) return
+    try {
+        await productsStore.deleteProduct(product.item_code)
+    } catch (error) {
+        console.error('Error deleting product:', error)
+    }
+}
+// Fetch products on mount
+onMounted(() => {
+    // productsStore.loadProductsFromIDB()
+    productsStore.loadProductsFromFrappeDB()
+})
 
 </script>
 

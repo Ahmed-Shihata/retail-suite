@@ -152,7 +152,7 @@ import ImageIcon from '@/components/icons/ImageIcon.svg'
 import {formatPrice} from '@/utils/formatters'
 import { useSettingsStore } from '@/stores/settings'
 import config from '@/config/frappe'
-
+import { useConfirm } from '@/composables/useConfirm'
 const props = defineProps({
   mode: {
     type: String,
@@ -169,115 +169,116 @@ const props = defineProps({
 })
 const emit = defineEmits(['update-quantity', 'remove-item', 'quantity-error'])
 
-  const settingsStore = useSettingsStore()
-  const settings = computed(() => settingsStore.settings)
-  const primaryColor = computed(() => {
-    return settings.value?.appearance?.primaryColor || '#06b6d4'
-  })
-  const isUpdating = ref(false)
-  const imageError = ref(false)
-  const hasError = ref(false)
-  const displayQuantity = ref(props.item.qty)
-  const pendingQuantity = ref(props.item.qty)
-  const defaultImage = '/src/assets/img/default-product.jpg'
-  const defaultImageSrc = `${config.VUE_URL}${defaultImage}`
-  const currentSrc = ref(
-    props.item?.image
-      ? `${config.VUE_URL}${props.item?.image}`
-      : defaultImageSrc
-  )
+const { confirm } = useConfirm()
+const settingsStore = useSettingsStore()
 
 
-  console.log("Format 10 k",formatPrice(10000))
-  // Computed properties
-  const itemTotal = computed(() => {
-    return props.item.rate * props.item.qty
-  })
+const settings = computed(() => settingsStore.settings)
+const primaryColor = computed(() => {
+  return settings.value?.appearance?.primaryColor || '#06b6d4'
+})
+const isUpdating = ref(false)
+const imageError = ref(false)
+const hasError = ref(false)
+const displayQuantity = ref(props.item.qty)
+const pendingQuantity = ref(props.item.qty)
+const defaultImage = '/src/assets/img/default-product.jpg'
+const defaultImageSrc = `${config.VUE_URL}${defaultImage}`
+const currentSrc = ref(
+  props.item?.image
+    ? `${config.VUE_URL}${props.item?.image}`
+    : defaultImageSrc
+)
 
-  // Watch for prop changes
-  watch(
-    () => props.item.qty,
-    (newQty) => {
-      displayQuantity.value = newQty
-      pendingQuantity.value = newQty
-    }
-  )
+// Computed properties
+const itemTotal = computed(() => {
+  return props.item.rate * props.item.qty
+})
 
-  // Handle image loading error
-  const handleImageError = () => {
-    currentSrc.value = defaultImage
-    imageError.value = false
+// Watch for prop changes
+watch(
+  () => props.item.qty,
+  (newQty) => {
+    displayQuantity.value = newQty
+    pendingQuantity.value = newQty
   }
+)
 
-  // Increase quantity
-    const increaseQuantity = () => {
-      let newQty = props.item.qty
+// Handle image loading error
+const handleImageError = () => {
+  currentSrc.value = defaultImage
+  imageError.value = false
+}
 
-      if (props.mode === 'return') {
-        if (newQty < props.item.originalQuantity) {
-          newQty -= 1
+// Increase quantity
+const increaseQuantity = () => {
+  let newQty = props.item.qty
 
-                console.log("(+) newQty ", newQty)
-        } else {
-          if (window.$toast) window.$toast.warning('You cannot return more than original quantity')
-        }
-      } else {
-        console.log("Mode: Sale")
-        newQty += 1
-      }
-      console.log("increaseQuantity", newQty, props.mode,props.item.originalQuantity)
-      emit('update-quantity', props.item.item_code, newQty, props.mode)
+  if (props.mode === 'return') {
+    if (newQty < props.item.originalQuantity) {
+      newQty -= 1
+
+            console.log("(+) newQty ", newQty)
+    } else {
+      if (window.$toast) window.$toast.warning('You cannot return more than original quantity')
     }
-
-    const decreaseQuantity = () => {
-      let newQty = props.item.qty
-      console.log("(-) decreaseQuantity ",props.mode)
-      if (props.mode === 'return') {
-        // في المرتجع: لو ضغط - يعني هيقلل المرتجع (يرجع أقرب للصفر)
-        if (newQty < -1) {
-          newQty += 1
-          console.log("(-) decreaseQuantity & newQty",props.mode, newQty)
-        } else {
-          if (window.$toast) window.$toast.info('Cannot reduce below -1')
-        }
-      } else {
-        if (newQty > 1) {
-          newQty -= 1
-        } else {
-          emit('remove-item', props.item.item_code)
-          console.log("(-) props mode",props.mode)
-          return
-        }
-      }
-
-      emit('update-quantity', props.item.item_code, newQty)
-    }
-
-
-  // Handle quantity input
-  const handleQuantityInput = (event) => {
-    const value = parseInt(event.target.value) || 0
-    displayQuantity.value = value
-
-    // Validate
-    hasError.value = value < 1 || value > 999
-
-    if (!hasError.value) {
-      pendingQuantity.value = value
-    }
+  } else {
+    console.log("Mode: Sale")
+    newQty += 1
   }
+  console.log("increaseQuantity", newQty, props.mode,props.item.originalQuantity)
+  emit('update-quantity', props.item.item_code, newQty, props.mode)
+}
 
-  // Handle quantity blur (when user finishes editing)
-  const handleQuantityBlur = async () => {
-    if (hasError.value) {
-      resetQuantity()
+const decreaseQuantity = () => {
+  let newQty = props.item.qty
+  console.log("(-) decreaseQuantity ",props.mode)
+  if (props.mode === 'return') {
+
+    if (newQty < -1) {
+      newQty += 1
+      console.log("(-) decreaseQuantity & newQty",props.mode, newQty)
+    } else {
+      if (window.$toast) window.$toast.info('Cannot reduce below -1')
+    }
+  } else {
+    if (newQty > 1) {
+      newQty -= 1
+    } else {
+      emit('remove-item', props.item.item_code)
+      console.log("(-) props mode",props.mode)
       return
     }
-
-    if (pendingQuantity.value !== props.item.qty) {
-      await updateQuantity(pendingQuantity.value)
-    }
   }
+
+  emit('update-quantity', props.item.item_code, newQty)
+}
+
+
+// Handle quantity input
+const handleQuantityInput = (event) => {
+  const value = parseInt(event.target.value) || 0
+  displayQuantity.value = value
+
+  // Validate
+  hasError.value = value < 1 || value > 999
+
+  if (!hasError.value) {
+    pendingQuantity.value = value
+  }
+}
+
+// Handle quantity blur (when user finishes editing)
+const handleQuantityBlur = async () => {
+  if (hasError.value) {
+    resetQuantity()
+    return
+  }
+
+  if (pendingQuantity.value !== props.item.qty) {
+    await updateQuantity(pendingQuantity.value)
+  }
+}
 
   // Handle enter key on quantity input
   const handleQuantityEnter = async (event) => {
@@ -291,45 +292,45 @@ const emit = defineEmits(['update-quantity', 'remove-item', 'quantity-error'])
     hasError.value = false
   }
 
-  // Update quantity with validation
-  const updateQuantity = async (newQuantity) => {
-    if (isUpdating.value) return
+// Update quantity with validation
+const updateQuantity = async (newQuantity) => {
+  if (isUpdating.value) return
 
-    const isReturnMode = props.mode === 'return'
-    console.log('🟢 updateQuantity fired', props.mode, props.item.item_code, newQuantity)
+  const isReturnMode = props.mode === 'return'
+  console.log('🟢 updateQuantity fired', props.mode, props.item.item_code, newQuantity)
 
-    // ✅ Validate quantity range
-    if (!isReturnMode && (newQuantity < 1 || newQuantity > 999 || isNaN(newQuantity))) {
-      emit('quantity-error', 'Quantity must be between 1 and 999')
-      resetQuantity()
-      return
-    }
-
-    // ✅ In return mode, allow negative but still reasonable range
-    if (isReturnMode && (newQuantity > -1 || isNaN(newQuantity))) {
-      emit('quantity-error', 'Return quantity must be between -1 and -999')
-      resetQuantity()
-      return
-    }
-
-
-    if (newQuantity === props.item.qty) return // No change needed
-
-    isUpdating.value = true
-    hasError.value = false
-
-    try {
-      emit('update-quantity', props.item.item_code, newQuantity, props.mode)
-
-      await new Promise(resolve => setTimeout(resolve, 200))
-    } catch (error) {
-      console.error('Failed to update quantity:', error)
-      emit('quantity-error', 'Failed to update quantity')
-      resetQuantity()
-    } finally {
-      isUpdating.value = false
-    }
+  //  Validate quantity range
+  if (!isReturnMode && (newQuantity < 1 || newQuantity > 999 || isNaN(newQuantity))) {
+    emit('quantity-error', 'Quantity must be between 1 and 999')
+    resetQuantity()
+    return
   }
+
+  //  In return mode, allow negative but still reasonable range
+  if (isReturnMode && (newQuantity > -1 || isNaN(newQuantity))) {
+    emit('quantity-error', 'Return quantity must be between -1 and -999')
+    resetQuantity()
+    return
+  }
+
+
+  if (newQuantity === props.item.qty) return // No change needed
+
+  isUpdating.value = true
+  hasError.value = false
+
+  try {
+    emit('update-quantity', props.item.item_code, newQuantity, props.mode)
+
+    await new Promise(resolve => setTimeout(resolve, 200))
+  } catch (error) {
+    console.error('Failed to update quantity:', error)
+    emit('quantity-error', 'Failed to update quantity')
+    resetQuantity()
+  } finally {
+    isUpdating.value = false
+  }
+}
 
 
   // Handle remove item
@@ -339,8 +340,14 @@ const emit = defineEmits(['update-quantity', 'remove-item', 'quantity-error'])
 
     // Show confirmation for expensive items
     if (itemTotal.value > 50000) {
-      const confirmed = confirm(`Remove this ${props.item.item_name} from cart?`)
+      const confirmed = await confirm({
+        type: 'delete',
+        title: 'Remove Item',
+        message: `Remove this ${props.item.item_name} from cart?`,
+        confirmLabel: 'Remove Item',
+      })
       if (!confirmed) return
+
     }
 
     isUpdating.value = true
@@ -352,7 +359,6 @@ const emit = defineEmits(['update-quantity', 'remove-item', 'quantity-error'])
       emit('remove-item', props.item.item_code)
     } catch (error) {
       console.error('Failed to remove item:', error)
-      alert('Failed to remove item. Please try again.')
     } finally {
       isUpdating.value = false
     }

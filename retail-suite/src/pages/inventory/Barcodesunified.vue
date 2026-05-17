@@ -877,7 +877,7 @@ import {
   getBarcodeTypes,
   handleDeleteBarcodeFrappe
 } from '@/composables/barcode'
-
+import { useConfirm } from '@/composables/useConfirm'
 // ────────────────────────────────────────────
 // STORES & HELPERS
 // ────────────────────────────────────────────
@@ -886,7 +886,7 @@ const toast          = useToast()
 const shiftStore     = useShiftStore()
 const inventoryStore = useInventoryStore()
 const cartStore      = useCartStore()
-
+const { confirm } = useConfirm()
 const defaultImageSrc = ref(`${config.VUE_URL}/src/assets/img/default-product.jpg`)
 const handleImageError = (e) => { e.target.src = 'https://via.placeholder.com/40?text=?' }
 
@@ -1100,14 +1100,20 @@ const saveItem = async (itemData) => {
 }
 
 const deleteItem = async (row) => {
-  if (!confirm(`Delete item "${row.productName}"?\nThis will also remove all its barcodes.`)) return
+  const confirmed = await confirm({
+    type: 'delete',
+    title: 'Delete Item',
+    message: `Delete item "${row.productName}"?\nThis will also remove all its barcodes.`,
+    confirmLabel: 'Delete',
+  })
+  if (!confirmed) return
   try {
     const res = await inventoryStore.deleteItem(row.item_code)
     if (res?.status === '200' || res?.data?.status === '200 ') {
       toast.success(`"${row.productName}" deleted`)
       await loadData()
     } else {
-      toast.warning(res?.data?.message?.message || 'Failed to delete')
+      toast.warning(res?.message || 'Failed to delete')
     }
   } catch (e) { console.error(e); toast.error('Error deleting item') }
 }
@@ -1174,7 +1180,14 @@ const handleUpdateBarcode = async ({ id, sku, old_barcode, barcode, barcode_type
 }
 
 const deleteBarcodeRow = async (bc) => {
-  if (!confirm(`Delete barcode "${bc.code}"?`)) return
+
+  const confirmed = await confirm({
+    type: 'delete',
+    title: 'Delete Barcode',
+    message: `Delete barcode "${bc.code}"?`,
+    confirmLabel: 'Delete',
+  })
+  if (!confirmed) return
   try {
     await handleDeleteBarcodeFrappe(bc.sku, bc.code); toast.success('Barcode deleted'); await loadData()
   } catch (e) { console.error(e); toast.error('Failed to delete barcode') }

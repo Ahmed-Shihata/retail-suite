@@ -731,41 +731,46 @@
                   class="rounded-lg p-4"
                   style="background: var(--warning-bg); border: 1px solid var(--warning-border);"
                 >
-                  <div class="flex flex-wrap gap-3">
+<!-- Actions Grid -->
+<div class="grid grid-cols-2 gap-3">
 
-                    <button
-                      @click="creatSampleItems"
-                      class="text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-                      style="background: var(--btn-success)"
-                    >
-                      ✨ Create Sample Data
-                    </button>
+  <button
+    @click="creatSampleItems"
+    class="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium text-white transition hover:opacity-90 active:scale-95"
+    :style="{ background: primaryColor }"
+  >
+    <Sparkles class="w-4 h-4" />
+    Create Sample Data
+  </button>
 
-                    <button
-                      @click="exportData"
-                      class="text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-                      style="background: var(--btn-primary)"
-                    >
-                      📥 Export Data
-                    </button>
+  <button
+    @click="exportData"
+    class="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium transition hover:opacity-90 active:scale-95"
+    style="background: var(--item-bg); border: 1px solid var(--item-border); color: var(--text-sub);"
+  >
+    <Download class="w-4 h-4" />
+    Export Data
+  </button>
 
-                    <button
-                      @click="clearAllData"
-                      class="text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-                      style="background: var(--btn-danger)"
-                    >
-                      ⚙️ Reset All Data
-                    </button>
+  <button
+    @click="deleteSampleItems"
+    class="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium transition hover:opacity-90 active:scale-95"
+    style="background: var(--item-bg); border: 1px solid var(--item-border); color: var(--text-sub);"
+  >
+    <Trash2 class="w-4 h-4" />
+    Delete Sample Items
+  </button>
 
-                    <button
-                      @click="deleteSampleItems"
-                      class="text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-                      style="background: var(--btn-danger)"
-                    >
-                      🗑️ Delete Sample Items
-                    </button>
+  <button
+    @click="clearAllData"
+    class="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium text-red-500 transition hover:bg-red-50 dark:hover:bg-red-950/30 active:scale-95"
+    style="background: var(--item-bg); border: 1px solid var(--item-border);"
+  >
+    <RotateCcw class="w-4 h-4" />
+    Reset All Data
+  </button>
 
-                  </div>
+</div>
                 </div>
               </div>
             </div>
@@ -809,14 +814,14 @@
       </main>
     </div>
     <!-- Confirm Modal -->
-    <ConfirmModal
+    <!-- <ConfirmModal
       :show="confirmModal.show"
       :type="confirmModal.type"
       :doc-name="confirmModal.docName"
       :loading="confirmModal.loading"
       @confirm="onConfirmOk"
       @cancel="onConfirmCancel"
-    />
+    /> -->
 
 </template>
 <script setup>
@@ -830,23 +835,11 @@ import MoonIcon               from "@/components/icons/MoonIcon.svg";
 import SettingsIcon           from "@/components/icons/SettingsIcon.svg";
 import ToggleSwitch           from "@/components/toggles/ToggleSwitch.vue";
 import { useDark, useToggle } from "@vueuse/core";
-import ConfirmModal           from '@/components/modals/ConfirmModal.vue'
 import { ref, reactive, onMounted, computed, watch } from "vue";
-
-const confirmModal = reactive({
-  show: false, type: 'submit', docName: '', loading: false, _resolve: null,
-})
-// ─── Confirm Modal ────────────────────────────────────
-const askConfirm = (type, docName) => {
-  confirmModal.type    = type
-  confirmModal.docName = docName
-  confirmModal.show    = true
-  return new Promise(resolve => { confirmModal._resolve = resolve })
-}
-const onConfirmOk     = async () => { confirmModal.loading = true; confirmModal._resolve?.(true) }
-const onConfirmCancel = ()       => { confirmModal.show = false; confirmModal.loading = false; confirmModal._resolve?.(false) }
-const closeConfirm    = ()       => { confirmModal.show = false; confirmModal.loading = false, confirmModal._resolve?.(false) }
-
+import { Sparkles, Download, Trash2, RotateCcw } from 'lucide-vue-next'
+import { toast } from "frappe-ui";
+import { useConfirm } from '@/composables/useConfirm'
+const { confirm } = useConfirm()
 const isDark = useDark({
   selector: "html",
   attribute: "class",
@@ -856,7 +849,9 @@ const isDark = useDark({
 const toggleDark = useToggle(isDark);
 const activeCategory = ref("store");
 const isSaving = ref(false);
-const shiftsStore = useShiftStore();
+
+// Stores
+const shiftsStore   = useShiftStore();
 const productsStore = useProductsStore();
 const settingsStore = useSettingsStore();
 
@@ -927,35 +922,25 @@ watch(
   { deep: true, debounce: 500 }
 );
 
+const saveAllSettings = async () => {
+  const ok = await confirm({
+    type: 'submit',
+    title: 'حفظ الإعدادات',
+    message: 'هل تريد حفظ التغييرات؟',
+    confirmLabel: 'حفظ',
+  })
+  if (!ok) return
 
-    const saveAllSettings = async () => {
-      const ok = await askConfirm('submit', 'Settings')
-      if (!ok) {
-        closeConfirm()
-        return
-      }
-      confirmModal.loading = true
-      isSaving.value = true;
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        const result = settingsStore.saveSettings();
-
-        if (result) {
-          console.log("✅ Settings saved successfully");
-
-        } else {
-           console.error("Failed to save settings:", error)
-
-        }
-      } catch (error) {
-        console.error("Failed to save settings:", error);
-
-      } finally {
-        isSaving.value = false;
-        confirmModal.loading = false
-        closeConfirm()
-      }
-    };
+  isSaving.value = true
+  try {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    settingsStore.saveSettings()
+  } catch (error) {
+    console.error('Failed to save settings:', error)
+  } finally {
+    isSaving.value = false
+  }
+}
 
     // تصدير البيانات
     const exportData = () => {
@@ -980,56 +965,62 @@ watch(
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        alert("✅ تم تصدير البيانات بنجاح!");
+        toast.success('تم تصدير البيانات بنجاح!')
       } catch (error) {
         console.error("Failed to export data:", error);
-        alert("❌ فشل تصدير البيانات. حاول مرة أخرى.");
       }
     };
 
     // حذف جميع البيانات
-    const clearAllData = () => {
-      if (
-        confirm(
-          "هل أنت متأكد من حذف جميع البيانات؟ لا يمكن التراجع عن هذا الإجراء."
-        )
-      ) {
+    const clearAllData = async () => {
+        const confirmed = await confirm({
+            type: 'delete',
+            title: 'حذف جميع البيانات',
+            message: 'هل أنت متأكد من حذف جميع البيانات؟ لا يمكن التراجع عن هذا الإجراء.',
+            confirmLabel: 'حذف',
+          })
+          if (!confirmed) return
         try {
           localStorage.clear();
           settingsStore.resetSettings();
-          alert("✅ تم حذف جميع البيانات بنجاح!");
         } catch (error) {
           console.error("Failed to clear data:", error);
-          alert("❌ فشل حذف البيانات. حاول مرة أخرى.");
         }
-      }
     };
 
     const creatSampleItems = async () => {
+    const confirmed = await confirm({
+        type: 'info',
+        title: 'إنشاء عناصر تجريبية',
+        message: 'هل تريد إنشاء عناصر تجريبية للتجربة بشكل متوسط؟',
+        confirmLabel: 'إنشاء',
+      })
+      if (!confirmed) return
       try {
         await productsStore.createSampleData();
-        alert("✅ تم إنشاء العناصر التجريبية بنجاح!");
       } catch (error) {
         console.error("Failed to create sample items:", error);
-        alert("❌ فشل إنشاء العناصر التجريبية.");
       }
     };
 
     const deleteSampleItems = async () => {
-      if (confirm("هل أنت متأكد من حذف جميع العناصر التجريبية؟")) {
+        const confirmed = await confirm({
+            type: 'delete',
+            title: 'حذف العناصر التجريبية',
+            message: 'هل أنت متأكد من حذف جميع العناصر التجريبية؟',
+            confirmLabel: 'حذف',
+          })
+          if (!confirmed) return
         try {
           await productsStore.deleteSampleData();
-          alert("✅ تم حذف العناصر التجريبية بنجاح!");
         } catch (error) {
           console.error("Failed to delete sample items:", error);
-          alert("❌ فشل حذف العناصر التجريبية.");
         }
-      }
+
     };
 
     onMounted(() => {
       settingsStore.loadSettings();
-      console.log("✅ Settings page loaded");
     });
 </script>
 

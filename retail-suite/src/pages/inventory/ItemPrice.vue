@@ -555,7 +555,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-
+import { useConfirm } from '@/composables/useConfirm'
 import StatsCard from '@/layout/StatsCard.vue'
 import { useInventoryStore } from '@/stores/inventory'
 import { formatPrice } from '@/utils/formatters'
@@ -571,6 +571,7 @@ import {
 
 // ─── State ────────────────────────────────────────────
 const inventoryStore    = useInventoryStore()
+const { confirm }       = useConfirm()
 const loading           = ref(false)
 const itemPrices        = ref([])
 const priceLists        = ref([])
@@ -756,7 +757,14 @@ const savePrice = async () => {
 }
 
 const deletePrice = async (price) => {
-  if (!confirm(`Delete price for "${price.item_code}" in "${price.price_list}"?`)) return
+
+  const confirmed = await confirm({
+    type: 'delete',
+    title: 'Delete Price',
+    message: `Delete price for "${price.item_code}" in "${price.price_list}"?`,
+    confirmLabel: 'Delete',
+  })
+  if (!confirmed) return
   try {
     await deleteItemPrice(price.name)
     itemPrices.value = itemPrices.value.filter(p => p.name !== price.name)

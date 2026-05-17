@@ -93,7 +93,7 @@
         class="rounded-lg shadow-xl max-w-md w-full mx-4 p-6 text-center"
         :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
       >
-        <div class="mb-4">
+        <div class="text-center mb-4">
 
           <!-- Warning Icon Circle -->
           <div
@@ -106,14 +106,13 @@
             />
           </div>
 
-          <h3
-            class="text-lg font-semibold mb-2"
-            :style="{ color: 'var(--text-main)' }"
+          <p
+            class="w-full flex justify-center"
+            :style="{ color: 'var(--text-muted)' }"
           >
-            No Active Shift
-          </h3>
-          <p :style="{ color: 'var(--text-muted)' }">
-            Please open a shift before starting sales transactions.
+            <span class="text-center">
+              Please open a shift before starting sales transactions.
+            </span>
           </p>
         </div>
 
@@ -123,7 +122,7 @@
             <button
               v-if="!shiftStore.isShiftOpen"
               @click="showOpenShiftModal = true"
-              :style="{ color: hover ? 'var(--primary-600)' : 'var(--text-muted)' }"
+              :style="{ color: hover ? primaryColor : 'var(--text-muted)' }"
               @mouseover="hover = true"
               @mouseleave="hover = false"
               class="w-8 h-8 flex items-center justify-center cursor-pointer transition-all duration-200 hover:scale-110"
@@ -173,6 +172,7 @@ import ReturnInvoiceBox from '@/components/modals/ReturnInvoiceBox.vue'
 import { formatPrice } from '../utils/formatters'
 import WarningIcon from '@/components/icons/WarningIcon.svg'
 
+const hover = ref(false)
 const activeMenu = ref('pos')
 const searchKeyword = ref('')
 const showFirstTimeModal = ref(false)
@@ -187,7 +187,6 @@ const shiftStore = useShiftStore()
 const { isShiftOpen } = storeToRefs(shiftStore)
 const isCheckingShift = ref(true)
 const invoicesStore = useInvoicesStore()
-
 const returnInvoice = ref(null)
 const mode = ref('sale')
 const showReturnInvoiceBox = ref(false)

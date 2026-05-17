@@ -264,30 +264,26 @@ import TrendingDownIcon from '@/components/icons/TrendingDownIcon.svg'
 import LoadingSpinner from '@/components/icons/LoadingSpinner.vue'
 import { formatPrice } from '../../utils/formatters'
 import { get_shift_payment_summary } from '@/composables/shift'
-  const emit = defineEmits(['close', 'success', 'error'])
+import { useConfirm } from '@/composables/useConfirm'
 
-    const shiftStore = useShiftStore()
-   console.log('shiftStore ==M', shiftStore.pos_profile?.currency)
-    // Form state
-        // بدل closingBalance واحد
-    const form = ref({
-        closingBalances: {},  // { 'Cash': 500, 'Credit Card': 1200 }
-        notes: '',
-        closedBy: ''
-    })
+const emit = defineEmits(['close', 'success', 'error'])
+
+const shiftStore = useShiftStore()
+const { confirm } = useConfirm()
+const form = ref({
+    closingBalances: {},  // { 'Cash': 500, 'Credit Card': 1200 }
+    notes: '',
+    closedBy: ''
+})
 
 
-    const isLoading = ref(false)
-    const errorMessage = ref('')
-    const successMessage = ref('')
+const isLoading = ref(false)
+const errorMessage = ref('')
+const successMessage = ref('')
 // State
 const paymentSummary = ref([])
 const isSummaryLoading = ref(true)
 
-
-
-
-// ✅ غيّر expectedPerMode يجيب من الـ backend
 const expectedPerMode = computed(() => {
     const result = {}
     paymentSummary.value.forEach(p => {
@@ -296,7 +292,6 @@ const expectedPerMode = computed(() => {
     return result
 })
 
-// ✅ paymentModes من الـ summary مش من balance_details بس
 const paymentModes = computed(() => {
     if (paymentSummary.value.length > 0) {
         return paymentSummary.value.map(p => p.mode_of_payment)
@@ -306,15 +301,14 @@ const paymentModes = computed(() => {
 })
 
 
-    // Computed properties
-    const currency = computed(() => shiftStore.pos_profile.currency || 'SAR')
-    const currentShift = computed(() => shiftStore.currentShift)
+// Computed properties
+const currency = computed(() => shiftStore.pos_profile.currency || 'SAR')
+const currentShift = computed(() => shiftStore.currentShift)
 
-    const expectedCash = computed(() => {
-      return (currentShift.value?.openingBalance || 0) + (currentShift.value?.totalSales || 0)
-    })
+const expectedCash = computed(() => {
+  return (currentShift.value?.openingBalance || 0) + (currentShift.value?.totalSales || 0)
+})
 
-// ✅ Difference لكل mode
 const differencePerMode = computed(() => {
     const result = {}
     paymentModes.value.forEach(mop => {
@@ -324,38 +318,36 @@ const differencePerMode = computed(() => {
     return result
 })
 
-// ✅ المجموع الكلي للـ difference (للـ warning)
 const cashDifference = computed(() => {
     return Object.values(differencePerMode.value).reduce((sum, d) => sum + d, 0)
 })
-    // ✅ الصح — مجموع كل الـ closing balances
-    const totalClosingBalance = computed(() => {
-        return paymentModes.value.reduce((sum, mop) => {
-            return sum + (Number(form.value.closingBalances[mop]) || 0)
-        }, 0)
-    })
+const totalClosingBalance = computed(() => {
+    return paymentModes.value.reduce((sum, mop) => {
+        return sum + (Number(form.value.closingBalances[mop]) || 0)
+    }, 0)
+})
 
-    const hasLargeDifference = computed(() => {
-        return Math.abs(cashDifference.value) > 50000
-    })
-    const shiftDuration = computed(() => {
-      if (!currentShift.value?.period_start_date) return '0h 0m'
-      return shiftStore.formatShiftDuration(currentShift.value)
-    })
+const hasLargeDifference = computed(() => {
+    return Math.abs(cashDifference.value) > 50000
+})
+const shiftDuration = computed(() => {
+  if (!currentShift.value?.period_start_date) return '0h 0m'
+  return shiftStore.formatShiftDuration(currentShift.value)
+})
 
-    const canSubmit = computed(() => {
-        if (isLoading.value) return false
-        return paymentModes.value.every(mop => {
-            const val = form.value.closingBalances[mop]
-            return val !== null && val !== '' && val !== undefined && val >= 0
-        })
+const canSubmit = computed(() => {
+    if (isLoading.value) return false
+    return paymentModes.value.every(mop => {
+        const val = form.value.closingBalances[mop]
+        return val !== null && val !== '' && val !== undefined && val >= 0
     })
+})
 
 // Styling methods
 const getCashInputClass = () => {
   if (form.value.closingBalance === null || form.value.closingBalance === '') return ''
 
-  const diff = cashDifference.value
+const diff = cashDifference.value
   if (diff === 0) return 'border-green-300 ring-green-200'
   if (Math.abs(diff) > 10000) return 'border-red-300 ring-red-200'
   return 'border-yellow-300 ring-yellow-200'
@@ -369,7 +361,6 @@ const getDifferenceClass = () => {
 }
 
 
-// ✅ رجّع الـ component object نفسه مش string
 const getDifferenceIcon = () => {
   const diff = cashDifference.value
   if (diff === 0) return CheckCircleIcon
@@ -377,151 +368,154 @@ const getDifferenceIcon = () => {
   return TrendingDownIcon
 }
 
-    const getDifferenceIconClass = () => {
-      const diff = cashDifference.value
-      if (diff === 0) return 'text-green-600'
-      if (diff > 0) return 'text-blue-600'
-      return 'text-red-600'
+const getDifferenceIconClass = () => {
+  const diff = cashDifference.value
+  if (diff === 0) return 'text-green-600'
+  if (diff > 0) return 'text-blue-600'
+  return 'text-red-600'
+}
+
+const getDifferenceTextClass = () => {
+  const diff = cashDifference.value
+  if (diff === 0) return 'text-green-800'
+  if (diff > 0) return 'text-blue-800'
+  return 'text-red-800'
+}
+
+const getDifferenceDescriptionClass = () => {
+  const diff = cashDifference.value
+  if (diff === 0) return 'text-green-700'
+  if (diff > 0) return 'text-blue-700'
+  return 'text-red-700'
+}
+
+const getDifferenceLabel = () => {
+  const diff = cashDifference.value
+  if (diff === 0) return 'Perfect Match!'
+  if (diff > 0) return 'Cash Over'
+  return 'Cash Short'
+}
+
+const getDifferenceDescription = () => {
+  const diff = cashDifference.value
+  if (diff === 0) return 'Cash count matches expected amount exactly.'
+  if (diff > 0) return 'More cash found than expected. Please verify count.'
+  return 'Less cash found than expected. Please recount and check for missing transactions.'
+}
+
+// Clear messages
+const clearMessages = () => {
+  errorMessage.value = ''
+  successMessage.value = ''
+}
+
+// Handle background click
+const handleBackgroundClick = () => {
+  if (!isLoading.value) {
+    emit('close')
+  }
+}
+
+// Handle form submission
+const handleSubmit = async () => {
+
+    clearMessages()
+    // Validation
+    if (form.value.closingBalance === null || form.value.closingBalance === '' || form.value.closingBalance < 0) {
+      errorMessage.value = 'Please enter a valid closing balance'
+      return
     }
 
-    const getDifferenceTextClass = () => {
-      const diff = cashDifference.value
-      if (diff === 0) return 'text-green-800'
-      if (diff > 0) return 'text-blue-800'
-      return 'text-red-800'
+    // Additional validation through store
+    const validation = shiftStore.validateShiftOperation('close', form.value)
+    if (!validation.valid) {
+      errorMessage.value = validation.message
+      return
     }
 
-    const getDifferenceDescriptionClass = () => {
-      const diff = cashDifference.value
-      if (diff === 0) return 'text-green-700'
-      if (diff > 0) return 'text-blue-700'
-      return 'text-red-700'
+    // Confirmation for large differences
+    if (hasLargeDifference.value) {
+      const confirmed = await confirm({
+        type: 'confirm',
+        title: 'Close Shift',
+        message: `Large cash difference detected (${formatPrice(Math.abs(cashDifference.value))}). ` +
+        'Are you sure you want to close the shift with this amount?',
+        confirmLabel: 'close shift',
+      })
+      if (!confirmed) return
     }
 
-    const getDifferenceLabel = () => {
-      const diff = cashDifference.value
-      if (diff === 0) return 'Perfect Match!'
-      if (diff > 0) return 'Cash Over'
-      return 'Cash Short'
-    }
+    isLoading.value = true
 
-    const getDifferenceDescription = () => {
-      const diff = cashDifference.value
-      if (diff === 0) return 'Cash count matches expected amount exactly.'
-      if (diff > 0) return 'More cash found than expected. Please verify count.'
-      return 'Less cash found than expected. Please recount and check for missing transactions.'
-    }
+    try {
+      // Prepare close data
+      const closeData = {
+        modeOfPayment: "Cash",
+        closingBalance: form.value.closingBalance,
+        notes: form.value.notes,
+        closedBy: currentShift.value?.user || 'Unknown'
+      }
 
-    // Clear messages
-    const clearMessages = () => {
-      errorMessage.value = ''
-      successMessage.value = ''
-    }
+      // Close shift
+      const closedShift = await shiftStore.closeShift(closeData)
 
-    // Handle background click
-    const handleBackgroundClick = () => {
-      if (!isLoading.value) {
+      successMessage.value = 'Shift closed successfully!'
+
+      // Emit success and close modal after a brief delay
+      setTimeout(() => {
+        emit('success', closedShift)
         emit('close')
-      }
+      }, 1500)
+
+    } catch (error) {
+      console.error('Failed to close shift:', error)
+      errorMessage.value = error.message || 'Failed to close shift. Please try again.'
+    } finally {
+      isLoading.value = false
     }
+}
 
-    // Handle form submission
-    const handleSubmit = async () => {
-      clearMessages()
+const getClosingShiftFromOpeningShift = async () => {
+    try {
+        clearMessages()
+        isLoading.value = true
 
-      // Validation
-      if (form.value.closingBalance === null || form.value.closingBalance === '' || form.value.closingBalance < 0) {
-        errorMessage.value = 'Please enter a valid closing balance'
-        return
-      }
-
-      // Additional validation through store
-      const validation = shiftStore.validateShiftOperation('close', form.value)
-      if (!validation.valid) {
-        errorMessage.value = validation.message
-        return
-      }
-
-      // Confirmation for large differences
-      if (hasLargeDifference.value) {
-        const confirmed = confirm(
-          `Large cash difference detected (${formatPrice(Math.abs(cashDifference.value))}). ` +
-          'Are you sure you want to close the shift with this amount?'
-        )
-        if (!confirmed) return
-      }
-
-      isLoading.value = true
-
-      try {
-        // Prepare close data
-        const closeData = {
-          modeOfPayment: "Cash",
-          closingBalance: form.value.closingBalance,
-          notes: form.value.notes,
-          closedBy: currentShift.value?.user || 'Unknown'
+        const missingModes = paymentModes.value.filter(mop => {
+            const val = form.value.closingBalances[mop]
+            return val === null || val === undefined || val === '' || val < 0
+        })
+        if (missingModes.length > 0) {
+            errorMessage.value = `Please enter closing balance for: ${missingModes.join(', ')}`
+            return
         }
 
-        // Close shift
-        const closedShift = await shiftStore.closeShift(closeData)
+        const closing_details = paymentModes.value.map(mop => ({
+            modeOfPayment: mop,
+            closingBalance: form.value.closingBalances[mop] || 0,
+            notes: form.value.notes,
+            closedBy: currentShift.value?.user || 'Unknown'
+        }))
 
+        currentShift.value.closing_details = closing_details
+
+        if (!shiftStore.pos_opening_shift) {
+            throw new Error("No opening shift found")
+        }
+
+        const closedShift = await shiftStore.closingOpenShift(deepUnwrap(currentShift.value))
         successMessage.value = 'Shift closed successfully!'
-
-        // Emit success and close modal after a brief delay
         setTimeout(() => {
-          emit('success', closedShift)
-          emit('close')
+            emit('success', closedShift)
+            emit('close')
         }, 1500)
 
-      } catch (error) {
-        console.error('Failed to close shift:', error)
-        errorMessage.value = error.message || 'Failed to close shift. Please try again.'
-      } finally {
+    } catch (e) {
+        console.error('Closing shift failed:', e)
+        errorMessage.value = e.message || 'Failed to close shift.'
+    } finally {
         isLoading.value = false
-      }
     }
-    const getClosingShiftFromOpeningShift = async () => {
-        try {
-            clearMessages()
-            isLoading.value = true
-
-            const missingModes = paymentModes.value.filter(mop => {
-                const val = form.value.closingBalances[mop]
-                return val === null || val === undefined || val === '' || val < 0
-            })
-            if (missingModes.length > 0) {
-                errorMessage.value = `Please enter closing balance for: ${missingModes.join(', ')}`
-                return
-            }
-
-            const closing_details = paymentModes.value.map(mop => ({
-                modeOfPayment: mop,
-                closingBalance: form.value.closingBalances[mop] || 0,
-                notes: form.value.notes,
-                closedBy: currentShift.value?.user || 'Unknown'
-            }))
-
-            currentShift.value.closing_details = closing_details
-
-            if (!shiftStore.pos_opening_shift) {
-                throw new Error("No opening shift found")
-            }
-
-            const closedShift = await shiftStore.closingOpenShift(deepUnwrap(currentShift.value))
-            successMessage.value = 'Shift closed successfully!'
-            setTimeout(() => {
-                emit('success', closedShift)
-                emit('close')
-            }, 1500)
-
-        } catch (e) {
-            console.error('Closing shift failed:', e)
-            errorMessage.value = e.message || 'Failed to close shift.'
-        } finally {
-            isLoading.value = false
-        }
-    }
-
+}
 
 onMounted(async () => {
     try {

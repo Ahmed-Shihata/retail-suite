@@ -216,19 +216,21 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { formatPrice } from '../../utils/formatters';
+import { useConfirm } from '@/composables/useConfirm'
 
+const { confirm } = useConfirm()
 
-  const props = defineProps( {
-     invoiceNo: {
-        type: String,
-        default: ''
-      },
-      taxRate: {
-        type: Number,
-        default: 10
-      }
-  })
-  const emit = defineEmits(['return-processed', 'return-cancelled'])
+const props = defineProps( {
+    invoiceNo: {
+      type: String,
+      default: ''
+    },
+    taxRate: {
+      type: Number,
+      default: 10
+    }
+})
+const emit = defineEmits(['return-processed', 'return-cancelled'])
 
 
 const returnItems = ref([])
@@ -299,21 +301,32 @@ const decreaseReturnQuantity = (item_code) => {
   }
 }
 
-const handleClearReturn = () => {
-  if (window.confirm('Are you sure you want to clear all return items?')) {
+const handleClearReturn = async () => {
+    const confirmed = await confirm({
+        type: 'delete',
+        title: 'Clear Return Items',
+        message: 'Are you sure you want to clear all return items?',
+        confirmLabel: 'Clear',
+      })
+      if (!confirmed) return
     returnItems.value = []
     returnReason.value = ''
     returnNotes.value = ''
-  }
+
 }
 
-const handleCancelReturn = () => {
-  if (window.confirm('Cancel this return process?')) {
+const handleCancelReturn = async () => {
+  const confirmed = await confirm({
+      type: 'delete',
+      title: 'Cancel Return',
+      message: 'Are you sure you want to cancel this return process?',
+      confirmLabel: 'Cancel',
+    })
     returnItems.value = []
     returnReason.value = ''
     returnNotes.value = ''
     emit('return-cancelled')
-  }
+
 }
 
 const handleProcessReturn = async () => {

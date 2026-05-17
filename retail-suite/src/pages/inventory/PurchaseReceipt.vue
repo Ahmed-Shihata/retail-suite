@@ -461,15 +461,6 @@
           @submit="handleInvoiceSubmit"
         />
 
-        <ConfirmModal
-          :show="confirmModal.show"
-          :type="confirmModal.type"
-          :doc-name="confirmModal.docName"
-          :loading="confirmModal.loading"
-          @confirm="onConfirmOk"
-          @cancel="onConfirmCancel"
-        />
-
       </main>
     </div>
 
@@ -481,7 +472,6 @@ import MainLayout             from '@/layout/MainLayout.vue'
 import StatsCard              from '@/layout/StatsCard.vue'
 import PurchaseReceiptModal   from '@/components/modals/PurchaseReceiptModal.vue'
 import ReceiptDetailModal     from '@/components/modals/ReceiptDetailModal.vue'
-import ConfirmModal           from '@/components/modals/ConfirmModal.vue'
 import PurchaseInvoiceModal   from '@/components/modals/PurchaseInvoiceModal.vue'
 import { useInventoryStore }  from '@/stores/inventory'
 import { useSettingsStore }   from "@/stores/settings";
@@ -523,10 +513,6 @@ const showInvoiceModal = ref(false)
 const invoiceReceipt   = ref(null)
 const invoiceError     = ref(null)
 const invoiceSuccess   = ref(null)
-
-const confirmModal = reactive({
-  show: false, type: 'submit', docName: '', loading: false, _resolve: null,
-})
 
 // ─── Load ─────────────────────────────────────────────
 const loadReceipts = async () => {
@@ -643,41 +629,27 @@ const savePurchase = async (purchaseData) => {
   }
 }
 
-// ─── Confirm Modal ────────────────────────────────────
-const askConfirm = (type, docName) => {
-  confirmModal.type    = type
-  confirmModal.docName = docName
-  confirmModal.show    = true
-  return new Promise(resolve => { confirmModal._resolve = resolve })
-}
-const onConfirmOk     = async () => { confirmModal.loading = true; confirmModal._resolve?.(true) }
-const onConfirmCancel = ()       => { confirmModal.show = false; confirmModal.loading = false; confirmModal._resolve?.(false) }
-const closeConfirm    = ()       => { confirmModal.show = false; confirmModal.loading = false }
-
 const submitReceipt = async (purchase) => {
-  const ok = await askConfirm('submit', purchase.name)
-  if (!ok) return
+
   try { await submitPurchaseReceipt(purchase.name); await loadReceipts() }
   catch (e) { console.error(e) }
-  finally { closeConfirm() }
+
 }
 
 const cancelReceipt = async (purchase) => {
-  const ok = await askConfirm('cancel', purchase.name)
-  if (!ok) return
+
   try { await cancelPurchaseReceipt(purchase.name); await loadReceipts() }
   catch (e) { console.error(e) }
-  finally { closeConfirm() }
+  finally {  }
 }
 
 const deleteReceipt = async (purchase) => {
-  const ok = await askConfirm('delete', purchase.name)
-  if (!ok) return
+
   try {
     await deletePurchaseReceipt(purchase.name)
     purchases.value = purchases.value.filter(p => p.name !== purchase.name)
   } catch (e) { console.error(e) }
-  finally { closeConfirm() }
+  finally { }
 }
 
 const handleInvoiceSubmit = async (payload) => {

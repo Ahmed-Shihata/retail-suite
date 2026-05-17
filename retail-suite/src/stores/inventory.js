@@ -116,10 +116,10 @@ export const useInventoryStore = defineStore('inventory', () => {
     }
     const addItem = async (itemData) => {
         try {
-            const response = await api.post('/api/method/retail.retail.api.inventory.add_item', {
+            const response = await call('retail.retail.api.inventory.add_item', {
                 item_data:itemData})
             console.log('ADD Item API',response)
-            return response.data.message
+            return response
         } catch (err) {
             error.value = err.message
             throw err
@@ -160,12 +160,11 @@ export const useInventoryStore = defineStore('inventory', () => {
 
     const deleteItem = async (itemId) => {
         try {
-            console.log("item you eant to delete is", itemId)
+            console.log("item you ean't to delete is", itemId)
            const response = await call("retail.retail.api.inventory.delete_item", {
                 item_code: itemId
             });
-
-            items.value = items.value.filter(i => i.item_code !== itemId)
+            console.log("deleteItem response",response)
             return response
         } catch (err) {
             error.value = err.message

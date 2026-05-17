@@ -383,14 +383,6 @@
           :transfer="selectedTransfer"
           @close="showDetailModal = false"
         />
-        <ConfirmModal
-          :show="confirmModal.show"
-          :type="confirmModal.type"
-          :doc-name="confirmModal.docName"
-          :loading="confirmModal.loading"
-          @confirm="onConfirmOk"
-          @cancel="onConfirmCancel"
-        />
       </main>
     </div>
 
@@ -403,7 +395,6 @@ import Sidebar             from '@/layout/Sidebar.vue'
 import StatsCard           from '@/layout/StatsCard.vue'
 import TransferModal       from '@/components/modals/TransferModal.vue'
 import TransferDetailModal from '@/components/modals/TransferDetailModal.vue'
-import ConfirmModal        from '@/components/modals/ConfirmModal.vue'
 import { ArrowRightLeft, Plus, Eye, Edit2, Trash2 } from 'lucide-vue-next'
 
 const loading         = ref(false)
@@ -417,9 +408,6 @@ const showDetailModal = ref(false)
 const editingTransfer = ref(null)
 const selectedTransfer = ref(null)
 
-const confirmModal = reactive({
-  show: false, type: 'submit', docName: '', loading: false, _resolve: null,
-})
   // Pagination
 const currentPage  = ref(1)
 const itemsPerPage = ref(5)
@@ -429,343 +417,325 @@ const paginatedTransfers = computed(() => {
   return filteredTransfers.value.slice(start, start + itemsPerPage.value)
 })
 
-
-// ─── Confirm Modal ────────────────────────────────────
-const askConfirm = (type, docName) => {
-  confirmModal.type    = type
-  confirmModal.docName = docName
-  confirmModal.show    = true
-  return new Promise(resolve => { confirmModal._resolve = resolve })
-}
-const onConfirmOk     = async () => { confirmModal.loading = true; confirmModal._resolve?.(true) }
-const onConfirmCancel = ()       => { confirmModal.show = false; confirmModal.loading = false; confirmModal._resolve?.(false) }
-const closeConfirm    = ()       => { confirmModal.show = false; confirmModal.loading = false }
-
-
-  // Mock data - replace with actual API
-  const transfers = ref([
+// Mock data - replace with actual API
+const transfers = ref([
+  {
+    id: 1,
+    reference: 'TRF-001',
+    date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    fromLocation: 'main',
+    toLocation: 'branch1',
+    items: [
+      { itemCode: 'ITEM001', itemName: 'Coffee Beans', quantity: 20 }
+    ],
+    status: 'completed'
+  },
+  {
+    id: 2,
+    reference: 'TRF-002',
+    date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+    fromLocation: 'branch1',
+    toLocation: 'branch2',
+    items: [
+      { itemCode: 'ITEM002', itemName: 'Tea Leaves', quantity: 15 }
+    ],
+    status: 'in-transit'
+  },
+  {
+    id: 3,
+    reference: 'TRF-003',
+    date: new Date(),
+    fromLocation: 'main',
+    toLocation: 'branch2',
+    items: [
+      { itemCode: 'ITEM003', itemName: 'Pastry', quantity: 30 }
+    ],
+    status: 'pending'
+  },
+  {
+    id: 4,
+    reference: 'TRF-004',
+    date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+    fromLocation: 'branch2',
+    toLocation: 'main',
+    items: [
+      { itemCode: 'ITEM004', itemName: 'Milk', quantity: 50 }
+    ],
+    status: 'completed'
+  },
+  {
+    id: 5,
+    reference: 'TRF-005',
+    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    fromLocation: 'branch1',
+    toLocation: 'main',
+    items: [
+      { itemCode: 'ITEM005', itemName: 'Sugar', quantity: 40 }
+    ],
+    status: 'in-transit'
+  },
     {
-      id: 1,
-      reference: 'TRF-001',
-      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      id: 6,
+      reference: 'TRF-006',
+      date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
       fromLocation: 'main',
       toLocation: 'branch1',
       items: [
-        { itemCode: 'ITEM001', itemName: 'Coffee Beans', quantity: 20 }
-      ],
-      status: 'completed'
-    },
-    {
-      id: 2,
-      reference: 'TRF-002',
-      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      fromLocation: 'branch1',
-      toLocation: 'branch2',
-      items: [
-        { itemCode: 'ITEM002', itemName: 'Tea Leaves', quantity: 15 }
-      ],
-      status: 'in-transit'
-    },
-    {
-      id: 3,
-      reference: 'TRF-003',
-      date: new Date(),
-      fromLocation: 'main',
-      toLocation: 'branch2',
-      items: [
-        { itemCode: 'ITEM003', itemName: 'Pastry', quantity: 30 }
+        { itemCode: 'ITEM006', itemName: 'Syrup', quantity: 25 }
       ],
       status: 'pending'
     },
-    {
-      id: 4,
-      reference: 'TRF-004',
-      date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-      fromLocation: 'branch2',
-      toLocation: 'main',
-      items: [
-        { itemCode: 'ITEM004', itemName: 'Milk', quantity: 50 }
-      ],
-      status: 'completed'
-    },
-    {
-      id: 5,
-      reference: 'TRF-005',
-      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      fromLocation: 'branch1',
-      toLocation: 'main',
-      items: [
-        { itemCode: 'ITEM005', itemName: 'Sugar', quantity: 40 }
-      ],
-      status: 'in-transit'
-    },
       {
-        id: 6,
-        reference: 'TRF-006',
-        date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-        fromLocation: 'main',
+        id: 7,
+        reference: 'TRF-007',
+        date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+        fromLocation: 'branch2',
         toLocation: 'branch1',
         items: [
-          { itemCode: 'ITEM006', itemName: 'Syrup', quantity: 25 }
+          { itemCode: 'ITEM007', itemName: 'Cups', quantity: 100 }
+        ],
+        status: 'completed'
+      },
+      {
+        id: 8,
+        reference: 'TRF-008',
+        date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        fromLocation: 'branch1',
+        toLocation: 'branch2',
+        items: [
+          { itemCode: 'ITEM008', itemName: 'Napkins', quantity: 200 }
+        ],
+        status: 'in-transit'
+      },
+      {
+        id: 9,
+        reference: 'TRF-009',
+        date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+        fromLocation: 'main',
+        toLocation: 'branch2',
+        items: [
+          { itemCode: 'ITEM009', itemName: 'Straws', quantity: 150 }
         ],
         status: 'pending'
       },
         {
-          id: 7,
-          reference: 'TRF-007',
-          date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+          id: 10,
+          reference: 'TRF-010',
+          date: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000),
           fromLocation: 'branch2',
-          toLocation: 'branch1',
+          toLocation: 'main',
           items: [
-            { itemCode: 'ITEM007', itemName: 'Cups', quantity: 100 }
+            { itemCode: 'ITEM010', itemName: 'Cups', quantity: 80 }
           ],
           status: 'completed'
         },
         {
-          id: 8,
-          reference: 'TRF-008',
-          date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+          id: 11,
+          reference: 'TRF-011',
+          date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
           fromLocation: 'branch1',
-          toLocation: 'branch2',
+          toLocation: 'main',
           items: [
-            { itemCode: 'ITEM008', itemName: 'Napkins', quantity: 200 }
+            { itemCode: 'ITEM011', itemName: 'Spoons', quantity: 300 }
           ],
           status: 'in-transit'
         },
         {
-          id: 9,
-          reference: 'TRF-009',
-          date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+          id: 12,
+          reference: 'TRF-012',
+          date: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000),
           fromLocation: 'main',
-          toLocation: 'branch2',
+          toLocation: 'branch1',
           items: [
-            { itemCode: 'ITEM009', itemName: 'Straws', quantity: 150 }
+            { itemCode: 'ITEM012', itemName: 'Forks', quantity: 250 }
+          ],
+          status: 'pending'
+        },
+        {
+        id: 13,
+        reference: 'TRF-004',
+        date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        fromLocation: 'branch2',
+        toLocation: 'main',
+        items: [
+          { itemCode: 'ITEM004', itemName: 'Milk', quantity: 50 }
+        ],
+        status: 'completed'
+      },
+      {
+        id: 14,
+        reference: 'TRF-005',
+        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        fromLocation: 'branch1',
+        toLocation: 'main',
+        items: [
+          { itemCode: 'ITEM005', itemName: 'Sugar', quantity: 40 }
+        ],
+        status: 'in-transit'
+      },
+        {
+          id: 15,
+          reference: 'TRF-006',
+          date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+          fromLocation: 'main',
+          toLocation: 'branch1',
+          items: [
+            { itemCode: 'ITEM006', itemName: 'Syrup', quantity: 25 }
           ],
           status: 'pending'
         },
           {
-            id: 10,
-            reference: 'TRF-010',
-            date: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000),
+            id: 16,
+            reference: 'TRF-007',
+            date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
             fromLocation: 'branch2',
-            toLocation: 'main',
+            toLocation: 'branch1',
             items: [
-              { itemCode: 'ITEM010', itemName: 'Cups', quantity: 80 }
+              { itemCode: 'ITEM007', itemName: 'Cups', quantity: 100 }
             ],
             status: 'completed'
           },
           {
-            id: 11,
-            reference: 'TRF-011',
-            date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+            id: 17,
+            reference: 'TRF-008',
+            date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
             fromLocation: 'branch1',
-            toLocation: 'main',
+            toLocation: 'branch2',
             items: [
-              { itemCode: 'ITEM011', itemName: 'Spoons', quantity: 300 }
+              { itemCode: 'ITEM008', itemName: 'Napkins', quantity: 200 }
             ],
             status: 'in-transit'
           },
           {
-            id: 12,
-            reference: 'TRF-012',
-            date: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000),
+            id: 18,
+            reference: 'TRF-009',
+            date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
             fromLocation: 'main',
-            toLocation: 'branch1',
+            toLocation: 'branch2',
             items: [
-              { itemCode: 'ITEM012', itemName: 'Forks', quantity: 250 }
-            ],
-            status: 'pending'
-          },
-          {
-          id: 13,
-          reference: 'TRF-004',
-          date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-          fromLocation: 'branch2',
-          toLocation: 'main',
-          items: [
-            { itemCode: 'ITEM004', itemName: 'Milk', quantity: 50 }
-          ],
-          status: 'completed'
-        },
-        {
-          id: 14,
-          reference: 'TRF-005',
-          date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-          fromLocation: 'branch1',
-          toLocation: 'main',
-          items: [
-            { itemCode: 'ITEM005', itemName: 'Sugar', quantity: 40 }
-          ],
-          status: 'in-transit'
-        },
-          {
-            id: 15,
-            reference: 'TRF-006',
-            date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-            fromLocation: 'main',
-            toLocation: 'branch1',
-            items: [
-              { itemCode: 'ITEM006', itemName: 'Syrup', quantity: 25 }
+              { itemCode: 'ITEM009', itemName: 'Straws', quantity: 150 }
             ],
             status: 'pending'
           },
             {
-              id: 16,
-              reference: 'TRF-007',
-              date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+              id: 19,
+              reference: 'TRF-010',
+              date: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000),
               fromLocation: 'branch2',
-              toLocation: 'branch1',
+              toLocation: 'main',
               items: [
-                { itemCode: 'ITEM007', itemName: 'Cups', quantity: 100 }
+                { itemCode: 'ITEM010', itemName: 'Cups', quantity: 80 }
               ],
               status: 'completed'
             },
             {
-              id: 17,
-              reference: 'TRF-008',
-              date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+              id: 20,
+              reference: 'TRF-011',
+              date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
               fromLocation: 'branch1',
-              toLocation: 'branch2',
+              toLocation: 'main',
               items: [
-                { itemCode: 'ITEM008', itemName: 'Napkins', quantity: 200 }
+                { itemCode: 'ITEM011', itemName: 'Spoons', quantity: 300 }
               ],
               status: 'in-transit'
             },
             {
-              id: 18,
-              reference: 'TRF-009',
-              date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+              id: 21,
+              reference: 'TRF-012',
+              date: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000),
               fromLocation: 'main',
-              toLocation: 'branch2',
+              toLocation: 'branch1',
               items: [
-                { itemCode: 'ITEM009', itemName: 'Straws', quantity: 150 }
+                { itemCode: 'ITEM012', itemName: 'Forks', quantity: 250 }
               ],
               status: 'pending'
-            },
-              {
-                id: 19,
-                reference: 'TRF-010',
-                date: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000),
-                fromLocation: 'branch2',
-                toLocation: 'main',
-                items: [
-                  { itemCode: 'ITEM010', itemName: 'Cups', quantity: 80 }
-                ],
-                status: 'completed'
-              },
-              {
-                id: 20,
-                reference: 'TRF-011',
-                date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-                fromLocation: 'branch1',
-                toLocation: 'main',
-                items: [
-                  { itemCode: 'ITEM011', itemName: 'Spoons', quantity: 300 }
-                ],
-                status: 'in-transit'
-              },
-              {
-                id: 21,
-                reference: 'TRF-012',
-                date: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000),
-                fromLocation: 'main',
-                toLocation: 'branch1',
-                items: [
-                  { itemCode: 'ITEM012', itemName: 'Forks', quantity: 250 }
-                ],
-                status: 'pending'
-              }
-  ])
+            }
+])
 
-  const filteredTransfers = computed(() => {
-    let data = [...transfers.value]
+const filteredTransfers = computed(() => {
+  let data = [...transfers.value]
 
-    if (searchReference.value) {
-      data = data.filter(t => t.reference.toLowerCase().includes(searchReference.value.toLowerCase()))
-    }
-
-    if (fromLocation.value) {
-      data = data.filter(t => t.fromLocation === fromLocation.value)
-    }
-
-    if (toLocation.value) {
-      data = data.filter(t => t.toLocation === toLocation.value)
-    }
-
-    if (statusFilter.value) {
-      data = data.filter(t => t.status === statusFilter.value)
-    }
-
-    return data.sort((a, b) => new Date(b.date) - new Date(a.date))
-  })
-
-  const summaryStats = computed(() => {
-    return {
-      pending: transfers.value.filter(t => t.status === 'pending').length,
-      inTransit: transfers.value.filter(t => t.status === 'in-transit').length,
-      completed: transfers.value.filter(t => t.status === 'completed').length
-    }
-  })
-
-  const getStatusBadge = (status) => {
-    const badges = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      'in-transit': 'bg-blue-100 text-blue-800',
-      completed: 'bg-green-100 text-green-800'
-    }
-    return badges[status] || 'bg-gray-100 text-gray-800'
+  if (searchReference.value) {
+    data = data.filter(t => t.reference.toLowerCase().includes(searchReference.value.toLowerCase()))
   }
 
-  const getLocationName = (location) => {
-    const names = {
-      main: 'Main Store',
-      branch1: 'Branch 1',
-      branch2: 'Branch 2'
-    }
-    return names[location] || location
+  if (fromLocation.value) {
+    data = data.filter(t => t.fromLocation === fromLocation.value)
   }
 
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString()
+  if (toLocation.value) {
+    data = data.filter(t => t.toLocation === toLocation.value)
   }
 
-  const viewTransfer = (transfer) => {
-    selectedTransfer.value = transfer
-    showDetailModal.value = true
+  if (statusFilter.value) {
+    data = data.filter(t => t.status === statusFilter.value)
   }
 
-  const editTransfer = (transfer) => {
-    editingTransfer.value = { ...transfer }
-    showEditModal.value = true
-  }
+  return data.sort((a, b) => new Date(b.date) - new Date(a.date))
+})
 
-  const saveTransfer = (transferData) => {
-    if (showEditModal.value && editingTransfer.value) {
-      const index = transfers.value.findIndex(t => t.id === editingTransfer.value.id)
-      transfers.value[index] = { ...editingTransfer.value, ...transferData }
-    } else {
-      transfers.value.push({
-        id: Math.max(...transfers.value.map(t => t.id), 0) + 1,
-        ...transferData
-      })
-    }
-    closeModal()
+const summaryStats = computed(() => {
+  return {
+    pending: transfers.value.filter(t => t.status === 'pending').length,
+    inTransit: transfers.value.filter(t => t.status === 'in-transit').length,
+    completed: transfers.value.filter(t => t.status === 'completed').length
   }
+})
 
-  const deleteTransfer = (transfer) => {
-    askConfirm('delete', transfer.reference).then((confirmed) => {
-      if (confirmed) {
-        transfers.value = transfers.value.filter(t => t.id !== transfer.id)
-        closeConfirm()
-      }
+const getStatusBadge = (status) => {
+  const badges = {
+    pending: 'bg-yellow-100 text-yellow-800',
+    'in-transit': 'bg-blue-100 text-blue-800',
+    completed: 'bg-green-100 text-green-800'
+  }
+  return badges[status] || 'bg-gray-100 text-gray-800'
+}
+
+const getLocationName = (location) => {
+  const names = {
+    main: 'Main Store',
+    branch1: 'Branch 1',
+    branch2: 'Branch 2'
+  }
+  return names[location] || location
+}
+
+const formatDate = (date) => {
+  return new Date(date).toLocaleDateString()
+}
+
+const viewTransfer = (transfer) => {
+  selectedTransfer.value = transfer
+  showDetailModal.value = true
+}
+
+const editTransfer = (transfer) => {
+  editingTransfer.value = { ...transfer }
+  showEditModal.value = true
+}
+
+const saveTransfer = (transferData) => {
+  if (showEditModal.value && editingTransfer.value) {
+    const index = transfers.value.findIndex(t => t.id === editingTransfer.value.id)
+    transfers.value[index] = { ...editingTransfer.value, ...transferData }
+  } else {
+    transfers.value.push({
+      id: Math.max(...transfers.value.map(t => t.id), 0) + 1,
+      ...transferData
     })
   }
+  closeModal()
+}
 
-  const closeModal = () => {
-    showAddModal.value = false
-    showEditModal.value = false
-    editingTransfer.value = null
-  }
+const deleteTransfer = (transfer) => {
+      transfers.value = transfers.value.filter(t => t.id !== transfer.id)
+}
+
+const closeModal = () => {
+  showAddModal.value = false
+  showEditModal.value = false
+  editingTransfer.value = null
+}
 
 const totalPages = computed(() => {
     return Math.ceil(filteredTransfers.value.length / itemsPerPage.value)
