@@ -1,10 +1,10 @@
 <!-- ShiftControl.vue -->
 <template>
   <div class="container-navbar">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
+    <div class="w-full mx-auto px-4 sm:px-6 lg:px-10">
+      <div class="grid grid-cols-4 h-16">
         <!-- Shift Status Left Section -->
-        <div class="flex items-center space-x-4">
+        <div class="col-span-3 flex items-center justify-center space-x-4">
           <!-- Shift Status Indicator -->
           <div class="flex items-center">
             <div class="relative">
@@ -47,91 +47,67 @@
           </div>
         </div>
 
-        <!-- Shift Controls Right Section -->
-        <div class="flex items-center space-x-5">
-          <!-- Shift Info Button -->
-          <button
-            v-if="shiftStore.isShiftOpen"
-            @click="showShiftInfo = true"
-           class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md transition-colors duration-200"
-           style="border: 1px solid var(--input-border); background: var(--card-bg); color: var(--text-sub);"
-          >
-            <InfoIcon class="w-4 h-4 mr-1 text-blue-500" />
+        <!-- Right Section - 25% -->
+        <div class="col-span-1 flex items-center justify-center gap-1">
+
+          <!-- Shift Info -->
+          <button v-if="shiftStore.isShiftOpen" @click="showShiftInfo = true"
+            class="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:scale-110"
+            title="Shift Info">
+            <Coins class="w-5 h-5" :style="{ color: showShiftInfo ? '#8b5cf6' : '#6b7280' }" />
           </button>
 
-          <!-- DroidCam Scanner Button -->
-          <button
-          @click="handleDroidCamConnect"
-          :disabled="isDroidCamConnecting"
-          class="relative w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200"
-          :class="[
-            isDroidCamConnected
-            ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 shadow-md'
-            : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
-            isDroidCamConnecting ? 'opacity-75 cursor-wait' : ''
-          ]"
-            :title="isDroidCamConnected ? 'DroidCam Connected' : 'Connect DroidCam'"
-            >
-            <!-- Droid Camera Connect Icon -->
-            <PlayIcon class="w-5 h-5" />
-
-            <!-- Connected Indicator -->
-            <div
-              v-if="isDroidCamConnected"
-              class="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border border-white animate-pulse"
-            />
-
-            <!-- Loading Spinner -->
-            <div
-              v-if="isDroidCamConnecting"
-              class="absolute inset-0 flex items-center justify-center"
-            >
-              <div class="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
-            </div>
+          <!-- Mobile Scanner -->
+          <button @click="openScanner"
+            class="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:scale-110"
+            title="Mobile Scanner">
+            <BarcodeScannerIcon class="w-5 h-5"
+              :style="{ color: showScanner ? '#8b5cf6' : '#6b7280' }" />
           </button>
 
-          <!-- Mobile Scanner Button -->
-          <button
-            @click="openScanner"
-            class="w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200 bg-gray-100 text-gray-600 hover:bg-gray-200"
-            title="Mobile Scanner"
-          >
-          <BarcodeScannerIcon class="w-5 h-5" />
-          </button>
-
-          <!-- Close Shift Button -->
-          <button
-            v-if="shiftStore.isShiftOpen"
-            @click="showCloseShiftModal = true"
-            class="w-8 h-8 flex items-center justify-center cursor-pointer text-red-600 hover:text-red-500 transition-all duration-200 hover:scale-110"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="round"
-            >
+          <!-- Close Shift -->
+          <button v-if="shiftStore.isShiftOpen" @click="showCloseShiftModal = true"
+            class="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:scale-110 group"
+            title="Close Shift">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" class="w-5 h-5 transition-colors duration-200 group-hover:text-red-500"
+              :style="{ color: showCloseShiftModal ? 'red' : '#6b7280' }">
               <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
               <line x1="12" y1="2" x2="12" y2="12" />
             </svg>
           </button>
 
-            <!-- Theme Toggle -->
-            <button
-              @click="toggleTheme"
-              class="p-2 rounded-lg transition"
-              style="color: var(--text-muted);"
-              title="Toggle Theme"
-            >
-              <svg v-if="isDark" class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-              <svg v-else class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" />
-              </svg>
-            </button>
+          <!-- Theme Toggle -->
+          <button @click="toggleTheme"
+            class="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:scale-110"
+            :style="{ color: isDark ? '#facc15' : '#6b7280' }"
+            title="Toggle Theme">
+            <svg v-if="isDark" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+            <svg v-else class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" />
+            </svg>
+          </button>
+
+          <!-- Wifi -->
+          <button v-if="shiftStore.isShiftOpen" @click="showWifiModal = true"
+            class="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:scale-110"
+            title="Wifi">
+            <Wifi class="w-5 h-5" :style="{ color: showScanner ? '#8b5cf6' : '#6b7280' }" />
+          </button>
+
+          <!-- Divider -->
+          <div class="h-5 w-px mx-1" style="background: var(--item-border)" />
+
+          <!-- Avatar -->
+          <div v-if="shiftStore.isShiftOpen" class="cursor-pointer hover:scale-110 transition-all duration-200">
+            <img :src="userAvatar" :alt="userName" class="w-7 h-7 rounded-full object-cover ring-2"
+              :style="{ ringColor: primaryColor }" />
+          </div>
+
         </div>
+
       </div>
     </div>
 
@@ -187,6 +163,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { Coins, Wifi } from 'lucide-vue-next'
 import { useShiftStore } from '@/stores/shift'
 import OpenShiftModal from '@/components/modals/OpenShiftModal.vue'
 import CloseShiftModal from '@/components/modals/CloseShiftModal.vue'
@@ -207,211 +184,213 @@ import { useMobileScanSession } from '@/services/useMobileScanSession'
 import ScanQRModal from '@/components/modals/ScanQRModal.vue'
 const emit = defineEmits(['shift-opened', 'shift-closed', 'shift-error'])
 
+const showScanner = ref(false)
+// Shift Modals
+const showOpenShiftModal = ref(false)
+const showCloseShiftModal = ref(false)
+const showShiftInfo = ref(false)
+const shiftDuration = ref('')
+// DroidCam State
+const isDroidCamConnecting = ref(false)
+const showDroidCamNotification = ref(false)
+const droidcamNotificationMessage = ref('')
+const droidcamNotificationStatus = ref('connecting') // 'connecting', 'success', 'error'
+let notificationTimeout = null
+let durationInterval = null
+
+
+// Stores
 const shiftStore = useShiftStore()
 const settingsStore = useSettingsStore()
-
-const showScanner = ref(false)
-
 const {sessionId, getScannerUrl, startListening} = useMobileScanSession()
+
+const userAvatar = ref('https://ui-avatars.com/api/?name=Ahmed+Reda&background=0D8ABC&color=fff')
+const userName = computed(() => shiftStore.userName)
+
+// DroidCam Composable
+const {
+isConnected: isDroidCamConnected,
+connectionStatus,
+droidcamIP,
+connectToDroidCam,
+disconnectDroidCam
+} = useDroidCamClient()
+
+
 const openScanner = () => {
   showScanner.value = true
   startListening()
 }
-    // DroidCam Composable
-    const {
-      isConnected: isDroidCamConnected,
-      connectionStatus,
-      droidcamIP,
-      connectToDroidCam,
-      disconnectDroidCam
-    } = useDroidCamClient()
 
-    // Shift Modals
-    const showOpenShiftModal = ref(false)
-    const showCloseShiftModal = ref(false)
-    const showShiftInfo = ref(false)
-    const shiftDuration = ref('')
 
-    // DroidCam State
-    const isDroidCamConnecting = ref(false)
-    const showDroidCamNotification = ref(false)
-    const droidcamNotificationMessage = ref('')
-    const droidcamNotificationStatus = ref('connecting') // 'connecting', 'success', 'error'
-    let notificationTimeout = null
-    let durationInterval = null
+const currentShift = computed(() => shiftStore.currentShift)
 
-    const currentShift = computed(() => shiftStore.currentShift)
+// theme
+const isDark = computed(() => settingsStore.settings.appearance.theme === 'dark')
+const primaryColor = computed(() => {
+  return settingsStore.settings.value?.appearance?.primaryColor || '#06b6d4'
+})
 
-    // theme
-    const isDark = computed(() => settingsStore.settings.appearance.theme === 'dark')
-    /**
-     * معالج زر DroidCam Connection
-     */
-    const handleDroidCamConnect = async () => {
+const handleDroidCamConnect = async () => {
+  if (isDroidCamConnected.value) {
+    // قطع الاتصال
+    isDroidCamConnecting.value = true
+    await disconnectDroidCam()
+    isDroidCamConnecting.value = false
+
+    showNotification('DroidCam Disconnected', 'success')
+  } else {
+    // الاتصال
+    isDroidCamConnecting.value = true
+
+    try {
+      showNotification('Connecting to DroidCam...', 'connecting')
+
+      // استخدم IP من المتغير أو القيمة الافتراضية
+      const ipAddress = droidcamIP.value || '192.168.8.15'
+
+      await connectToDroidCam(ipAddress, 4747)
+
       if (isDroidCamConnected.value) {
-        // قطع الاتصال
-        isDroidCamConnecting.value = true
-        await disconnectDroidCam()
-        isDroidCamConnecting.value = false
+        showNotification(`Connected to DroidCam (${ipAddress})`, 'success')
 
-        showNotification('DroidCam Disconnected', 'success')
+        // استقبال أحداث الباركود
+        window.addEventListener('barcode-scanned', handleBarcodeScanned)
       } else {
-        // الاتصال
-        isDroidCamConnecting.value = true
-
-        try {
-          showNotification('Connecting to DroidCam...', 'connecting')
-
-          // استخدم IP من المتغير أو القيمة الافتراضية
-          const ipAddress = droidcamIP.value || '192.168.8.15'
-
-          await connectToDroidCam(ipAddress, 4747)
-
-          if (isDroidCamConnected.value) {
-            showNotification(`Connected to DroidCam (${ipAddress})`, 'success')
-
-            // استقبال أحداث الباركود
-            window.addEventListener('barcode-scanned', handleBarcodeScanned)
-          } else {
-            showNotification('Failed to connect to DroidCam', 'error')
-          }
-        } catch (error) {
-          console.error('DroidCam connection error:', error)
-          showNotification(`Connection failed: ${error.message}`, 'error')
-        } finally {
-          isDroidCamConnecting.value = false
-        }
+        showNotification('Failed to connect to DroidCam', 'error')
       }
+    } catch (error) {
+      console.error('DroidCam connection error:', error)
+      showNotification(`Connection failed: ${error.message}`, 'error')
+    } finally {
+      isDroidCamConnecting.value = false
     }
+  }
+}
 
-    /**
-     * معالج حدث مسح الباركود
-     */
-    const handleBarcodeScanned = (event) => {
-       console.log(`📦 Barcode Scanned function 2`)
-      const { barcode, timestamp } = event.detail
-      console.log(`📦 Barcode Scanned: ${barcode} at ${timestamp}`)
 
-      // بث الحدث للـ components الأخرى
-      eventBus.emit('barcode:scanned', {
-        barcode,
-        timestamp
-      })
+const handleBarcodeScanned = (event) => {
+    console.log(`📦 Barcode Scanned function 2`)
+  const { barcode, timestamp } = event.detail
+  console.log(`📦 Barcode Scanned: ${barcode} at ${timestamp}`)
+
+  // بث الحدث للـ components الأخرى
+  eventBus.emit('barcode:scanned', {
+    barcode,
+    timestamp
+  })
+}
+
+/**
+ * عرض إشعار DroidCam
+ */
+const showNotification = (message, status = 'connecting') => {
+  droidcamNotificationMessage.value = message
+  droidcamNotificationStatus.value = status
+  showDroidCamNotification.value = true
+
+  // إخفاء الإشعار بعد 3 ثواني
+  if (notificationTimeout) clearTimeout(notificationTimeout)
+
+  if (status === 'connecting') {
+    // لا تخفي إشعار الاتصال تلقائياً
+    return
+  }
+
+  notificationTimeout = setTimeout(() => {
+    showDroidCamNotification.value = false
+  }, 3000)
+}
+
+/**
+ * تحديث مدة Shift
+ */
+const updateShiftDuration = () => {
+  if (shiftStore.isShiftOpen && currentShift.value) {
+    const startTime = new Date(currentShift.value.period_start_date)
+    const now = new Date()
+    shiftDuration.value = formatDuration(startTime, now)
+  } else {
+    shiftDuration.value = ''
+  }
+}
+
+const refreshShiftSummary = async () => {
+  try {
+    if (shiftStore.isShiftOpen && currentShift.value?.name) {
+      const summary = await get_shift_summary({ name: currentShift.value.name })
+      shiftStore.currentShift.totalSales = summary.total_sales || 0
+      shiftStore.currentShift.transactions = summary.transactions || []
     }
+  } catch (err) {
+    console.error('Failed to refresh shift summary:', err)
+  }
+}
 
-    /**
-     * عرض إشعار DroidCam
-     */
-    const showNotification = (message, status = 'connecting') => {
-      droidcamNotificationMessage.value = message
-      droidcamNotificationStatus.value = status
-      showDroidCamNotification.value = true
+const handleShiftOpened = (shift) => {
+  showOpenShiftModal.value = false
+  emit('shift-opened', shift)
+  if (window.$toast) {
+    window.$toast.success(`Shift opened successfully for ${shift.userName}`)
+  }
+}
 
-      // إخفاء الإشعار بعد 3 ثواني
-      if (notificationTimeout) clearTimeout(notificationTimeout)
+const handleShiftClosed = (shift) => {
+  showCloseShiftModal.value = false
+  emit('shift-closed', shift)
+  if (window.$toast) {
+    window.$toast.success('Shift closed successfully')
+  }
+}
 
-      if (status === 'connecting') {
-        // لا تخفي إشعار الاتصال تلقائياً
-        return
-      }
+const handleShiftError = (error) => {
+  emit('shift-error', error)
+  if (window.$toast) {
+    window.$toast.error(error.message || 'Shift operation failed')
+  }
+}
+const toggleTheme = () => {
+  const newTheme = settingsStore.settings.appearance.theme === 'dark' ? 'light' : 'dark'
+  settingsStore.settings.appearance.theme = newTheme
+  applyTheme(newTheme)
+}
+const applyTheme = (theme) => {
+  if (theme === 'dark') {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
+}
+onMounted(() => {
+  updateShiftDuration()
+  durationInterval = setInterval(updateShiftDuration, 1000)
+  eventBus.on('invoice:created', refreshShiftSummary)
 
-      notificationTimeout = setTimeout(() => {
-        showDroidCamNotification.value = false
-      }, 3000)
-    }
+  // الاستماع لأحداث DroidCam
+  window.addEventListener('droidcam-connected', () => {
+    console.log('✅ DroidCam connected')
+  })
 
-    /**
-     * تحديث مدة Shift
-     */
-    const updateShiftDuration = () => {
-      if (shiftStore.isShiftOpen && currentShift.value) {
-        const startTime = new Date(currentShift.value.period_start_date)
-        const now = new Date()
-        shiftDuration.value = formatDuration(startTime, now)
-      } else {
-        shiftDuration.value = ''
-      }
-    }
+  window.addEventListener('droidcam-disconnected', () => {
+    console.log('❌ DroidCam disconnected')
+  })
+})
 
-    /**
-     * تحديث ملخص Shift
-     */
-    const refreshShiftSummary = async () => {
-      try {
-        if (shiftStore.isShiftOpen && currentShift.value?.name) {
-          const summary = await get_shift_summary({ name: currentShift.value.name })
-          shiftStore.currentShift.totalSales = summary.total_sales || 0
-          shiftStore.currentShift.transactions = summary.transactions || []
-        }
-      } catch (err) {
-        console.error('Failed to refresh shift summary:', err)
-      }
-    }
+onUnmounted(() => {
+  if (durationInterval) clearInterval(durationInterval)
+  if (notificationTimeout) clearTimeout(notificationTimeout)
 
-    const handleShiftOpened = (shift) => {
-      showOpenShiftModal.value = false
-      emit('shift-opened', shift)
-      if (window.$toast) {
-        window.$toast.success(`Shift opened successfully for ${shift.userName}`)
-      }
-    }
+  eventBus.off('invoice:created', refreshShiftSummary)
 
-    const handleShiftClosed = (shift) => {
-      showCloseShiftModal.value = false
-      emit('shift-closed', shift)
-      if (window.$toast) {
-        window.$toast.success('Shift closed successfully')
-      }
-    }
+  window.removeEventListener('barcode-scanned', handleBarcodeScanned)
+  window.removeEventListener('droidcam-connected', null)
+  window.removeEventListener('droidcam-disconnected', null)
 
-    const handleShiftError = (error) => {
-      emit('shift-error', error)
-      if (window.$toast) {
-        window.$toast.error(error.message || 'Shift operation failed')
-      }
-    }
-    const toggleTheme = () => {
-      const newTheme = settingsStore.settings.appearance.theme === 'dark' ? 'light' : 'dark'
-      settingsStore.settings.appearance.theme = newTheme
-      applyTheme(newTheme)
-    }
-    const applyTheme = (theme) => {
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark')
-      } else {
-        document.documentElement.classList.remove('dark')
-      }
-    }
-    onMounted(() => {
-      updateShiftDuration()
-      durationInterval = setInterval(updateShiftDuration, 1000)
-      eventBus.on('invoice:created', refreshShiftSummary)
-
-      // الاستماع لأحداث DroidCam
-      window.addEventListener('droidcam-connected', () => {
-        console.log('✅ DroidCam connected')
-      })
-
-      window.addEventListener('droidcam-disconnected', () => {
-        console.log('❌ DroidCam disconnected')
-      })
-    })
-
-    onUnmounted(() => {
-      if (durationInterval) clearInterval(durationInterval)
-      if (notificationTimeout) clearTimeout(notificationTimeout)
-
-      eventBus.off('invoice:created', refreshShiftSummary)
-
-      window.removeEventListener('barcode-scanned', handleBarcodeScanned)
-      window.removeEventListener('droidcam-connected', null)
-      window.removeEventListener('droidcam-disconnected', null)
-
-      // قطع الاتصال عند غلق الـ component
-      if (isDroidCamConnected.value) {
-        disconnectDroidCam()
-      }
-    })
+  // قطع الاتصال عند غلق الـ component
+  if (isDroidCamConnected.value) {
+    disconnectDroidCam()
+  }
+})
 
 </script>
 
@@ -483,60 +462,6 @@ button:active:not(:disabled) {
 button:disabled {
   cursor: not-allowed;
 }
-
-/* Color Classes */
-.bg-green-500 {
-  background-color: #10b981;
-}
-
-.bg-gray-400 {
-  background-color: #9ca3af;
-}
-
-.text-green-600 {
-  color: #059669;
-}
-
-.bg-green-600 {
-  background-color: #059669;
-}
-
-.hover\:bg-green-700:hover {
-  background-color: #047857;
-}
-
-.text-red-600 {
-  color: #dc2626;
-}
-
-.hover\:text-red-500:hover {
-  color: #ef4444;
-}
-
-.bg-blue-100 {
-  background-color: #dbeafe;
-}
-
-.text-blue-600 {
-  color: #2563eb;
-}
-
-.hover\:bg-blue-200:hover {
-  background-color: #bfdbfe;
-}
-
-.bg-gray-100 {
-  background-color: #f3f4f6;
-}
-
-.text-gray-600 {
-  color: #4b5563;
-}
-
-.hover\:bg-gray-200:hover {
-  background-color: #e5e7eb;
-}
-
 /* Responsive */
 @media (max-width: 640px) {
   .space-x-5 > * + * {

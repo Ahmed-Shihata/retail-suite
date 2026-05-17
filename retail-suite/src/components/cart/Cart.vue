@@ -60,7 +60,7 @@
     <!-- Empty Cart -->
     <div
       v-if="cartStore.cart.length === 0"
-      class="rounded-3xl flex-1 w-full p-4 select-none flex flex-col flex-wrap content-center justify-center"
+      class="rounded-3xl flex-1 w-full p-4 select-none flex flex-col flex-wrap items-center justify-center"
       :style="{
         backgroundColor: 'var(--cart-bg-empty)',
         color: 'var(--cart-text-empty)'
