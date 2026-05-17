@@ -29,7 +29,7 @@
                 @click="deleteAllNotifications"
                 class="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition text-sm font-medium"
               >
-                🗑️ حذف الكل
+                🗑️ حذف جميع الإخطارات
               </button>
             </div>
           </div>

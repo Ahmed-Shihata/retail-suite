@@ -140,36 +140,30 @@ const handleCustomerChange = () => {
   }
 }
 
-// ✅ تحديث البيانات بعد الإنشاء/التعديل
+
 const handleCustomerUpdated = async (updatedCustomer) => {
  const res = await loadCustomers() // إعادة تحميل العملاء من السيرفر
   console.log('🔄 loadCustomers:', res)
 
-  // البحث عن العميل في القائمة
+
   const existingIndex = res.findIndex(c => c.name === updatedCustomer.name)
   console.log('🔍 index:', existingIndex)
   if (existingIndex !== -1) {
-    // ✅ تحديث العميل الموجود
+
     customers.value[existingIndex] = { ...updatedCustomer }
-    console.log('✅ Customer updated in list at index:', existingIndex)
+    console.log('Customer updated in list at index:', existingIndex)
   } else {
-    // ✅ إضافة عميل جديد
     customers.value.push({ ...updatedCustomer })
-    console.log('✅ New customer added to list')
+    console.log(' New customer added to list')
   }
 
-  // ✅ تحديث البيانات المختارة بالبيانات الجديدة من السيرفر
   customer_id.value = updatedCustomer.name
   customer_info.value = { ...updatedCustomer }
   selectedCustomer.value = updatedCustomer.name
   shiftStore.setCustomer(updatedCustomer)
-  // ✅ إرسال البيانات المحدثة للأعلى
   emit('customer-selected', updatedCustomer)
-
-  // console.log('✅ Customer info updated:', customer_info.value)
 }
 
-// إغلاق المودال
 const closeCustomerModal = () => {
   showAddCustomerModal.value = false
   const currentCustomer = shiftStore.$state.currentCustomer

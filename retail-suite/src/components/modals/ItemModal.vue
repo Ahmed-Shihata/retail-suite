@@ -293,7 +293,7 @@ const defaultForm = {
   item_name:      '',
   description:    '',
   item_group:     '',
-  stock_uom:      'Nos',
+  stock_uom:      '',
   valuation_rate: 0,
   image:          '',
   disabled:       false,
@@ -302,27 +302,17 @@ const defaultForm = {
 const form = reactive({ ...defaultForm })
 
 watch(
-  () => props.item,
-  (newItem) => {
-    if (newItem && JSON.stringify(newItem) !== JSON.stringify(previousItem.value)) {
-      previousItem.value = newItem
-      if (props.isEditing) {
-        Object.assign(form, {
-          naming_series:  newItem.naming_series  || '',
-          item_code:      newItem.item_code      || '',
-          item_name:      newItem.item_name      || '',
-          description:    newItem.description    || '',
-          item_group:     newItem.item_group     || '',
-          stock_uom:      newItem.stock_uom      || 'Nos',
-          valuation_rate: newItem.valuation_rate || 0,
-          image:          newItem.image          || '',
-          disabled:       Boolean(newItem.disabled),
-        })
-      } else {
-        Object.assign(form, defaultForm)
-      }
-    } else if (!newItem) {
-      previousItem.value = null
+  () => props.show,
+  (isOpen) => {
+    console.log('show:', isOpen)
+    if (isOpen && props.item) {
+      const data = props.item._raw || props.item
+      console.log('item:', data)
+      Object.assign(form, {
+        ...data,
+        disabled: Boolean(data.disabled),
+      })
+    } else if (isOpen && !props.item) {
       Object.assign(form, defaultForm)
     }
   },
@@ -370,6 +360,7 @@ const handleSubmit = async () => {
   if (!isFormValid()) { alert('Please fill in all required fields'); return }
   isSaving.value = true
   try {
+    console.log("🧾 props.item",props.item)
     let payload = {}
     if (props.isEditing && props.item) {
       payload = {

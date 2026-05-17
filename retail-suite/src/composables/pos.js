@@ -6,16 +6,13 @@ import { call } from 'frappe-ui'
 export const itemList = async()=>{
  try {
 
-    const fields = [
-      "*"
-    ]
     const items = await call('frappe.client.get_list', {
 
         doctype:'Item',
-        fields: JSON.stringify(fields)
-
+        fields: ["*"],
+        limit: 0,
     })
-
+    console.log('first item fields:', Object.keys(items[0] || {}))
     console.log("Get items API",items)
     return items || []
   } catch (err) {

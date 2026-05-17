@@ -26,6 +26,12 @@
 <script setup>
 import { computed } from 'vue'
 import { useProductsStore } from '@/stores/products'
+import { useSettingsStore } from '@/stores/settings'
+const settingsStore = useSettingsStore()
+const settings = computed(() => settingsStore.settings)
+const primaryColor = computed(() => {
+  return settings.value?.appearance?.primaryColor || '#06b6d4'
+})
 
 defineProps({
   modelValue: { type: String, default: '' }
@@ -43,7 +49,7 @@ const categories = computed(() => {
 })
 
 const activeStyle = {
-  background: 'var(--accent-cyan)',
+  background: primaryColor.value,
   color: '#fff',
   boxShadow: '0 2px 8px rgba(6,182,212,0.3)'
 }

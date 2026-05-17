@@ -94,7 +94,7 @@
           <button v-if="shiftStore.isShiftOpen" @click="showWifiModal = true"
             class="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:scale-110"
             title="Wifi">
-            <Wifi class="w-5 h-5" :style="{ color: showScanner ? '#8b5cf6' : '#6b7280' }" />
+            <Wifi class="w-5 h-5" :style="{ color: wificonnected === 'connected' ? primaryColor : '#6b7280' }" />
           </button>
 
           <!-- Divider -->
@@ -195,9 +195,29 @@ const isDroidCamConnecting = ref(false)
 const showDroidCamNotification = ref(false)
 const droidcamNotificationMessage = ref('')
 const droidcamNotificationStatus = ref('connecting') // 'connecting', 'success', 'error'
+
 let notificationTimeout = null
 let durationInterval = null
+let wifiInterval = null
 
+const wificonnected = ref('disconnected')
+const checkInternetConnection = async () => {
+  if (!navigator.onLine) {
+    wificonnected.value = 'disconnected'
+    return
+  }
+
+  try {
+    await fetch('https://1.1.1.1/cdn-cgi/trace', {
+      method: 'GET',
+      cache: 'no-cache',
+      signal: AbortSignal.timeout(3000),
+    })
+    wificonnected.value = 'connected'
+  } catch {
+    wificonnected.value = 'disconnected'
+  }
+}
 
 // Stores
 const shiftStore = useShiftStore()
@@ -228,7 +248,7 @@ const currentShift = computed(() => shiftStore.currentShift)
 // theme
 const isDark = computed(() => settingsStore.settings.appearance.theme === 'dark')
 const primaryColor = computed(() => {
-  return settingsStore.settings.value?.appearance?.primaryColor || '#06b6d4'
+  return settingsStore.settings.value?.appearance?.primaryColor || '#06b6d4';
 })
 
 const handleDroidCamConnect = async () => {
@@ -362,6 +382,13 @@ const applyTheme = (theme) => {
   }
 }
 onMounted(() => {
+
+  checkInternetConnection()
+  window.addEventListener('online', checkInternetConnection)
+  window.addEventListener('offline', checkInternetConnection)
+  wifiInterval = setInterval(checkInternetConnection, 10000)
+
+
   updateShiftDuration()
   durationInterval = setInterval(updateShiftDuration, 1000)
   eventBus.on('invoice:created', refreshShiftSummary)
@@ -377,6 +404,11 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+
+  window.removeEventListener('online', checkInternetConnection)
+  window.removeEventListener('offline', checkInternetConnection)
+  clearInterval(wifiInterval)
+
   if (durationInterval) clearInterval(durationInterval)
   if (notificationTimeout) clearTimeout(notificationTimeout)
 
@@ -390,6 +422,9 @@ onUnmounted(() => {
   if (isDroidCamConnected.value) {
     disconnectDroidCam()
   }
+
+
+
 })
 
 </script>

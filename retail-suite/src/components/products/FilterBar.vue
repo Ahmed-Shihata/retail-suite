@@ -53,7 +53,7 @@
     <!-- Reload Button -->
     <button
       class="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95"
-      :style="{ background: 'var(--accent-cyan)', color: '#fff' }"
+      :style="{ background: primaryColor, color: '#fff', border: '1px solid var(--card-border)' }"
       :disabled="isLoading"
       @click="emit('reload')"
     >
@@ -65,9 +65,15 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import { useProductsStore } from '@/stores/products'
 import { storeToRefs } from 'pinia'
+import { useSettingsStore } from '@/stores/settings'
+const settingsStore = useSettingsStore()
+const settings = computed(() => settingsStore.settings)
+const primaryColor = computed(() => {
+  return settings.value?.appearance?.primaryColor || '#06b6d4'
+})
 
 defineProps({
   selectedPriceList: { type: String, default: '' },

@@ -485,7 +485,6 @@ const getDifferenceIcon = () => {
             clearMessages()
             isLoading.value = true
 
-            // ✅ أضف validation
             const missingModes = paymentModes.value.filter(mop => {
                 const val = form.value.closingBalances[mop]
                 return val === null || val === undefined || val === '' || val < 0

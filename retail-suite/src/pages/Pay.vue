@@ -206,16 +206,30 @@
 
                         <!-- Empty State -->
                         <tr v-if="outstanding_invoices.length === 0">
-                          <td
-                            :colspan="invoices_headers.length + 1"
-                            class="px-4 py-10 text-center text-sm"
-                            :style="{ color: 'var(--text-muted)' }"
-                          >
-                                                <div class="text-4xl mb-3">🧾</div>
-                                    <p class="text-sm font-medium" :style="{ color: 'var(--text-muted)' }">
-                                      {{ customer_name ? 'No outstanding invoices found' : 'Select a customer to view invoices' }}
-                                    </p>
-                          </td>
+                            <td
+                              :colspan="invoices_headers.length + 1"
+                              class="px-4 py-10"
+                            >
+                              <div
+                                class="flex flex-col items-center justify-center text-center gap-3"
+                              >
+                                <FileText
+                                  class="w-14 h-14"
+                                  :style="{ color: 'var(--text-muted)' }"
+                                />
+
+                                <p
+                                  class="text-sm font-medium"
+                                  :style="{ color: 'var(--text-muted)' }"
+                                >
+                                  {{
+                                    customer_name
+                                      ? 'No outstanding invoices found'
+                                      : 'Select a customer to view invoices'
+                                  }}
+                                </p>
+                              </div>
+                            </td>
                         </tr>
                       </tbody>
                     </table>
@@ -807,7 +821,7 @@
 <script setup>
 import OpenShiftModal from '@/components/modals/OpenShiftModal.vue'
 import Customer from '@/components/cart/CustomerSection.vue'
-
+import { FileText } from 'lucide-vue-next'
 import { useShiftStore } from '@/stores/shift'
 import { useToast } from "vue-toastification"
 import { ref, computed, watch, onMounted } from 'vue'
