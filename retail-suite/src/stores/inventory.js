@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch, toRaw } from 'vue'
 import { api } from '@/services/auth.js';
+import { call } from 'frappe-ui'
 import { useShiftStore } from '@/stores/shift'
 import {itemList} from '@/composables/pos'
 import { generateBarcodePreview,addItemBarcode, getBarcodesFromFrappeDB, handleDeleteBarcodeFrappe } from '@/composables/barcode'
@@ -79,11 +80,10 @@ export const useInventoryStore = defineStore('inventory', () => {
         loading.value = true
         error.value = null
         try {
-            console.log("uoms.value from store APi ===============")
             const response = await api.get('/api/method/retail.retail.api.inventory.get_unit_of_measures')
-            uoms.value = response.data?.message || []
-            console.log("uoms.value from store ", response)
-            return response.data?.message
+            uoms.value = response || []
+            console.log("uoms from store ", response)
+            return response
         } catch (err) {
             error.value = err.message
             console.error('Error loading items:', err)
@@ -94,8 +94,8 @@ export const useInventoryStore = defineStore('inventory', () => {
     }
     const defaultItemSeries = async()=>{
         const response = await api.get('/api/method/retail.retail.api.inventory.get_default_item_series')
-        console.log('series response',response.data.message)
-        return response.data?.message
+        console.log('series response',response)
+        return response
     }
     const loadCategories = async ()=>{
           loading.value = true
@@ -103,9 +103,9 @@ export const useInventoryStore = defineStore('inventory', () => {
         try {
 
             const response = await api.get('/api/method/retail.retail.api.inventory.get_item_category')
-            categories.value = response.data?.message || []
-            console.log("categories.value from store ",categories.value)
-            return response.data?.message
+            categories.value = response || []
+            console.log("categories from store ",categories.value)
+            return response
         } catch (err) {
             error.value = err.message
             console.error('Error loading categories:', err)
@@ -129,18 +129,18 @@ export const useInventoryStore = defineStore('inventory', () => {
     const updateItem = async (itemId, itemData) => {
         try {
             console.log("itemData",itemData)
-            const response = await api.put("/api/method/retail.retail.api.inventory.update_item",  {
+            const response = await call("retail.retail.api.inventory.update_item",  {
                 "item_code": itemId,
                 "item_data": itemData
             })
 
-            const updatedItem = response.data?.message?.data
-            console.log("updated +Item+",response.data.message.data)
-            console.log("updated +Item+ itemId",response.data.message.data.item_code)
+            const updatedItem = response.data
+            console.log("updated +Item+",response)
+            console.log("updated +Item+ itemId",response.data.item_code)
             console.log("updated itemId ", itemId)
-            // ✅ حدّث العنصر داخل array
+            console.log("updated itemData ", itemData)
             const index = items.value.findIndex(
-            i => i.item_code === response.data.message.data.item_code || i.name === response.data.message.data.name
+            i => i.item_code === response.data.item_code || i.name === response.data.name
             )
 
             if (index !== -1 && updatedItem) {
@@ -161,7 +161,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     const deleteItem = async (itemId) => {
         try {
             console.log("item you eant to delete is", itemId)
-           const response = await api.post("/api/method/retail.retail.api.inventory.delete_item", {
+           const response = await call("retail.retail.api.inventory.delete_item", {
                 item_code: itemId
             });
 

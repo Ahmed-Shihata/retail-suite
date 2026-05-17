@@ -305,7 +305,7 @@
                           <template v-if="row.isFirstRow">
                             <div class="flex items-center gap-2">
                               <img
-                                :src="row.productImage ? config.FRAPPE_URL + row.productImage : defaultImageSrc"
+                                :src="row.image ? config.FRAPPE_URL + row.image : defaultImageSrc"
                                 class="h-8 w-8 rounded-md object-cover flex-shrink-0"
                                 :style="{ border: '1px solid var(--card-border)' }"
                                 @error="handleImageError"
@@ -848,7 +848,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, toRaw } from 'vue'
+import { ref, reactive, computed, onMounted, toRaw, shallowRef } from 'vue'
 import {
   Download, Eye, Edit2, Trash2, RefreshCcw, Plus,
   Search, Printer, Settings2, X, ScanLine, BarChart2, PackageSearch, ArrowLeft, XCircle
@@ -961,7 +961,7 @@ const flatRows = computed(() => {
         isLastRow:     true,
         sku:           product.item_code,
         productName:   product.item_name,
-        productImage:  product.image       || '',
+        image:  product.image       || '',
         item_group:    product.item_group  || '',
         status:        product?.disabled === 1 ? 'inactive' : 'active',
         totalBarcodes: 0,
@@ -980,7 +980,7 @@ const flatRows = computed(() => {
           isLastRow:     idx === barcodes.length - 1,
           sku:           product.item_code,
           productName:   product.item_name,
-          productImage:  product.image      || '',
+          image:  product.image      || '',
           item_group:    product.item_group || '',
           status:        product?.disabled === 1 ? 'inactive' : 'active',
           totalBarcodes: barcodes.length,
@@ -993,7 +993,7 @@ const flatRows = computed(() => {
             preview:      bc.preview      || '',
             sku:          product.item_code,
             productName:  product.item_name,
-            productImage: product.image || '',
+            image: product.image || '',
           },
           item_code:  product.item_code,
           item_name:  product.item_name,
@@ -1048,7 +1048,8 @@ const loadData = async () => {
 
     const bcProducts = bRes.data || []
     await inventoryStore.loadItems()
-    const storeItems = inventoryStore.items || []
+    const storeItems = JSON.parse(JSON.stringify(toRaw(inventoryStore.items))) || []
+    console.log("storeItems[0]",storeItems[0])
 
     const bcMap = {}
     bcProducts.forEach(p => { bcMap[p.sku] = p })
@@ -1056,11 +1057,7 @@ const loadData = async () => {
     allProducts.value = storeItems.map(item => {
       const bcData = bcMap[item.item_code] || {}
       return {
-        item_code:  item.item_code,
-        item_name:  item.item_name,
-        item_group: item.item_group  || bcData.item_group || '',
-        image:      item.image       || bcData.productImage || '',
-        disabled:   item.disabled    ?? 0,
+        ...toRaw(item),
         barcodes:   (bcData.barcodes || []).map(bc => ({ ...bc, preview: bc.preview || '' })),
       }
     })
@@ -1076,10 +1073,15 @@ const loadData = async () => {
 // ITEM MODAL
 // ────────────────────────────────────────────
 const showItemModal = ref(false)
-const editingItem   = ref(null)
+const editingItem   = shallowRef(null)
 
 const openAddItemModal   = () => { editingItem.value = null; showItemModal.value = true }
-const openEditItemModal  = (row) => { editingItem.value = JSON.parse(JSON.stringify(row._raw)); showItemModal.value = true }
+const openEditItemModal = (row) => {
+  editingItem.value = JSON.parse(JSON.stringify(toRaw(row)))
+  console.log('editingItem set:', editingItem.value)
+  showItemModal.value = true
+}
+
 const closeItemModal     = () => { showItemModal.value = false; editingItem.value = null }
 
 const saveItem = async (itemData) => {
