@@ -49,6 +49,23 @@
 
         <!-- Right Section - 25% -->
         <div class="col-span-1 flex items-center justify-center gap-1">
+            <!-- Draft Invoices -->
+            <button
+              v-if="shiftStore.isShiftOpen"
+              @click="openDraftModal"
+              class="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:scale-110"
+              title="Draft Invoices"
+            >
+              <FileText
+                class="w-5 h-5"
+                :style="{
+                  color: draftInvoicesCount > 0
+                    ? primaryColor
+                    : '#6b7280'
+                }"
+              />
+            </button>
+
 
           <!-- Shift Info -->
           <button v-if="shiftStore.isShiftOpen" @click="showShiftInfo = true"
@@ -158,16 +175,25 @@
         </div>
       </div>
     </Transition>
+
+    <DraftInvoicesModal
+      v-model="showDraftInvoicesModal"
+      :draft-invoices="draftInvoices"
+      :is-loading="isDraftLoading"
+      @open-invoice="(name) => { /* navigate to invoice */ }"
+      @delete-draft="(name) => { /* delete logic */ }"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Coins, Wifi } from 'lucide-vue-next'
+import { Coins, Wifi, FileText } from 'lucide-vue-next'
 import { useShiftStore } from '@/stores/shift'
 import OpenShiftModal from '@/components/modals/OpenShiftModal.vue'
 import CloseShiftModal from '@/components/modals/CloseShiftModal.vue'
 import ShiftInfoModal from '@/components/modals/ShiftInfoModal.vue'
+import DraftInvoicesModal from '@/components/modals/DraftInvoicesModal.vue'
 import { formatDuration, formatPrice } from '../../utils/formatters'
 import { get_shift_summary } from '../../composables/shift'
 import eventBus from '../../utils/eventBus'
@@ -180,9 +206,19 @@ import InfoIcon from '@/components/icons/InfoIcon.svg'
 import PlayIcon from '@/components/icons/PlayIcon.svg'
 import BarcodeScannerIcon from '@/components/icons/BarcodeScanner.svg'
 import { useSettingsStore } from '@/stores/settings.js'
+import { useInvoicesStore } from '@/stores/invoices'
 import { useMobileScanSession } from '@/services/useMobileScanSession'
 import ScanQRModal from '@/components/modals/ScanQRModal.vue'
+
+
+// Stores
+const shiftStore = useShiftStore()
+const settingsStore = useSettingsStore()
+const invoicesStore = useInvoicesStore()
+const {sessionId, getScannerUrl, startListening} = useMobileScanSession()
+
 const emit = defineEmits(['shift-opened', 'shift-closed', 'shift-error'])
+
 
 const showScanner = ref(false)
 // Shift Modals
@@ -199,6 +235,22 @@ const droidcamNotificationStatus = ref('connecting') // 'connecting', 'success',
 let notificationTimeout = null
 let durationInterval = null
 let wifiInterval = null
+
+const showDraftInvoicesModal = ref(false)
+const draftInvoices = ref([])
+const isDraftLoading = ref(false)
+
+const draftInvoicesCount = computed(() => draftInvoices.value.length)
+
+const openDraftModal = async () => {
+  showDraftInvoicesModal.value = true
+  isDraftLoading.value = true
+  console.log('currentShift', currentShift.value.name)
+  draftInvoices.value = await invoicesStore.loadDraftInvoices(currentShift.value.name)
+  isDraftLoading.value = false
+}
+
+
 
 const wificonnected = ref('disconnected')
 const checkInternetConnection = async () => {
@@ -219,10 +271,7 @@ const checkInternetConnection = async () => {
   }
 }
 
-// Stores
-const shiftStore = useShiftStore()
-const settingsStore = useSettingsStore()
-const {sessionId, getScannerUrl, startListening} = useMobileScanSession()
+
 
 const userAvatar = ref('https://ui-avatars.com/api/?name=Ahmed+Reda&background=0D8ABC&color=fff')
 const userName = computed(() => shiftStore.userName)

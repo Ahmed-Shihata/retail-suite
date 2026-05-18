@@ -33,6 +33,7 @@ export const useInvoicesStore = defineStore('invoices', () => {
      State
   ======================== */
   const invoices = ref([])
+  const draftInvoices = ref([])
   const isLoading = ref(false)
   const currentInvoice = ref(null)
   const cashiers = ref([])
@@ -124,6 +125,23 @@ export const useInvoicesStore = defineStore('invoices', () => {
     }
   }
 
+  async function loadDraftInvoices(posOpeningShift) {
+    try {
+      isLoading.value = true
+      const result = await getPosInvoicesResource.submit({
+          docstatus: 0,
+          pos_opening_shift: posOpeningShift
+      })
+      draftInvoices.value = (result?.invoices || []).sort((a, b) =>
+        new Date(b.modified) - new Date(a.modified)
+      )
+      return draftInvoices.value
+    } catch (error) {
+      console.error('Failed to load draft invoices:', error)
+    } finally {
+      isLoading.value = false
+    }
+  }
   async function addTransaction(transactionData) {
     try {
       console.log('=== addTransaction Started ===')
@@ -159,6 +177,7 @@ export const useInvoicesStore = defineStore('invoices', () => {
         posa_pos_opening_shift: shiftStore.pos_opening_shift?.name,
         summary: { cash: paidAmount, total: totalAmount },
       }
+      console.log('📋 Invoice Payload:', invoicePayload)
 
       const dataPayload = {
         due_date: new Date().toISOString().slice(0, 10),
@@ -168,7 +187,6 @@ export const useInvoicesStore = defineStore('invoices', () => {
         customer_credit_dict: transactionData.customer_credit_dict ?? [],
       }
 
-      console.log('📋 Invoice Payload:', invoicePayload)
       console.log('📋 Data Payload:', dataPayload)
 
       const result = await submitInvoiceResource.submit({
@@ -176,20 +194,19 @@ export const useInvoicesStore = defineStore('invoices', () => {
         data: JSON.stringify(dataPayload),
       })
 
-      if (!result?.name) throw new Error('Could not get invoice number from response')
-
+      console.log('📋 Result Api Submit Invoice:', result)
+      if (!result?.invoice) throw new Error('Could not get invoice number from response')
+        // exprcted result:
+        // docstatus: 1
+        // invoice: "ACC-SINV-2026-00063"​
+        // message: "Invoice submitted successfully"
+        // status: "submitted"
+        // success: true -
       return {
-        success: true,
-        invoiceNo: result.name,
-        invoiceId: result.name,
-        transactionId,
-        customerName: shiftStore.currentCustomer.name,
-        amount: totalAmount,
-        paid: paidAmount,
-        change: Math.max(paidAmount - totalAmount, 0),
-        outstanding: result.outstanding ?? Math.max(totalAmount - paidAmount, 0),
-        timestamp: result.posting_date || new Date().toISOString(),
-        invoiceData: result,
+        invoiceNo: result?.invoice,
+        message: result?.message,
+        status: result?.status,
+        success: result?.success,
       }
 
     } catch (error) {
@@ -435,6 +452,7 @@ export const useInvoicesStore = defineStore('invoices', () => {
   return {
     // State
     invoices,
+    draftInvoices,
     isLoading,
     currentInvoice,
     cashiers,
@@ -451,6 +469,7 @@ export const useInvoicesStore = defineStore('invoices', () => {
     getInvoicesByStatus,
     allReturnableInvoices,
     loadInvoices,
+    loadDraftInvoices,
     addTransaction,
     saveInvoice,
     proceedInvoice,

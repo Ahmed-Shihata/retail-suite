@@ -294,6 +294,8 @@ const isDark = computed(() => settingsStore.settings.appearance.theme === 'dark'
             invoiceNo: invoiceResponse.invoiceNo,
             invoiceId: invoiceResponse.invoiceNo,
             isFastMode: true,
+            isSaved: invoiceResponse.status? 1 : 0,
+
           }
         } else {
           // Normal Mode: save draft فقط

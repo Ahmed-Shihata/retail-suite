@@ -115,37 +115,3 @@ export const createSalesReturn = async (invoice_name, items, pos_profile_name) =
         throw error;
     }
 }
-// ====================================================================
-//  Api Get Returnable Invoices
-// ====================================================================
-
-export const getReturnableInvoices = async () => {
-    // get_returnable_invoices
-    try {
-        const response = await call('retail.retail.api.invoice.get_returnable_invoices_api')
-        console.log("api Get Returnable Invoices", response)
-        return response;
-
-    } catch (error) {
-        console.error('Error Api Get Returnable Invoices:', error);
-        throw error;
-    }
-}
-
-// ====================================================================
-//  Api Get POS Invoices
-// ====================================================================
-
-export const getPosInvoices = async (filters = {}) => {
-  try {
-      const response = await call(
-          'retail.retail.doctype.pos_closing_shift.pos_closing_shift.get_all_pos_invoices',
-          { params: filters }
-      );
-        console.log("Api Get POS Invoices", response)
-      return response;
-  } catch (error) {
-      console.error('Error Api Get POS Invoices:', error);
-      throw error;
-  }
-}

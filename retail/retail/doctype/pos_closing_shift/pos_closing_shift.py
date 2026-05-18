@@ -111,7 +111,7 @@ def get_pos_invoices(pos_opening_shift):
 
 @frappe.whitelist()
 def get_all_pos_invoices(**kwargs):
-    filters = {"docstatus": 1, "is_pos": 1}
+    filters = {"is_pos": 1}
     if kwargs.get("pos_opening_shift"):
         filters["posa_pos_opening_shift"] = kwargs["pos_opening_shift"]
 

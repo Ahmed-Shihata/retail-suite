@@ -1000,12 +1000,16 @@ def prepare_invoice(invoice_doc, data):
 
 
 def submit_invoice_doc(invoice_doc, data, is_payment_entry, cash_account):
-    if frappe.get_value(
+
+    allow_background = frappe.get_value(
         "POS Profile",
         invoice_doc.pos_profile,
         "posa_allow_submissions_in_background_job",
-    ):
-        enqueue(
+    )
+
+    if allow_background:
+
+        job = enqueue(
             method=submit_in_background_job,
             queue="short",
             kwargs={
@@ -1015,9 +1019,24 @@ def submit_invoice_doc(invoice_doc, data, is_payment_entry, cash_account):
                 "cash_account": cash_account,
             },
         )
-    else:
-        invoice_doc.submit()
 
+        return {
+            "success": True,
+            "status": "queued",
+            "message": "Invoice queued for background submission",
+            "invoice": invoice_doc.name,
+            "job_id": job.id if job else None,
+        }
+
+    invoice_doc.submit()
+
+    return {
+        "success": True,
+        "status": "submitted",
+        "message": "Invoice submitted successfully",
+        "invoice": invoice_doc.name,
+        "docstatus": invoice_doc.docstatus,
+    }
 @frappe.whitelist()
 def save_invoice(invoice, data):
     data = frappe.parse_json(data)
@@ -1085,30 +1104,7 @@ def submit_invoice(invoice, data):
     # =============================
     # 7. Submit Invoice
     # =============================
-    submit_invoice_doc(invoice_doc, data, is_payment_entry, cash_account)
-
-    # =============================
-    # 8. Payment Entry للمبلغ المدفوع الفعلي
-    #    (بحد أقصى = قيمة الفاتورة)
-    # =============================
-    # if paid_amount > 0:
-    #     allocated_amount = min(paid_amount, total_amount)
-    #     create_payment_entry(invoice_doc, allocated_amount, cash_account, payment_mode)
-
-    # =============================
-    # 9. حساب المبلغ المتبقي
-    # =============================
-    outstanding = max(total_amount - paid_amount, 0)
-
-    # =============================
-    # 11. Return
-    # =============================
-    return {
-        "name": invoice_doc.name,
-        "status": invoice_doc.docstatus,
-        "outstanding": outstanding
-    }
-
+    return submit_invoice_doc(invoice_doc, data, is_payment_entry, cash_account)
 
 
 '''

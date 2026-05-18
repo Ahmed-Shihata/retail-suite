@@ -334,7 +334,7 @@ const invoiceTemplateRef = ref(null)
       const handlePrint = async () => {
         if (isProcessing.value) return
 
-        if (!isSaved.value) {
+        if (!props.receiptData.isSaved) {
           alert('Please save the invoice first before printing.')
           return
         }
