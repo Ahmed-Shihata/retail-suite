@@ -1,5 +1,5 @@
 import { call } from 'frappe-ui'
-
+import { api } from '@/services/auth.js'
 // ============================================================
 // Get Items
 // ============================================================
@@ -148,22 +148,4 @@ export const getPosInvoices = async (filters = {}) => {
       console.error('Error Api Get POS Invoices:', error);
       throw error;
   }
-}
-
-// ====================================================================
-//  Api Submit POS Invoices
-// ====================================================================
-
-export const submitInvoice = async (invoice, data) => {
-    try {
-        const response = await call('retail.retail.api.posapp.submit_invoice', {
-            invoice: JSON.stringify(invoice),
-            data: data
-        });
-        console.log('Api Submit POS Invoices:', response);
-        return response;
-    } catch (error) {
-        console.error('Error Api Submit POS Invoices:', error);
-        throw error;
-    }
 }

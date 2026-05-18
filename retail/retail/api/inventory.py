@@ -904,13 +904,15 @@ def add_item(item_data):
         item_doc.flags.name_set = True
 
         item_doc.insert(ignore_permissions=True)
-        frappe.db.commit()
+        # frappe.db.commit()
+        frappe.db.rollback()
 
         clear_posa_cache()
         return {
             "status": "success",
             "message": f"Item {item_doc.item_code} added successfully",
             "item_code": item_doc.item_code,
+            "item": item_doc.as_dict(),
             "image": image_path
         }
 

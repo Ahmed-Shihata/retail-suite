@@ -1,17 +1,13 @@
 import { defineStore } from 'pinia'
 import { toRaw } from 'vue'
 import {
-
   getCurrentUserInfoApi,
-
-
   processAutoAttendanceApi,
   fetchShiftAssignmentsApi,
   createShiftAssignmentApi,
   updateShiftAssignmentApi,
   deleteShiftAssignmentApi,
 } from '@/services/api'
-
 import {
   getAllShifts,
   fetchShiftsApi,
@@ -39,7 +35,6 @@ export const useShiftStore = defineStore('shift', {
     summary: null,
     isShiftOpen: false,
     statistics: {},
-    db: null,
     users: [],
     showOpeningVoucherDialog: false, // ✨ جديد
     payment_methods: [],

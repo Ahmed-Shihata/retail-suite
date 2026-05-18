@@ -73,6 +73,7 @@
         :receipt-data="receiptData"
         @close="closeReceiptModal"
         @proceed="handleReceiptPrinted"
+        @save="handleReceiptSaved"
       />
 
       <!-- Return Invoice Component -->
@@ -282,43 +283,38 @@ const isDark = computed(() => settingsStore.settings.appearance.theme === 'dark'
 
     const handleSaleTransaction = async (transactionData) => {
       try {
-        console.log('💰 handleSaleTransaction: Starting...')
+        const isFastMode = shiftStore.pos_profile?.fast_mode
 
-        // أرسل إلى invoicesStore
-        const invoiceResponse = await invoicesStore.addTransaction(transactionData)
+        if (isFastMode) {
+          // Fast Mode: submit مباشرة
+          const invoiceResponse = await invoicesStore.addTransaction(transactionData)
 
-        console.log('✅ Invoice created:', invoiceResponse)
+          receiptData.value = {
+            ...transactionData,
+            invoiceNo: invoiceResponse.invoiceNo,
+            invoiceId: invoiceResponse.invoiceNo,
+            isFastMode: true,
+          }
+        } else {
+          // Normal Mode: save draft فقط
+          const invoiceResponse = await invoicesStore.saveInvoice(transactionData)
 
-        // بناء بيانات الـ receipt
-        receiptData.value = {
-          ...transactionData,
-          invoiceNo: invoiceResponse.invoiceNo,
-          invoiceId: invoiceResponse.invoiceNo,
-          receiptNo: generateReceiptNo(),
-          receiptDate: new Date().toLocaleString('id-ID'),
-          shiftInfo: {
-            cashier: shiftStore.currentShift?.user_name || 'Unknown',
-            shiftId: shiftStore.currentShift?.name,
-            posProfile: shiftStore.pos_profile?.name
+          receiptData.value = {
+            ...transactionData,
+            invoiceNo: invoiceResponse.name,
+            invoiceId: invoiceResponse.name,
+            isFastMode: false,
           }
         }
 
-        console.log('📄 Receipt data prepared:', receiptData.value)
-
-        // اعرض الـ receipt modal
         showReceiptModal.value = true
-
-        if (window.$toast) {
-          window.$toast.success(`Invoice ${invoiceResponse.invoiceNo} created!`)
-        }
 
       } catch (error) {
         console.error('❌ Error in handleSaleTransaction:', error)
-        throw error
+        if (window.$toast) window.$toast.error(error.message || 'Failed to process transaction')
       }
     }
 
-    // ✅ دالة منفصلة للمرتجعات
     const handleReturnTransaction = async (returnData) => {
       try {
         console.log('🔄 handleReturnTransaction: Starting...')
@@ -355,41 +351,31 @@ const isDark = computed(() => settingsStore.settings.appearance.theme === 'dark'
       }
     }
 
-    // ✅ بعد الطباعة - حفظ الفاتورة
+    // Save Copy
+    const handleReceiptSave = async (receiptDataParam) => {
+      try {
+        const result = await invoicesStore.saveInvoice(receiptDataParam)
+        if (window.$toast) window.$toast.success(`Invoice ${result.name} saved!`)
+        return result
+      } catch (error) {
+        if (window.$toast) window.$toast.error(error.message || 'Failed to save invoice')
+        throw error
+      }
+      }
+    // Proceed = Submit
     const handleReceiptPrinted = async (receiptDataParam) => {
       try {
-        console.log('=== handleReceiptPrinted Called ===')
-        console.log('Receipt data:', receiptDataParam)
-
-        // احفظ الفاتورة محلياً
-        const savedInvoice = await invoicesStore.saveInvoice(receiptDataParam)
-
-        console.log('✅ Invoice saved locally:', savedInvoice)
-
-        // ✅ استخدم البيانات الصحيحة
-        if (window.$toast) {
-          // savedInvoice فيها:
-          // id, receiptNo, invoiceNo (من receiptDataParam)
-          const displayName = savedInvoice.invoiceNo || savedInvoice.receiptNo || savedInvoice.id
-          window.$toast.success(`Invoice #${displayName} saved!`)
+        if (receiptDataParam.isFastMode) {
+          // Fast Mode: الفاتورة اتسبمتت خلاص - مفيش حاجة
+          if (window.$toast) window.$toast.success(`Invoice ${receiptDataParam.invoiceNo} completed!`)
+        } else {
+          // Normal Mode: submit دلوقتي
+          await invoicesStore.proceedInvoice(receiptDataParam)
+          if (window.$toast) window.$toast.success(`Invoice ${receiptDataParam.invoiceNo} submitted!`)
         }
-
-        // نظّف الـ state
-        cartStore.clearCart()
-        selectedInvoice.value = null
-        showReceiptModal.value = false
-        activeMenu.value = 'pos'
-
       } catch (error) {
-        console.error('❌ Error in handleReceiptPrinted:', error)
-
-        // حتى لو فشل الحفظ المحلي، الفاتورة موجودة في الـ server
-        if (window.$toast) {
-          window.$toast.warning(
-            'Invoice created in server but failed to save locally'
-          )
-        }
-
+        if (window.$toast) window.$toast.error(error.message || 'Failed to submit invoice')
+      } finally {
         cartStore.clearCart()
         selectedInvoice.value = null
         showReceiptModal.value = false

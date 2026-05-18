@@ -148,6 +148,7 @@
 
             <!-- Proceed Button -->
             <button
+              v-if="!props.receiptData?.isFastMode"
               class="flex-1 bg-green-500 text-white text-lg px-4 py-3 rounded-2xl focus:outline-none hover:bg-green-600 transition-colors duration-200 flex items-center justify-center"
               @click="handleProceed"
               :disabled="isProcessing"
@@ -189,6 +190,15 @@
     </transition>
   </div>
 
+  <!-- Invoice Template -->
+  <div class="hidden">
+    <invoiceTemplate
+    ref="invoiceTemplateRef"
+    :invoiceNo="props.receiptData?.invoiceNo"
+    :items="props.receiptData?.items"
+    :summary="props.receiptData?.summary"
+  />
+  </div>
   <!-- Hidden Print Area -->
   <div id="print-area" class="print-area hidden">
     <div v-html="printContent"></div>
@@ -202,7 +212,7 @@ import ReceiptLogoIcon from '@/components/icons/ReceiptLogoIcon.svg'
 import PrintIcon from '@/components/icons/PrintIcon.svg'
 import CheckIcon from '@/components/icons/CheckIcon.svg'
 import CloseIcon from '@/components/icons/CloseIcon.svg'
-
+import invoiceTemplate from './invoiceTemplate.vue';
 const props = defineProps({
     receiptData: {
       type: Object,
@@ -219,9 +229,16 @@ const props = defineProps({
     autoShow: {
       type: Boolean,
       default: true
+    },
+     isFastMode: {
+      type: Boolean,
+      default: false
     }
 })
 const emit = defineEmits(['close', 'proceed', 'print', 'email', 'save'])
+
+const invoiceTemplateRef = ref(null)
+
 
 
     const receiptContent = ref(null)
@@ -265,49 +282,6 @@ const emit = defineEmits(['close', 'proceed', 'print', 'email', 'save'])
       }
     }
 
-    // Handle print
-    const handlePrint = async () => {
-      if (isProcessing.value) return
-
-      isProcessing.value = true
-
-      try {
-        await nextTick()
-
-        // Prepare print content
-        const printArea = document.getElementById('print-area')
-        if (printArea && receiptContent.value) {
-          printArea.innerHTML = receiptContent.value.innerHTML
-          printArea.classList.remove('hidden')
-        }
-
-        // Trigger print
-        window.print()
-
-        emit('print', props.receiptData)
-      } catch (error) {
-        console.error('Print failed:', error)
-        alert('Print failed. Please try again.')
-      } finally {
-        // Hide print area
-        const printArea = document.getElementById('print-area')
-        if (printArea) {
-          printArea.classList.add('hidden')
-        }
-
-        setTimeout(() => {
-          isProcessing.value = false
-        }, 1000)
-      }
-    }
-
-    // Handle proceed
-    const handleProceed = () => {
-        console.log('PPPPPPPPPPPPPPPPPPPP')
-      if (isProcessing.value) return
-      emit('proceed', props.receiptData)
-    }
-
     // Handle close
     const handleClose = () => {
       if (isProcessing.value) return
@@ -328,30 +302,64 @@ const emit = defineEmits(['close', 'proceed', 'print', 'email', 'save'])
     }
 
     // Handle save receipt
-    const handleSaveReceipt = async () => {
-      if (isProcessing.value) return
+    const isSaved = ref(false)  // هل اتحفظت في Frappe
+    const savedInvoiceName = ref(null)  // الـ name بتاع الـ draft
 
-      try {
-        // Create a blob with receipt data
-        const receiptText = generateReceiptText()
-        const blob = new Blob([receiptText], { type: 'text/plain' })
-        const url = URL.createObjectURL(blob)
-
-        // Create download link
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `receipt_${props.receiptData?.receiptNo || generateReceiptNo()}.txt`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-
-        emit('save', props.receiptData)
-      } catch (error) {
-        console.error('Save failed:', error)
-        alert('Save failed. Please try again.')
+      const handleSaveReceipt = async () => {
+        if (isProcessing.value) return
+        isProcessing.value = true
+        try {
+          const result = await emit('save', props.receiptData)
+          isSaved.value = true
+          savedInvoiceName.value = result?.name
+          // تحميل نسخة نصية
+          const receiptText = generateReceiptText()
+          const blob = new Blob([receiptText], { type: 'text/plain' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `receipt_${props.receiptData?.invoiceNo || generateReceiptNo()}.txt`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+        } catch (error) {
+          console.error('Save failed:', error)
+          alert('Save failed. Please try again.')
+        } finally {
+          isProcessing.value = false
+        }
       }
-    }
+
+      const handlePrint = async () => {
+        if (isProcessing.value) return
+
+        if (!isSaved.value) {
+          alert('Please save the invoice first before printing.')
+          return
+        }
+
+        try {
+          isProcessing.value = true
+
+          await nextTick()
+
+          await invoiceTemplateRef.value?.print()
+
+        } catch (error) {
+          console.error('Print failed:', error)
+          alert('Print failed. Please try again.')
+        } finally {
+          setTimeout(() => {
+            isProcessing.value = false
+          }, 1000)
+        }
+      }
+
+      const handleProceed = () => {
+        if (isProcessing.value) return
+        emit('proceed', { ...props.receiptData, savedInvoiceName: savedInvoiceName.value })
+      }
 
     // Generate receipt text for saving
     const generateReceiptText = () => {

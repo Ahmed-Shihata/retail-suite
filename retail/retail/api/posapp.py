@@ -1018,24 +1018,31 @@ def submit_invoice_doc(invoice_doc, data, is_payment_entry, cash_account):
     else:
         invoice_doc.submit()
 
+@frappe.whitelist()
+def save_invoice(invoice, data):
+    data = frappe.parse_json(data)
+    invoice = frappe.parse_json(invoice)
+    invoice_doc = frappe.get_doc(invoice)
+    prepare_invoice(invoice_doc, data)
+    return {
+        "name": invoice_doc.name,
+        "status": invoice_doc.docstatus,
+    }
 
 @frappe.whitelist()
 def submit_invoice(invoice, data):
 
     data = frappe.parse_json(data)
     invoice = frappe.parse_json(invoice)
-    invoice_doc = frappe.get_doc(invoice)
+    if invoice.get("name") and frappe.db.exists("Sales Invoice", invoice.get("name")):
+        invoice_doc = frappe.get_doc("Sales Invoice", invoice["name"])
+    else:
+        invoice_doc = frappe.get_doc(invoice)
 
-    # =============================
-    # 1. Extract Values
-    # =============================
     paid_amount  = float(invoice.get("summary", {}).get("cash", 0))
-    print("invoice : ",invoice)
-    print("invoice summary: ",invoice.get("summary", {}))
-    print('paid_amount: ', paid_amount)
     total_amount = float(invoice.get("summary", {}).get("total", 0))
-    print('total_amount: ', total_amount)
-    credit_change = paid_amount - total_amount   # موجب = زيادة | سالب = نقص
+
+    credit_change = paid_amount - total_amount
     payment_mode  = invoice.get("paymentMethod") or "Cash"
 
     # =============================
@@ -1150,181 +1157,6 @@ def submit_invoice(invoice, data):
             transactionId:TXN1774096035849104
         }
 """
-
-    # elif paid_amount < total_amount:
-
-    #     if not allow_partial_payment:
-    #         return {
-    #             "message": f"You Dont allow partial inv",
-    #         }
-    #     else:
-    #         partial_payment_entry = frappe.get_doc(
-    #             {
-    #                 "doctype": "Payment Entry",
-    #                 "mode_of_payment": "Cash", #fix should not static
-    #                 "paid_to": cash_account["account"],
-    #                 "payment_type": "Receive",
-    #                 "party_type": "Customer",
-    #                 "party": invoice_doc.get("customer"),
-    #                 "paid_amount": invoice_doc.get("credit_change"),
-    #                 "received_amount": invoice_doc.get("credit_change"),
-    #                 "company": invoice_doc.get("company"),
-    #                 "references":[
-    #                     {
-    #                         "reference_doctype": "Sales Invoice",
-    #                         "reference_name": invoice_doc.name,
-    #                         "allocated_amount": paid_amount
-    #                     }
-    #                 ]
-
-    #             }
-    #         )
-    #         payment_entry.flags.ignore_permissions = True
-    #         frappe.flags.ignore_account_permission = True
-    #         payment_entry.save()
-    #         payment_entry.submit()
-
-    # elif paid_amount == total_amount:
-
-    #     print("Done No.1 creating payment")
-    #     # creating payment
-
-    #     payment_entry = frappe.get_doc(
-    #         {
-    #             "doctype": "Payment Entry",
-    #             "mode_of_payment": "Cash", #fix shouldnot static
-    #             "paid_to": cash_account["account"],
-    #             "payment_type": "Receive",
-    #             "party_type": "Customer",
-    #             "party": invoice_doc.get("customer"),
-    #             "paid_amount": invoice_doc.get("credit_change"),
-    #             "received_amount": invoice_doc.get("credit_change"),
-    #             "company": invoice_doc.get("company"),
-    #             "references":[
-    #                 {
-    #                     "reference_doctype": "Sales Invoice",
-    #                     "reference_name": invoice_doc.name,
-    #                     "allocated_amount": paid_amount
-    #                 }
-    #             ]
-
-    #         }
-    #     )
-
-    #     payment_entry.flags.ignore_permissions = True
-    #     frappe.flags.ignore_account_permission = True
-    #     payment_entry.save()
-    #     payment_entry.submit()
-
-    #     # calculating cash
-    #     total_cash = 0
-    #     if data.get("redeemed_customer_credit"):
-    #         total_cash = invoice_doc.total - float(data.get("redeemed_customer_credit"))
-
-    #     is_payment_entry = 0
-    #     if data.get("redeemed_customer_credit"):
-    #         for row in data.get("customer_credit_dict"):
-    #             if row["type"] == "Advance" and row["credit_to_redeem"]:
-    #                 advance = frappe.get_doc("Payment Entry", row["credit_origin"])
-
-    #                 advance_payment = {
-    #                     "reference_type": "Payment Entry",
-    #                     "reference_name": advance.name,
-    #                     "remarks": advance.remarks,
-    #                     "advance_amount": advance.unallocated_amount,
-    #                     "allocated_amount": row["credit_to_redeem"],
-    #                 }
-
-    #                 invoice_doc.append("advances", advance_payment)
-    #                 invoice_doc.is_pos = 0
-    #                 is_payment_entry = 1
-    #     print("Done No.3")
-    #     payments = invoice_doc.payments
-
-    #     posa_auto_set_batch = frappe.get_value("POS Profile", invoice_doc.pos_profile, "posa_auto_set_batch")
-    #     if posa_auto_set_batch:
-    #         set_batch_nos(invoice_doc, "warehouse", throw=True)
-
-    #     set_batch_nos_for_bundels(invoice_doc, "warehouse", throw=True)
-    #     print("Done No.4")
-    #     invoice_doc.due_date = data.get("due_date")
-
-    #     invoice_doc.flags.ignore_permissions = True
-    #     frappe.flags.ignore_account_permission = True
-    #     print("Done No.5")
-    #     invoice_doc.posa_is_printed = 1
-    #     invoice_doc.save()
-
-    #     if frappe.get_value(
-    #         "POS Profile",
-    #         invoice_doc.pos_profile,
-    #         "posa_allow_submissions_in_background_job",
-    #     ):
-    #         invoices_list = frappe.get_all(
-    #             "Sales Invoice",
-    #             filters={
-    #                 "posa_pos_opening_shift": invoice_doc.posa_pos_opening_shift,
-    #                 "docstatus": 0,
-    #                 "posa_is_printed": 1,
-    #             },
-    #         )
-    #         for invoice in invoices_list:
-    #             enqueue(
-    #                 method=submit_in_background_job,
-    #                 queue="short",
-    #                 timeout=1000,
-    #                 is_async=True,
-    #                 kwargs={
-    #                     "invoice": invoice.name,
-    #                     "data": data,
-    #                     "is_payment_entry": is_payment_entry,
-    #                     "total_cash": total_cash,
-    #                     "cash_account": cash_account,
-    #                     "payments": payments,
-    #                 },
-    #             )
-    #     else:
-    #         update_stock_after_tx = frappe.get_value(
-    #             "POS Profile", invoice_doc.pos_profile, "custom_update_stock_after_Transactions"
-    #         )
-    #         if update_stock_after_tx:
-    #             invoice_doc.update_stock = 1
-
-    #         invoice_doc.submit()
-    #         redeeming_customer_credit(
-    #             invoice_doc, data, is_payment_entry, total_cash, cash_account, payments
-    #         )
-    #     print("Done No.10")
-    #     return {"name": invoice_doc.name, "status": invoice_doc.docstatus}
-
-@frappe.whitelist()
-def create_kitchen_orders2(invoice_name):
-    """
-    Create Kitchen Orders for each item in the Sales Invoice based on screen_no.
-    """
-    invoice_doc = frappe.get_doc("Sales Invoice", invoice_name)
-
-    for item in invoice_doc.items:
-        if not item.custom_chef_screen:
-            continue  # Skip if no screen assigned
-
-        chef_name = frappe.get_cached_value("POS Screens", item.custom_chef_screen, "chef_name")
-
-        kitchen_doc = frappe.get_doc({
-            "doctype": "Kitchen Orders",
-            "item": item.item_code,
-            "custom_quantity": item.qty,
-            "order_number": invoice_doc.name,
-            "status": "pending",
-            "custom_screen_no": item.custom_chef_screen,
-            "custom_chef_name": chef_name
-        })
-
-        kitchen_doc.insert(ignore_permissions=True)
-
-    frappe.db.commit()
-    return {"status": "success"}
-
 
 def set_batch_nos(doc, warehouse_field, throw=False, child_table="items"):
 	"""Automatically select `batch_no` for outgoing items in item table"""
