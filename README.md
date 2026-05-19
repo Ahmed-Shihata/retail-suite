@@ -164,12 +164,17 @@ If you find this project useful, please give it a ⭐ on GitHub!
 ### 🛠️ Development Setup — Retail Suite
 
 ### 1. Install Dependencies
+```bash
+cd ~/Music/frappe-bench-v16/apps/retail/
+bench pip install qrcode[pil]
+```
+
+---
 
 ```bash
 cd ~/Music/frappe-bench-v15/apps/retail/retail-suite
 npm install
 ```
-
 ---
 
 ### 2. Create `.env` File
@@ -209,6 +214,12 @@ sudo mv mkcert /usr/local/bin/
 ```bash
 # First time only — creates local CA
 mkcert -install
+
+This creates a root CA at:
+```
+~/.local/share/mkcert/rootCA.pem
+~/.local/share/mkcert/rootCA-key.pem
+```
 
 # Generate certificate for your server IP
 cd /home/frappe/Music/frappe-bench-v15/certs

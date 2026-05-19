@@ -257,10 +257,20 @@ router.beforeEach(async (to, from, next) => {
   console.log('🔀 Guard:', to.path)
   console.log('👤 session.user:', session.user)
   console.log('✅ isAuth:', isAuth)
-
+  console.log('✅  to.meta.requiresAuth:', to.meta.requiresAuth)
   if (to.path === '/') {
-    return next(isAuth ? '/pos' : false)
-
+       if (isAuth) {
+        return next('/pos')
+      } else {
+        console.log('🚀 Redirecting to login page')
+        const base = import.meta.env.VITE_FRAPPE_URL_LOCAL || ''
+        if (import.meta.env.VITE_ENV === 'development') {
+          window.location.href = `${base}/login?redirect-to=${encodeURIComponent(window.location.href)}`
+        } else {
+          window.location.href = `/login`
+        }
+        return next(false)
+      }
   }
 
   if (to.path === '/login' && isAuth) {
@@ -268,6 +278,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (to.meta.requiresAuth && !isAuth) {
+    console.log('🚀 Redirecting to login page')
     const base = import.meta.env.VITE_FRAPPE_URL_LOCAL || ''
     window.location.href = `${base}/login`
     return next(false)
@@ -277,6 +288,26 @@ router.beforeEach(async (to, from, next) => {
     const userRoles = session.roles || []
     const hasAccess = to.meta.roles.some(role => userRoles.includes(role))
     if (!hasAccess) return next({ name: 'Forbidden' })
+  }
+  // 👤 session.user: null
+  // ✅ isAuth: false
+  // ✅  to.meta.requiresAuth: false
+  if ( session.user === null  && !to.meta.requiresAuth && !isAuth) {
+    console.log('🚀 Redirecting to login page')
+    const base = import.meta.env.VITE_FRAPPE_URL_LOCAL || ''
+    const env_type = import.meta.env.VITE_ENV
+
+    // development
+    if (env_type === 'development') {
+          window.location.href = `${base}/login?redirect-to=${encodeURIComponent(window.location.href)}`
+
+    }
+    else {
+    // production
+       window.location.href = `/login`
+    }
+
+
   }
 
   next()

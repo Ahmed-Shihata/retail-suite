@@ -173,6 +173,10 @@ export const getCurrentUserInfoApi = async () => {
 
     await currentUser.reload()
 
+    if (currentUser.error) {
+      throw new Error(`get_logged_user failed: ${currentUser.error}`)
+    }
+
     console.log('📥 currentUser response raw:', currentUser.data)
 
     const user = currentUser.data
@@ -201,16 +205,16 @@ export const getCurrentUserInfoApi = async () => {
     // 3. Roles
     console.log('🔐 fetching roles for:', user)
 
-    const userRoles = await getUserRoles(user)
+    // const userRoles = await getUserRoles(user)
 
-    console.log('🎭 roles result:', userRoles)
+    // console.log('🎭 roles result:', userRoles)
 
     const result = {
       user,
       email: userData?.email || '',
       full_name: userData?.full_name || user,
       user_image: userData?.user_image || '',
-      roles: userRoles || []
+      // roles: userRoles || []
     }
 
     console.log('✅ FINAL RESULT:', result)
