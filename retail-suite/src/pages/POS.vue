@@ -354,7 +354,7 @@ const isDark = computed(() => settingsStore.settings.appearance.theme === 'dark'
     }
 
     // Save Copy
-    const handleReceiptSave = async (receiptDataParam) => {
+    const handleReceiptSaved = async (receiptDataParam) => {
       try {
         const result = await invoicesStore.saveInvoice(receiptDataParam)
         if (window.$toast) window.$toast.success(`Invoice ${result.name} saved!`)
@@ -366,6 +366,9 @@ const isDark = computed(() => settingsStore.settings.appearance.theme === 'dark'
       }
     // Proceed = Submit
     const handleReceiptPrinted = async (receiptDataParam) => {
+          console.log('🔍 invoiceId:', receiptDataParam.invoiceId)
+          console.log('🔍 isFastMode:', receiptDataParam.isFastMode)
+
       try {
         if (receiptDataParam.isFastMode) {
           // Fast Mode: الفاتورة اتسبمتت خلاص - مفيش حاجة

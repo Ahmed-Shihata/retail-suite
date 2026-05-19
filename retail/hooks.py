@@ -372,4 +372,4 @@ fixtures = [
         "filters": [["name", "in", ("Sales Invoice-posa_pos_opening_shift-no_copy")]],
     }
 ]
-fixtures = ["Loyalty Program", "Loyalty Tier", "Loyalty Reward", "Loyalty Point Entry"]
+# fixtures = ["Loyalty Program", "Loyalty Tier", "Loyalty Reward", "Loyalty Point Entry"]

@@ -180,7 +180,7 @@
       v-model="showDraftInvoicesModal"
       :draft-invoices="draftInvoices"
       :is-loading="isDraftLoading"
-      @open-invoice="(name) => { /* navigate to invoice */ }"
+      @open-invoice="handleOpenDraftInvoice"
       @delete-draft="(name) => { /* delete logic */ }"
     />
   </div>
@@ -198,20 +198,22 @@ import { formatDuration, formatPrice } from '../../utils/formatters'
 import { get_shift_summary } from '../../composables/shift'
 import eventBus from '../../utils/eventBus'
 import { useDroidCamClient } from '@/services/barcodeWebSocketClient'
-import UserIcon from '@/components/icons/UserIcon.svg'
-import ClockIcon from '@/components/icons/ClockIcon.svg'
-import ReceiptIcon from '@/components/icons/ReceiptIcon.svg'
-import CashIcon from '@/components/icons/CashIcon.svg'
-import InfoIcon from '@/components/icons/InfoIcon.svg'
-import PlayIcon from '@/components/icons/PlayIcon.svg'
-import BarcodeScannerIcon from '@/components/icons/BarcodeScanner.svg'
-import { useSettingsStore } from '@/stores/settings.js'
-import { useInvoicesStore } from '@/stores/invoices'
+import UserIcon   from '@/components/icons/UserIcon.svg'
+import ClockIcon    from '@/components/icons/ClockIcon.svg'
+import ReceiptIcon            from '@/components/icons/ReceiptIcon.svg'
+import CashIcon               from '@/components/icons/CashIcon.svg'
+import InfoIcon               from '@/components/icons/InfoIcon.svg'
+import PlayIcon               from '@/components/icons/PlayIcon.svg'
+import BarcodeScannerIcon     from '@/components/icons/BarcodeScanner.svg'
+import { useSettingsStore }   from '@/stores/settings.js'
+import { useInvoicesStore }   from '@/stores/invoices'
+import { useCartStore }       from '@/stores/cart'
 import { useMobileScanSession } from '@/services/useMobileScanSession'
 import ScanQRModal from '@/components/modals/ScanQRModal.vue'
 
 
 // Stores
+const cartStore = useCartStore()
 const shiftStore = useShiftStore()
 const settingsStore = useSettingsStore()
 const invoicesStore = useInvoicesStore()
@@ -430,6 +432,16 @@ const applyTheme = (theme) => {
     document.documentElement.classList.remove('dark')
   }
 }
+
+// في ShiftControl.vue
+const handleOpenDraftInvoice = (invoiceName) => {
+  const invoice = draftInvoices.value.find(inv => inv.name === invoiceName)
+  if (!invoice) return
+
+  cartStore.loadDraftInvoice(invoice)
+  showDraftInvoicesModal.value = false
+}
+
 onMounted(() => {
 
   checkInternetConnection()

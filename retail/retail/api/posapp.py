@@ -991,6 +991,12 @@ def prepare_invoice(invoice_doc, data):
         set_batch_nos(invoice_doc, "warehouse", throw=True)
 
     set_batch_nos_for_bundels(invoice_doc, "warehouse", throw=True)
+    # update stock after transactions
+    update_stock_after_tx = frappe.get_value(
+            "POS Profile", invoice_doc.pos_profile, "custom_update_stock_after_Transactions"
+        )
+    if update_stock_after_tx:
+        invoice_doc.update_stock = 1
 
     invoice_doc.due_date = data.get("due_date")
     invoice_doc.flags.ignore_permissions = True
@@ -1000,7 +1006,7 @@ def prepare_invoice(invoice_doc, data):
 
 
 def submit_invoice_doc(invoice_doc, data, is_payment_entry, cash_account):
-
+    frappe.throw("Error")
     allow_background = frappe.get_value(
         "POS Profile",
         invoice_doc.pos_profile,
@@ -1037,16 +1043,33 @@ def submit_invoice_doc(invoice_doc, data, is_payment_entry, cash_account):
         "invoice": invoice_doc.name,
         "docstatus": invoice_doc.docstatus,
     }
+
 @frappe.whitelist()
 def save_invoice(invoice, data):
     data = frappe.parse_json(data)
     invoice = frappe.parse_json(invoice)
-    invoice_doc = frappe.get_doc(invoice)
+
+    if invoice.get("name") and frappe.db.exists("Sales Invoice", invoice.get("name")):
+        invoice_doc = frappe.get_doc("Sales Invoice", invoice["name"])
+
+        if invoice.get("customer"):
+            invoice_doc.customer = invoice["customer"]
+
+        if invoice.get("items"):
+            invoice_doc.items = []
+            for item in invoice.get("items"):
+                invoice_doc.append("items", item)
+
+        if invoice.get("payments"):
+            invoice_doc.payments = []
+            for payment in invoice.get("payments"):
+                invoice_doc.append("payments", payment)
+    else:
+        invoice_doc = frappe.get_doc(invoice)
+
     prepare_invoice(invoice_doc, data)
-    return {
-        "name": invoice_doc.name,
-        "status": invoice_doc.docstatus,
-    }
+    return {"name": invoice_doc.name, "status": invoice_doc.docstatus}
+
 
 @frappe.whitelist()
 def submit_invoice(invoice, data):
@@ -1104,7 +1127,8 @@ def submit_invoice(invoice, data):
     # =============================
     # 7. Submit Invoice
     # =============================
-    return submit_invoice_doc(invoice_doc, data, is_payment_entry, cash_account)
+    frappe.throw("Error")
+    # return submit_invoice_doc(invoice_doc, data, is_payment_entry, cash_account)
 
 
 '''

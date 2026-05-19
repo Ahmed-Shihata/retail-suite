@@ -11,7 +11,14 @@ const saveInvoiceResource = createResource({
   url: 'retail.retail.api.posapp.save_invoice',
   auto: false,
 })
-
+/**
+ * Submit invoice
+ 1-  (fast mode is 0)
+    - COMPLETE SALE → handleSubmit في PaymentSection
+    - cartStore.processTransaction()
+    - emit submit
+ 2- addTransaction -> submit sales invoice (fast mode is 1)
+ */
 const submitInvoiceResource = createResource({
   url: 'retail.retail.api.posapp.submit_invoice',
   auto: false,
@@ -142,9 +149,10 @@ export const useInvoicesStore = defineStore('invoices', () => {
       isLoading.value = false
     }
   }
+
   async function addTransaction(transactionData) {
     try {
-      console.log('=== addTransaction Started ===')
+
       const shiftStore = useShiftStore()
 
       if (!transactionData?.items?.length) throw new Error('Invalid transaction data - items missing')
@@ -156,31 +164,31 @@ export const useInvoicesStore = defineStore('invoices', () => {
       const totalAmount = parseFloat(summary.total ?? 0)
 
       const invoicePayload = {
-        doctype: 'Sales Invoice',
-        is_pos: 1,
-        ignore_pricing_rule: 1,
-        company: shiftStore.pos_profile.company,
-        naming_series: shiftStore.pos_profile.naming_series,
-        customer: shiftStore.currentCustomer.name,
-        posting_date: new Date().toISOString().slice(0, 10),
-        pos_profile: shiftStore.pos_profile.name,
-        paymentMethod: paymentMethod,
-        payments: [{ mode_of_payment: paymentMethod, amount: paidAmount }],
-        items: items.map(item => ({
-          item_code: item.item_code,
-          qty: item.qty,
-          rate: item.rate,
-          income_account: shiftStore.pos_profile.income_account,
-          expense_account: shiftStore.pos_profile.expense_account,
-          warehouse: shiftStore.pos_profile.warehouse,
+        "doctype": 'Sales Invoice',
+        "name": transactionData.draftName || undefined,
+        "customer": shiftStore.currentCustomer.name,
+        "posting_date": new Date().toISOString().slice(0, 10),
+        "pos_profile": shiftStore.pos_profile.name,
+        "posa_pos_opening_shift": shiftStore.pos_opening_shift?.name,
+        "is_pos": 1,
+        "ignore_pricing_rule": 1,
+        "payments": [{ "mode_of_payment": paymentMethod, "amount": paidAmount }],
+        "items": items.map(item => ({
+              "item_code": item.item_code,
+              "qty": item.qty,
+              "rate": item.rate,
+              "income_account": shiftStore.pos_profile.income_account,
+              "expense_account": shiftStore.pos_profile.expense_account,
+              "warehouse": shiftStore.pos_profile.warehouse,
         })),
-        posa_pos_opening_shift: shiftStore.pos_opening_shift?.name,
-        summary: { cash: paidAmount, total: totalAmount },
+        "company": shiftStore.pos_profile.company,
       }
+      console.log('🔍 draftName:', transactionData.draftName)
+      console.log('🔍 invoicePayload.name:', invoicePayload.name)
       console.log('📋 Invoice Payload:', invoicePayload)
 
       const dataPayload = {
-        due_date: new Date().toISOString().slice(0, 10),
+        "due_date": new Date().toISOString().slice(0, 10),
         transactionId,
         mode,
         redeemed_customer_credit: transactionData.redeemed_customer_credit ?? false,
@@ -196,17 +204,11 @@ export const useInvoicesStore = defineStore('invoices', () => {
 
       console.log('📋 Result Api Submit Invoice:', result)
       if (!result?.invoice) throw new Error('Could not get invoice number from response')
-        // exprcted result:
-        // docstatus: 1
-        // invoice: "ACC-SINV-2026-00063"​
-        // message: "Invoice submitted successfully"
-        // status: "submitted"
-        // success: true -
       return {
-        invoiceNo: result?.invoice,
-        message: result?.message,
-        status: result?.status,
-        success: result?.success,
+        invoiceNo: result?.invoice,   // invoiceNo: "ACC-SINV-2026-00063"
+        message: result?.message,     // message: "Invoice submitted successfully"
+        status: result?.status,       // status: "submitted"
+        success: result?.success,     // success: "true"
       }
 
     } catch (error) {
@@ -230,26 +232,24 @@ export const useInvoicesStore = defineStore('invoices', () => {
     const totalAmount = parseFloat(summary.total ?? 0)
 
     const invoicePayload = {
-      doctype: 'Sales Invoice',
-      is_pos: 1,
-      ignore_pricing_rule: 1,
-      company: shiftStore.pos_profile.company,
-      naming_series: shiftStore.pos_profile.naming_series,
-      customer: shiftStore.currentCustomer.name,
-      posting_date: new Date().toISOString().slice(0, 10),
-      pos_profile: shiftStore.pos_profile.name,
-      paymentMethod: paymentMethod,
-      payments: [{ mode_of_payment: paymentMethod, amount: paidAmount }],
-      items: items.map(item => ({
-        item_code: item.item_code,
-        qty: item.qty,
-        rate: item.rate,
-        income_account: shiftStore.pos_profile.income_account,
-        expense_account: shiftStore.pos_profile.expense_account,
-        warehouse: shiftStore.pos_profile.warehouse,
+      "doctype": 'Sales Invoice',
+      "name": transactionData.draftName || undefined,  // ←  draft name
+      "is_pos": 1,
+      "ignore_pricing_rule": 1,
+      "company": shiftStore.pos_profile.company,
+      "customer": shiftStore.currentCustomer.name,
+      "posting_date": new Date().toISOString().slice(0, 10),
+      "pos_profile": shiftStore.pos_profile.name,
+      "payments": [{ mode_of_payment: paymentMethod, amount: paidAmount }],
+      "items": items.map(item => ({
+        "item_code": item.item_code,
+        "qty": item.qty,
+        "rate": item.rate,
+        "income_account": shiftStore.pos_profile.income_account,
+        "expense_account": shiftStore.pos_profile.expense_account,
+        "warehouse": shiftStore.pos_profile.warehouse,
       })),
-      posa_pos_opening_shift: shiftStore.pos_opening_shift?.name,
-      summary: { cash: paidAmount, total: totalAmount },
+      "posa_pos_opening_shift": shiftStore.pos_opening_shift?.name,
     }
 
     const dataPayload = {
@@ -262,7 +262,7 @@ export const useInvoicesStore = defineStore('invoices', () => {
       invoice: JSON.stringify(invoicePayload),
       data: JSON.stringify(dataPayload),
     })
-
+    console.log('🔍 result saveInvoice:',result)
     return result
 
   } catch (error) {

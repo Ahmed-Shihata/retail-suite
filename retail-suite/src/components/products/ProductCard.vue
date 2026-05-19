@@ -176,9 +176,9 @@ const defaultImageSrc = `${config.VUE_URL}/src/assets/img/default-product.jpg`
 const stockLabel = computed(() => {
   const qty = props.product.actual_qty
   if (qty === undefined || qty === null) return ''
-  if (qty <= 0) return 'نفذ'
-  if (qty <= 5) return 'كمية محدودة'
-  return 'متوفر'
+  if (qty <= 0) return 'Out of stock'
+  if (qty <= 5) return 'Limited quantity'
+  return 'Available'
 })
 
 

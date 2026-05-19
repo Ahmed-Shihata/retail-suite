@@ -259,14 +259,16 @@ import { useInvoicesStore } from '@/stores/invoices'
 import { useShiftStore }            from '@/stores/shift'
 import { useCartStore } from '../../stores/cart';
 import { formatDate, formatPrice } from '../../utils/formatters';
-  const emit = defineEmits(['select', 'cancel'])
 
-    const invoicesStore = useInvoicesStore()
 
-    const searchQuery = ref('')
-    const selectedInvoiceId = ref(null)
-    const allInvoices = ref([])
-    const loading = ref(true)
+const emit = defineEmits(['select', 'cancel'])
+
+const invoicesStore = useInvoicesStore()
+
+const searchQuery = ref('')
+const selectedInvoiceId = ref(null)
+const allInvoices = ref([])
+const loading = ref(true)
 // ─── Store ────────────────────────────────────────────────────────
 const shiftStore      = useShiftStore()
 const cartStore = useCartStore()
@@ -274,61 +276,61 @@ const cartStore = useCartStore()
 
 const pos_opening_shift = computed(() => shiftStore.pos_opening_shift?.name || "")
 
-    const filteredInvoices = computed(() => {
-      if (!searchQuery.value) {
-        return allInvoices.value
-      }
-      return allInvoices.value.filter(invoice =>
-        invoice.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-      )
-    })
-
-    const selectedInvoice = computed(() => {
-      return allInvoices.value.find(inv => inv.name === selectedInvoiceId.value)
-    })
-
-    const loadInvoices = async () => {
-      loading.value = true
-      try {
-        allInvoices.value = await invoicesStore.allReturnableInvoices()
-        // Sort by date descending
-        console.log("All invs",allInvoices.value)
-        // allInvoices.value.sort((a, b) => new Date(b.receiptDate) - new Date(a.receiptDate))
-      } catch (error) {
-        console.error('Error loading invoices:', error)
-        allInvoices.value = []
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const selectInvoice = (invoice) => {
-      selectedInvoiceId.value = invoice.name
-    }
-
-    const handleSearch = () => {
-      // Search is handled by computed property
-    }
-
-  const handleSelect = () => {
-    if (selectedInvoice.value) {
-      const plainInvoice = JSON.parse(JSON.stringify(selectedInvoice.value))
-      const pos_profile_name = pos_opening_shift.value
-      cartStore.setReturnAgainst(plainInvoice, pos_profile_name)
-      invoicesStore.setReturnInvoice(plainInvoice)
-      console.log('✅ Return selected Invoice:', plainInvoice)
-      emit('select', plainInvoice)
-    }
+const filteredInvoices = computed(() => {
+  if (!searchQuery.value) {
+    return allInvoices.value
   }
+  return allInvoices.value.filter(invoice =>
+    invoice.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+  )
+})
 
-    const handleCancel = () => {
-      emit('cancel')
-    }
+const selectedInvoice = computed(() => {
+  return allInvoices.value.find(inv => inv.name === selectedInvoiceId.value)
+})
 
-    // Load invoices on mount
-    onMounted(() => {
-      loadInvoices()
-    })
+const loadInvoices = async () => {
+  loading.value = true
+  try {
+    allInvoices.value = await invoicesStore.allReturnableInvoices()
+    // Sort by date descending
+    console.log("All invs",allInvoices.value)
+    // allInvoices.value.sort((a, b) => new Date(b.receiptDate) - new Date(a.receiptDate))
+  } catch (error) {
+    console.error('Error loading invoices:', error)
+    allInvoices.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+const selectInvoice = (invoice) => {
+  selectedInvoiceId.value = invoice.name
+}
+
+const handleSearch = () => {
+  // Search is handled by computed property
+}
+
+const handleSelect = () => {
+if (selectedInvoice.value) {
+  const plainInvoice = JSON.parse(JSON.stringify(selectedInvoice.value))
+  const pos_profile_name = pos_opening_shift.value
+  cartStore.setReturnAgainst(plainInvoice, pos_profile_name)
+  invoicesStore.setReturnInvoice(plainInvoice)
+  console.log('✅ Return selected Invoice:', plainInvoice)
+  emit('select', plainInvoice)
+}
+}
+
+const handleCancel = () => {
+  emit('cancel')
+}
+
+// Load invoices on mount
+onMounted(() => {
+  loadInvoices()
+})
 
 </script>
 

@@ -291,12 +291,7 @@ import ClockIcon from '@/components/icons/ClockIcon.svg'
     return `${hours}h ${minutes}m`
   }
 
-  // const getUserRole = (userId) => {
-  //   console.log("userId",userId)
-  //   console.log("shiftStore.users",shiftStore.users)
-  //   const user = shiftStore.users.find(u => u.id === userId)
-  //   return user ? user.role : 'Unknown'
-  // }
+
   function getUserRole(userId) {
       const shiftStore = useShiftStore();
 
