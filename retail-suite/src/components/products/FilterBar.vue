@@ -7,7 +7,7 @@
     <!-- Price List -->
     <div class="flex items-center gap-2 flex-1 min-w-0">
       <span class="text-xs font-semibold whitespace-nowrap" :style="{ color: 'var(--text-muted)' }">
-        قائمة الأسعار
+        Price List
       </span>
       <select
         :value="selectedPriceList"
@@ -31,7 +31,7 @@
     <!-- Warehouse -->
     <div class="flex items-center gap-2 flex-1 min-w-0">
       <span class="text-xs font-semibold whitespace-nowrap" :style="{ color: 'var(--text-muted)' }">
-        المستودع
+        Warehouse
       </span>
       <select
         :value="selectedWarehouse"
@@ -59,7 +59,7 @@
     >
       <span v-if="isLoading" class="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
       <span v-else>↻</span>
-      تحديث
+      <span>Reload</span>
     </button>
   </div>
 </template>

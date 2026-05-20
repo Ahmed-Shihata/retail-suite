@@ -7,7 +7,7 @@
       :style="modelValue === '' ? activeStyle : inactiveStyle"
       @click="emit('update:modelValue', '')"
     >
-      الكل
+      All Categories
     </button>
 
     <!-- Category buttons -->

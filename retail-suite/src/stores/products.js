@@ -115,6 +115,7 @@ export const useProductsStore = defineStore('products', {
           selectedWarehouse
         )
 
+        console.log("AFTER API CALL", products)
         console.log('✅ Products loaded:', products?.length)
         this.products = products || []
 

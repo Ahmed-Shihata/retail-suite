@@ -1,7 +1,6 @@
 <template>
     <div fluid>
       <div v-show="!dialog" class="w-full min-h-screen flex" :style="{ background: 'var(--item-bg)' }">
-
         <!-- Main Content -->
         <div class="flex-1 p-2 space-y-5">
           <div class="min-h-screen grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -43,7 +42,7 @@
                       @click="fetchAllData"
                       :disabled="invoices_loading"
                       class="w-full text-white font-bold rounded-lg px-6 py-3 transition duration-300 active:scale-95 shadow-md uppercase tracking-wide text-sm disabled:cursor-not-allowed"
-                      :style="{ background: 'var(--btn-primary)' }"
+                      :style="{ background: PrimaryColor }"
                     >
                       <span v-if="invoices_loading" class="inline-block animate-spin mr-2">⟳</span>
                       <span>{{ invoices_loading ? 'Loading...' : 'Search' }}</span>
@@ -832,73 +831,73 @@ import WarningIcon from '@/components/icons/WarningIcon.svg'
 
 import { getOutstandingInvoices, get_unallocated_payments, processPayment, getPaymentModes } from '../composables/payment'
 
-    // Reconcile Modal
-    const showReconcileModal = ref(false)
-    const reconcileModalData = ref({ payments: [], invoices: [] })
+// Reconcile Modal
+const showReconcileModal = ref(false)
+const reconcileModalData = ref({ payments: [], invoices: [] })
 
-    const showOpenShiftModal = ref(false)
-    const toast = useToast()
-    // Snackbar state (إذا كنت تستخدم vuetify)
-    const snackbar = ref(false)
-    const snackbarMessage = ref('')
-    const snackbarColor = ref('info')
+const showOpenShiftModal = ref(false)
+const toast = useToast()
+// Snackbar state (إذا كنت تستخدم vuetify)
+const snackbar = ref(false)
+const snackbarMessage = ref('')
+const snackbarColor = ref('info')
 
 
-    const shiftStore = useShiftStore()
-    const { isShiftOpen } = storeToRefs(shiftStore)
+const shiftStore = useShiftStore()
+const { isShiftOpen } = storeToRefs(shiftStore)
 
-    const customer_name = ref('')
-    const company = ref('')
-    const currency = shiftStore.currency
-    const company_profile = ref('')
-    const pos_profile = computed(() => shiftStore.pos_profile || {})
+const customer_name = ref('')
+const company = ref('')
+const currency = shiftStore.currency
+const company_profile = ref('')
+const pos_profile = computed(() => shiftStore.pos_profile || {})
 
-    const singleSelect = ref(false)
-    const invoices_loading = ref(false)
-    const unallocated_payments_loading = ref(false)
-    const mpesa_payments_loading = ref(false)
+const singleSelect = ref(false)
+const invoices_loading = ref(false)
+const unallocated_payments_loading = ref(false)
+const mpesa_payments_loading = ref(false)
 
-    const pos_profile_search = computed(() => shiftStore.pos_profile_name || {})
-    const pos_profiles_list = ref([])
+const pos_profile_search = computed(() => shiftStore.pos_profile_name || {})
+const pos_profiles_list = ref([])
 
-    const outstanding_invoices = ref([])
-    const selected_invoices = ref([])
+const outstanding_invoices = ref([])
+const selected_invoices = ref([])
 
-    const unallocated_payments = ref([])
-    const selected_payments = ref([])
+const unallocated_payments = ref([])
+const selected_payments = ref([])
 
-    const mpesa_search_name = ref('')
-    const mpesa_search_mobile = ref('')
-    const mpesa_payments = ref([])
-    const selected_mpesa_payments = ref([])
+const mpesa_search_name = ref('')
+const mpesa_search_mobile = ref('')
+const mpesa_payments = ref([])
+const selected_mpesa_payments = ref([])
 
-    const selected_invoices_objects = ref([])
+const selected_invoices_objects = ref([])
 
-    const selected_payments_objects = ref([])
+const selected_payments_objects = ref([])
 
-    const invoices_headers = ref([
-      { title: 'Invoice', value: 'name', sortable: true },
-      { title: 'Customer', value: 'customer', sortable: true },
-      { title: 'Date', value: 'posting_date', sortable: true },
-      { title: 'Due Date', value: 'due_date', sortable: true },
-      { title: 'Total', value: 'grand_total', align: 'end', sortable: true },
-      { title: 'Outstanding', value: 'outstanding_amount', align: 'end', sortable: true }
-    ])
+const invoices_headers = ref([
+  { title: 'Invoice', value: 'name', sortable: true },
+  { title: 'Customer', value: 'customer', sortable: true },
+  { title: 'Date', value: 'posting_date', sortable: true },
+  { title: 'Due Date', value: 'due_date', sortable: true },
+  { title: 'Total', value: 'grand_total', align: 'end', sortable: true },
+  { title: 'Outstanding', value: 'outstanding_amount', align: 'end', sortable: true }
+])
 
-    const unallocated_payments_headers = ref([
-      { title: 'Payment', value: 'name', sortable: true },
-      { title: 'mode of payment', value: 'mode_of_payment', sortable: true },
-      { title: 'Date', value: 'posting_date', sortable: true },
-      { title: 'Paid Amount', value: 'paid_amount', align: 'end', sortable: true },
-      { title: 'Unallocated', value: 'unallocated_amount', align: 'end', sortable: true }
-    ])
+const unallocated_payments_headers = ref([
+  { title: 'Payment', value: 'name', sortable: true },
+  { title: 'mode of payment', value: 'mode_of_payment', sortable: true },
+  { title: 'Date', value: 'posting_date', sortable: true },
+  { title: 'Paid Amount', value: 'paid_amount', align: 'end', sortable: true },
+  { title: 'Unallocated', value: 'unallocated_amount', align: 'end', sortable: true }
+])
 
-    const mpesa_payment_headers = ref([
-      { title: 'Name', value: 'name', sortable: true },
-      { title: 'Mobile', value: 'mobile', sortable: true },
-      { title: 'Transaction ID', value: 'transaction_id', sortable: true },
-      { title: 'Amount', value: 'amount', align: 'end', sortable: true }
-    ])
+const mpesa_payment_headers = ref([
+  { title: 'Name', value: 'name', sortable: true },
+  { title: 'Mobile', value: 'mobile', sortable: true },
+  { title: 'Transaction ID', value: 'transaction_id', sortable: true },
+  { title: 'Amount', value: 'amount', align: 'end', sortable: true }
+])
 
 
 

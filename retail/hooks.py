@@ -361,6 +361,7 @@ fixtures = [
                     "POS Profile-column_break_uolvm",
                     "POS Profile-posa_allow_mpesa_reconcile_payments",
                     "POS Profile-custom_update_stock_after_transactions",
+                    "POS Profile-custom_allow_close_shift_with_draft_invoice",
                     "Sales Invoice Item-custom_chef_screen",
                     "Sales Invoice-custom_order_type",
                 ),
