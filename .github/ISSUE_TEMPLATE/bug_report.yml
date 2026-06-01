@@ -1,0 +1,60 @@
+name: 🐞 Bug Report
+description: Report a problem or unexpected behavior in the system
+title: "[BUG]: "
+labels: ["bug"]
+
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the issue
+      description: |
+        Explain the issue in detail, when it happens, and what causes it. Please also include the app version, and attach screenshots or a video to help us understand the problem clearly.
+      placeholder: |
+        Example:
+        When I open the POS screen and add a product, the system freezes for about 3 seconds...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Write step-by-step reproduction of the issue
+      placeholder: |
+        1. Open POS
+        2. Select a product
+        3. Click Checkout
+        4. The issue appears
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened instead
+      placeholder: The checkout process should complete instantly without delay
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      placeholder: v1.0.0
+    validations:
+      required: false
+
+  - type: dropdown
+    id: user_type
+    attributes:
+      label: You are
+      options:
+        - POS User (Cashier / Staff)
+        - Business Owner
+        - Developer
+        - Tester
+        - Other
+    validations:
+      required: true

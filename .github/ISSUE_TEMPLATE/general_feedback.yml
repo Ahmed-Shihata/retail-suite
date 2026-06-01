@@ -1,0 +1,29 @@
+name: 🗣️ General Feedback
+description: Share your experience or suggestions about the product
+title: "[FEEDBACK] "
+labels: ["feedback"]
+
+body:
+  - type: textarea
+    id: feedback
+    attributes:
+      label: Your feedback
+      description: Share your overall experience (positive or negative)
+      placeholder: |
+        Example:
+        The system is very smooth, but the UI on mobile needs improvement...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: user_type
+    attributes:
+      label: You are
+      options:
+        - POS User
+        - Business Owner
+        - Developer
+        - Tester
+        - Other
+    validations:
+      required: true
