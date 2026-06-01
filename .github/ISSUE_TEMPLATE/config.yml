@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: Community Support
+    url: https://t.me/retail_suite_community
+    about: Ask questions or discuss ideas before opening an issue
