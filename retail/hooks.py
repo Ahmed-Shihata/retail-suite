@@ -4,12 +4,13 @@ app_publisher = "Ahmed Abu-khatwa"
 app_description = "Retail Suite Backend is a powerful and flexible backend solution built on the Frappe Framework, designed to manage both POS (Point of Sale) systems and eCommerce websites. It provides seamless integration for retail operations, including inventory management, order processing, customer data management, and sales analytics. Ideal for businesses looking to unify in-store and online sales under a single backend system"
 app_email = "ahmedabukhatwa1@gmail.com"
 app_license = "mit"
-
 # Apps
 # ------------------
 
-# required_apps = []
-
+required_apps = [
+    {"app": "frappe", "version": ">=15.0.0 <17.0.0"},
+    {"app": "erpnext", "version": ">=15.0.0 <17.0.0"},
+]
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
 # 	{
@@ -250,13 +251,6 @@ app_license = "mit"
 after_install = "retail.retail.patches.setup_workflow.create_sales_order_workflow"
 before_uninstall = "retail.retail.patches.setup_workflow.delete_sales_order_workflow"
 
-doc_events = {
-    "Sales Invoice": {
-        "on_submit": "retail.retail.api.loyalty.on_invoice_submit",
-        "on_cancel": "retail.retail.api.loyalty.on_invoice_cancel",
-    }
-}
-
 fixtures = [
     {
         "doctype": "Custom Field",
@@ -373,4 +367,3 @@ fixtures = [
         "filters": [["name", "in", ("Sales Invoice-posa_pos_opening_shift-no_copy")]],
     }
 ]
-# fixtures = ["Loyalty Program", "Loyalty Tier", "Loyalty Reward", "Loyalty Point Entry"]
