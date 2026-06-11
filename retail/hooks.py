@@ -4,7 +4,6 @@ app_publisher = "Ahmed Abu-khatwa"
 app_description = "Retail Suite Backend is a powerful and flexible backend solution built on the Frappe Framework, designed to manage both POS (Point of Sale) systems and eCommerce websites. It provides seamless integration for retail operations, including inventory management, order processing, customer data management, and sales analytics. Ideal for businesses looking to unify in-store and online sales under a single backend system"
 app_email = "ahmedabukhatwa1@gmail.com"
 app_license = "mit"
-app_version = "16.0.1"
 # Apps
 # ------------------
 
