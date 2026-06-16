@@ -41,3 +41,5 @@ mkcert-v1.4.4-linux-amd64
 # npm lock (using yarn instead)
 package-lock.json
 
+docs/
+pos_profile_configration.md

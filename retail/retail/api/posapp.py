@@ -340,10 +340,11 @@ def _get_items(pos_profile, price_list, item_group, search_value, customer=None,
     data = dict()
     limit = ""
     condition = ""
+    values = []
+    search_context = {}
     condition += get_item_group_condition(pos_profile.get("name"))
 
     if use_limit_search:
-        search_context = {}
         if search_value:
             data = resolve_pos_search(search_value)
             search_context = {
@@ -355,7 +356,6 @@ def _get_items(pos_profile, price_list, item_group, search_value, customer=None,
                 "batch_no": data.get("batch_no"),
             }
 
-
         item_code = data.get("item_code") or search_value
         serial_no = data.get("serial_no") or ""
         batch_no = data.get("batch_no") or ""
@@ -366,10 +366,9 @@ def _get_items(pos_profile, price_list, item_group, search_value, customer=None,
         )
 
         if item_group:
-            condition += " AND item_group like '%{item_group}%'".format(
-                item_group=item_group
-            )
-        limit = " LIMIT {search_limit}".format(search_limit=search_limit)
+            condition += " AND item_group like %s"
+            values.append(f"%{item_group}%")
+        limit = f"LIMIT {int(search_limit)}"
 
     if not posa_show_template_items:
         condition += " AND has_variants = 0"
@@ -407,6 +406,7 @@ def _get_items(pos_profile, price_list, item_group, search_value, customer=None,
             """.format(
             condition=condition, limit=limit
         ),
+        values=values,
         as_dict=1,
     )
 
@@ -461,35 +461,27 @@ def get_customer_groups(pos_profile):
 def get_child_nodes(group_type, root):
     lft, rgt = frappe.db.get_value(group_type, root, ["lft", "rgt"])
     return frappe.db.sql(
-        """ Select name, lft, rgt from `tab{tab}` where
-			lft >= {lft} and rgt <= {rgt} order by lft""".format(
-            tab=group_type, lft=lft, rgt=rgt
-        ),
+        f"SELECT name, lft, rgt FROM `tab{group_type}` WHERE lft >= %s AND rgt <= %s ORDER BY lft",
+        (lft, rgt),
         as_dict=1,
     )
 
 def get_customer_group_condition(pos_profile):
-    cond = "disabled = 0"
     customer_groups = get_customer_groups(pos_profile)
     if customer_groups:
-        cond = " customer_group in (%s)" % (", ".join(["%s"] * len(customer_groups)))
-
-    return cond % tuple(customer_groups)
-
-@frappe.whitelist()
-def get_customer_names(pos_profile):
-    _pos_profile = frappe.parse_json(pos_profile)
-    return pos_cache(_get_customer_names, _pos_profile)(_pos_profile)
+        placeholders = ", ".join(["%s"] * len(customer_groups))
+        return f"customer_group IN ({placeholders})", list(customer_groups)
+    return "1=1", []
 
 def _get_customer_names(pos_profile):
-
     pos_profile = frappe.parse_json(pos_profile)
-
     conditions = ["disabled = 0"]
-    customer_group_condition = get_customer_group_condition(pos_profile)
+    values = []
 
-    if customer_group_condition:
-        conditions.append(customer_group_condition)
+    cond, cond_values = get_customer_group_condition(pos_profile)
+    if cond:
+        conditions.append(cond)
+        values.extend(cond_values)
 
     where_clause = "WHERE " + " AND ".join(conditions)
     customers = frappe.db.sql(
@@ -499,6 +491,7 @@ def _get_customer_names(pos_profile):
         {where_clause}
         ORDER BY name
         """,
+        tuple(values) if values else (),
         as_dict=1,
     )
     return customers
@@ -678,7 +671,7 @@ def create_customer(
             "territory"           : territory      or "All Territories",
         })
         customer_doc.insert(ignore_permissions=False)
-        frappe.db.commit()
+
 
         cust_name = customer_doc.name
 
@@ -711,8 +704,8 @@ def create_customer(
         if note:          customer_doc.custom_note           = note
         if customer_group: customer_doc.customer_group       = customer_group
         if territory:      customer_doc.territory            = territory
+
         customer_doc.save(ignore_permissions=False)
-        frappe.db.commit()
 
         # ── Contact ──────────────────────────────────────────────
         from frappe.contacts.doctype.contact.contact import get_contacts_linking_to

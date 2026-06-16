@@ -558,7 +558,7 @@ watchEffect(() => {
 })
 
 onMounted(async () => {
-  // await shiftStore.loadShifts()
+
   await shiftStore.loadActiveShifts()
 
   if (!shiftStore.isShiftOpen) {

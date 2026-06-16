@@ -23,7 +23,6 @@ def get_translations(lang="en"):
             if len(row) >= 2 and row[0] and row[1]:
                 messages[row[0]] = row[1]
 
-    print("Language messages:", lang, messages)
     translations = translate.get_all_translations(lang)
     translations.update(messages)
     return translations
