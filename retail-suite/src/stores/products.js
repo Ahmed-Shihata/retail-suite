@@ -1,366 +1,230 @@
 import { defineStore } from 'pinia'
-import { toRaw } from 'vue'
-import { getPriceLists, getWarehouses, createSampleItems, deleteSampleItems } from '../services/api'
+import { ref, computed } from 'vue'
+import { createSampleItems, deleteSampleItems } from '../services/api'
 import { useShiftStore } from './shift'
-import { getItemsFromFrappeDB} from '@/composables/pos'
-export const useProductsStore = defineStore('products', {
-  state: () => ({
-    products: [],
-    isLoading: false,
-    searchKeyword: '',
+import { db } from '@/db/indexedDB'
+import { isOffline } from '@/db/network'
+import { createListResource } from 'frappe-ui'
 
-    // Filters
-    selectedPriceList: '',
-    selectedWarehouse: '',
+export const useProductsStore = defineStore('products', () => {
 
-    // Options lists
-    priceLists: [],
-    warehouses: [],
+  const products = ref([])
+  const allProducts = ref([])
+  const priceLists = ref([])
+  const warehouses = ref([])
+  const itemGroups = ref([])
+  const isLoading = ref(false)
+  const searchKeyword = ref('')
+  const searchContext = ref({})
+  const selectedPriceList = ref('')
+  const selectedWarehouse = ref('')
+  const error = ref(null)
 
-    db: null,
-    error: null
-  }),
+  const filteredProducts = computed(() => {
+    if (!searchKeyword.value) return products.value
+    const keyword = searchKeyword.value.toLowerCase().trim()
+    return products.value.filter(p =>
+      p.item_name?.toLowerCase().includes(keyword) ||
+      p.item_group?.toLowerCase().includes(keyword) ||
+      p.description?.toLowerCase().includes(keyword)
+    )
+  })
 
-  getters: {
-    filteredProducts: (state) => {
-      if (!state.searchKeyword) {
-        return state.products
-      }
+  const productsCount = computed(() => products.value.length)
 
-      const keyword = state.searchKeyword.toLowerCase().trim()
-      return state.products.filter(product =>
-        product.name.toLowerCase().includes(keyword) ||
-        product.category?.toLowerCase().includes(keyword) ||
-        product.description?.toLowerCase().includes(keyword)
-      )
-    },
+  const categorizedProducts = computed(() => {
+    const categories = {}
+    products.value.forEach(product => {
+      const category = product.item_group || 'Other'
+      if (!categories[category]) categories[category] = []
+      categories[category].push(product)
+    })
+    return categories
+  })
 
-    productsCount: (state) => state.products.length,
-
-    filteredProductsCount: (state) => {
-      if (!state.searchKeyword) {
-        return state.products.length
-      }
-
-      const keyword = state.searchKeyword.toLowerCase().trim()
-      return state.products.filter(product =>
-        product.name.toLowerCase().includes(keyword) ||
-        product.category?.toLowerCase().includes(keyword) ||
-        product.description?.toLowerCase().includes(keyword)
-      ).length
-    },
-
-    categorizedProducts: (state) => {
-      const categories = {}
-      state.products.forEach(product => {
-        const category = product.item_group || 'Other'
-        if (!categories[category]) {
-          categories[category] = []
-        }
-        categories[category].push(product)
+  async function loadFilterOptions(pos_profile) {
+    try {
+      const plResource = createListResource({
+        doctype: 'Price List',
+        fields: JSON.stringify(['name']),
+        filters: { selling: 1, enabled: 1 },
+        auto: true,
+        limit_page_length: 100,
       })
-      return categories
+      await plResource.list.promise
+
+      const whResource = createListResource({
+        doctype: 'Warehouse',
+        fields: JSON.stringify(['name']),
+        filters: { company: pos_profile.company, is_group: 0 },
+        auto: true,
+        limit_page_length: 100,
+      })
+      await whResource.list.promise
+
+      priceLists.value = plResource.data || []
+      warehouses.value = whResource.data || []
+
+      console.log('➡️ Price Lists:', priceLists.value)
+      console.log('➡️ Warehouses:', warehouses.value)
+    } catch (e) {
+      console.error('❌ loadFilterOptions:', e)
     }
-  },
+  }
 
-  actions: {
-        // ─── Load pricelist + warehouse options ───────────────────────────
-    async loadFilterOptions() {
-      try {
-        const [pl, wh] = await Promise.all([getPriceLists(), getWarehouses()])
-                // console.log('➡️ POS Profile :', posProfileName)
-        console.log('➡️ **Price List**  :', pl)
-        console.log('➡️ **warehouses**    :', wh)
-        this.priceLists = pl || []
-        this.warehouses = wh || []
-      } catch (e) {
-        console.error('❌ loadFilterOptions:', e)
+  async function loadProductsFromFrappeDB(forceReload = false) {
+    try {
+      console.log('========== Load Products ==========')
+
+      if (products.value.length > 0 && !forceReload) {
+        console.log('✅ Products already loaded, skipping...')
+        return products.value
       }
-    },
 
-    // ─── Main load ────────────────────────────────────────────────────
-    async loadProductsFromFrappeDB() {
-      try {
-        console.log('========== Load Products ==========')
-        const shiftStore = useShiftStore()
-        const hasActiveShift = await shiftStore.checkActiveShift()
+      if (isOffline.value) {
+        console.log('📴 Offline: loading products from IndexedDB')
+        products.value = await db.items.toArray()
+        return products.value
+      }
 
-        if (!hasActiveShift) {
-          console.warn('⚠️ No active shift / POS Profile')
-          return []
-        }
+      const shiftStore = useShiftStore()
+      const hasActiveShift = await shiftStore.loadActiveShifts()
 
-        const currentPOSProfile = shiftStore.pos_profile
-        const posProfileName    = currentPOSProfile.name
-        const currentPriceList  = this.selectedPriceList || currentPOSProfile.selling_price_list
-        const currentCustomer   = currentPOSProfile.customer
-        const selectedWarehouse = this.selectedWarehouse || null  // null → backend uses pos_profile default
-
-        console.log('➡️ POS Profile :', posProfileName)
-        console.log('➡️ Price List  :', currentPriceList)
-        console.log('➡️ Customer    :', currentCustomer)
-        console.log('➡️ Warehouse   :', selectedWarehouse)
-
-        if (!posProfileName || !currentPriceList || !currentCustomer) {
-          console.warn('⚠️ Missing required profile details!')
-          return []
-        }
-
-        this.isLoading = true
-        const products = await getItemsFromFrappeDB(
-          currentPOSProfile,
-          currentPriceList,
-          currentCustomer,
-          this.searchKeyword,
-          selectedWarehouse
-        )
-
-        console.log("AFTER API CALL", products)
-        console.log('✅ Products loaded:', products?.length)
-        this.products = products || []
-
-        // حفظ الـ defaults أول مرة
-        if (!this.selectedPriceList) this.selectedPriceList = currentPriceList
-
-        return this.products
-      } catch (error) {
-        console.error('❌ Error loading products:', error)
+      if (!hasActiveShift) {
+        console.warn('⚠️ No active shift / POS Profile')
         return []
-      } finally {
-        this.isLoading = false
       }
-    },
 
-    // ─── Set search keyword ────────────────────────────────────────────
-    setSearchKeyword(kw) {
-      this.searchKeyword = kw
-    },
+      const currentPOSProfile = shiftStore.pos_profile
+      const posProfileName    = currentPOSProfile.name
+      const currentPriceList  = selectedPriceList.value || currentPOSProfile.selling_price_list || null
+      const currentWarehouse  = selectedWarehouse.value  || currentPOSProfile.warehouse || null
+      const currentCustomer   = currentPOSProfile.customer
 
-    // ─── Change pricelist → reload ────────────────────────────────────
-    async changePriceList(priceList) {
-      this.selectedPriceList = priceList
-      await this.loadProductsFromFrappeDB()
-    },
+      console.log('➡️ POS Profile :', posProfileName)
+      console.log('➡️ Price List  :', currentPriceList)
+      console.log('➡️ Warehouse   :', currentWarehouse)
+      console.log('➡️ Customer    :', currentCustomer)
 
-    // ─── Change warehouse → reload ────────────────────────────────────
-    async changeWarehouse(warehouse) {
-      this.selectedWarehouse = warehouse
-      await this.loadProductsFromFrappeDB()
-    },
-    async createSampleData() {
-      const sample_products = [
-        {
-          item_code: "SAMPLE-ITEM-001",
-          item_name: "Beef Burger",
-          item_group: "POS ITEM",
-          stock_uom: "Unit",
-          standard_rate: 100,
-          image: "/files/beef-burger.png"
-        },
-        {
-          item_code: "SAMPLE-ITEM-002",
-          item_name: "Sandwich",
-          item_group: "POS ITEM",
-          stock_uom: "Unit",
-          standard_rate: 100,
-          image: "/files/sandwich.png"
-        },
-        {
-          item_code: "SAMPLE-ITEM-003",
-          item_name: "Shawarma",
-          item_group: "POS ITEM",
-          stock_uom: "Unit",
-          standard_rate: 100,
-          image: "/files/sawarma.png"
-        },
-        {
-          item_code: "SAMPLE-ITEM-004",
-          item_name: "Croissant",
-          item_group: "POS ITEM",
-          stock_uom: "Unit",
-          standard_rate: 100,
-          image: "/files/croissant.png"
-        },
-        {
-          item_code: "SAMPLE-ITEM-005",
-          item_name: "Cinnamon Roll",
-          item_group: "POS ITEM",
-          stock_uom: "Unit",
-          standard_rate: 100,
-          image: "/files/cinnamon-roll.png"
-        },
-        {
-          item_code: "SAMPLE-ITEM-006",
-          item_name: "Choco Donut Peanut",
-          item_group: "POS ITEM",
-          stock_uom: "Unit",
-          standard_rate: 100,
-          image: "/files/choco-glaze-donut-peanut.png"
-        },
-        {
-          item_code: "SAMPLE-ITEM-007",
-          item_name: "Choco Glazed",
-          item_group: "POS ITEM",
-          stock_uom: "Unit",
-          standard_rate: 100,
-          image: "/files/choco-glaze-donut.png"
-        },
-        {
-          item_code: "SAMPLE-ITEM-008",
-          item_name: "Red Glazed",
-          item_group: "POS ITEM",
-          stock_uom: "Unit",
-          standard_rate: 100,
-          image: "/files/red-glaze-donut.png"
-        },
-        {
-          item_code: "SAMPLE-ITEM-009",
-          item_name: "Iced Coffee",
-          item_group: "POS ITEM",
-          stock_uom: "Unit",
-          standard_rate: 100,
-          image: "/files/coffee-latte.png"
-        },
-        {
-          item_code: "SAMPLE-ITEM-010",
-          item_name: "Iced Chocolate",
-          item_group: "POS ITEM",
-          stock_uom: "Unit",
-          standard_rate: 100,
-          image: "/files/ice-chocolate.png"
-        },
-        {
-          item_code: "SAMPLE-ITEM-011",
-          item_name: "Iced Tea",
-          item_group: "POS ITEM",
-          stock_uom: "Unit",
-          standard_rate: 100,
-          image: "/files/ice-tea.png"
-        },
-        {
-          item_code: "SAMPLE-ITEM-012",
-          item_name: "Iced Latte",
-          item_group: "POS ITEM",
-          stock_uom: "Unit",
-          standard_rate: 100,
-          image: "/files/matcha-latte.png"
-        }
-      ]
-      try {
-        const Response = await createSampleItems(sample_products)
-        console.log("response createSampleItems", Response)
-        window.$toast.success("✅ Sample items created successfully")
-      } catch (error) {
-        console.error("error", error)
-        window.$toast.error("❌ Failed to create sample items")
+      if (!posProfileName || !currentPriceList) {
+        console.warn('⚠️ Missing required profile details!')
+        return []
       }
-    },
 
-    async deleteSampleData() {
-      try {
-        const response = await deleteSampleItems()
-        window.$toast.success("Delete sample items Successfully")
-        console.log("response deleteSampleItems", response)
-      } catch (error) {
-        window.$toast.error("❌ Failed to Delete sample items")
-        console.error("error deleting sample data", error)
+      isLoading.value = true
+
+      const result = await shiftStore.getItemsFromFrappeDB(
+        currentPOSProfile,
+        currentPriceList,
+        currentCustomer,
+        searchKeyword.value,
+        currentWarehouse
+      )
+
+      products.value = result?.items ?? (Array.isArray(result) ? result : [])
+      searchContext.value = result?.search_context ?? {}
+      allProducts.value = products.value
+
+      await loadFilterOptions(currentPOSProfile)
+
+      if (!selectedPriceList.value) selectedPriceList.value = currentPriceList
+      if (!selectedWarehouse.value) selectedWarehouse.value = currentWarehouse
+
+      console.log('✅ Products loaded:', products.value.length)
+      return products.value
+    } catch (err) {
+      if (err instanceof TypeError && err.message.includes('NetworkError')) {
+        console.log('📴 Network error, falling back to IndexedDB')
+        products.value = await db.items.toArray()
+        return products.value
       }
-    },
-
-    // Add new product
-    async addProduct(product) {
-      try {
-        const newProduct = {
-          ...product,
-          id: Date.now(), // Simple ID generation
-          createdAt: new Date().toISOString()
-        }
-
-        this.products.push(newProduct)
-        await this.saveProductsToDB()
-
-        return newProduct
-      } catch (error) {
-        console.error('Failed to add product:', error)
-        this.error = 'Failed to add product'
-        throw error
-      }
-    },
-
-    // Update product
-    async updateProduct(id, updates) {
-      try {
-        const index = this.products.findIndex(p => p.id === id)
-        if (index !== -1) {
-          this.products[index] = {
-            ...this.products[index],
-            ...updates,
-            updatedAt: new Date().toISOString()
-          }
-
-          await this.saveProductsToDB()
-          return this.products[index]
-        }
-        throw new Error('Product not found')
-      } catch (error) {
-        console.error('Failed to update product:', error)
-        this.error = 'Failed to update product'
-        throw error
-      }
-    },
-
-    // Delete product
-    async deleteProduct(id) {
-      try {
-        const index = this.products.findIndex(p => p.id === id)
-        if (index !== -1) {
-          this.products.splice(index, 1)
-          await this.saveProductsToDB()
-          return true
-        }
-        throw new Error('Product not found')
-      } catch (error) {
-        console.error('Failed to delete product:', error)
-        this.error = 'Failed to delete product'
-        throw error
-      }
-    },
-
-    // Search products
-    setSearchKeyword(keyword) {
-      this.searchKeyword = keyword
-    },
-
-    // Clear search
-    clearSearch() {
-      this.searchKeyword = ''
-    },
-
-    // Get product by ID
-    getProductById(id) {
-      return this.products.find(p => p.id === id)
-    },
-
-    // Get products by category
-    getProductsByCategory(category) {
-      return this.products.filter(p => p.category === category)
-    },
-
-    // Clear all products
-    async clearAllProducts() {
-      try {
-        this.products = []
-        await this.saveProductsToDB()
-      } catch (error) {
-        console.error('Failed to clear products:', error)
-        this.error = 'Failed to clear products'
-        throw error
-      }
-    },
-
-    // Clear error
-    clearError() {
-      this.error = null
+      console.error('❌ Error loading products:', err)
+      return []
+    } finally {
+      isLoading.value = false
     }
+  }
+
+  async function searchProducts(keyword) {
+    console.log('🔍 searchProducts called:', keyword)
+    if (!keyword || keyword.length < 2) {
+      products.value = allProducts.value
+      return
+    }
+    const shiftStore = useShiftStore()
+    isLoading.value = true
+    const results = await shiftStore.getItemsFromFrappeDB(
+      shiftStore.pos_profile,
+      selectedPriceList.value || shiftStore.pos_profile.selling_price_list,
+      shiftStore.pos_profile.customer,
+      keyword,
+      selectedWarehouse.value
+    )
+    products.value = results?.items ?? (Array.isArray(response) ? response : [])
+    searchContext.value = results?.search_context ?? {}
+    isLoading.value = false
+    return results
+  }
+
+  async function changePriceList(priceList) {
+    selectedPriceList.value = priceList
+    await loadProductsFromFrappeDB(true)
+  }
+
+  async function changeWarehouse(warehouse) {
+    selectedWarehouse.value = warehouse
+    await loadProductsFromFrappeDB(true)
+  }
+
+  async function createSampleData() {
+    const sample_products = [
+      { item_code: "SAMPLE-ITEM-001", item_name: "Beef Burger", item_group: "POS ITEM", stock_uom: "Unit", standard_rate: 100, image: "/files/beef-burger.png" },
+      { item_code: "SAMPLE-ITEM-002", item_name: "Sandwich", item_group: "POS ITEM", stock_uom: "Unit", standard_rate: 100, image: "/files/sandwich.png" },
+      { item_code: "SAMPLE-ITEM-003", item_name: "Shawarma", item_group: "POS ITEM", stock_uom: "Unit", standard_rate: 100, image: "/files/sawarma.png" },
+      { item_code: "SAMPLE-ITEM-004", item_name: "Croissant", item_group: "POS ITEM", stock_uom: "Unit", standard_rate: 100, image: "/files/croissant.png" },
+      { item_code: "SAMPLE-ITEM-005", item_name: "Cinnamon Roll", item_group: "POS ITEM", stock_uom: "Unit", standard_rate: 100, image: "/files/cinnamon-roll.png" },
+      { item_code: "SAMPLE-ITEM-006", item_name: "Choco Donut Peanut", item_group: "POS ITEM", stock_uom: "Unit", standard_rate: 100, image: "/files/choco-glaze-donut-peanut.png" },
+      { item_code: "SAMPLE-ITEM-007", item_name: "Choco Glazed", item_group: "POS ITEM", stock_uom: "Unit", standard_rate: 100, image: "/files/choco-glaze-donut.png" },
+      { item_code: "SAMPLE-ITEM-008", item_name: "Red Glazed", item_group: "POS ITEM", stock_uom: "Unit", standard_rate: 100, image: "/files/red-glaze-donut.png" },
+      { item_code: "SAMPLE-ITEM-009", item_name: "Iced Coffee", item_group: "POS ITEM", stock_uom: "Unit", standard_rate: 100, image: "/files/coffee-latte.png" },
+      { item_code: "SAMPLE-ITEM-010", item_name: "Iced Chocolate", item_group: "POS ITEM", stock_uom: "Unit", standard_rate: 100, image: "/files/ice-chocolate.png" },
+      { item_code: "SAMPLE-ITEM-011", item_name: "Iced Tea", item_group: "POS ITEM", stock_uom: "Unit", standard_rate: 100, image: "/files/ice-tea.png" },
+      { item_code: "SAMPLE-ITEM-012", item_name: "Iced Latte", item_group: "POS ITEM", stock_uom: "Unit", standard_rate: 100, image: "/files/matcha-latte.png" },
+    ]
+    try {
+      await createSampleItems(sample_products)
+      window.$toast?.success('✅ Sample items created successfully')
+    } catch (e) {
+      console.error('error', e)
+      window.$toast?.error('❌ Failed to create sample items')
+    }
+  }
+
+  async function deleteSampleData() {
+    try {
+      await deleteSampleItems()
+      window.$toast?.success('Delete sample items Successfully')
+    } catch (e) {
+      window.$toast?.error('❌ Failed to Delete sample items')
+      console.error('error deleting sample data', e)
+    }
+  }
+
+  function setSearchKeyword(kw) { searchKeyword.value = kw }
+  function clearSearch() { searchKeyword.value = '' }
+  function clearError() { error.value = null }
+
+  return {
+    // State
+    products, allProducts, priceLists, warehouses,
+    itemGroups, isLoading, searchKeyword,
+    selectedPriceList, selectedWarehouse, error,
+    // Getters
+    filteredProducts, productsCount, categorizedProducts,
+    // Actions
+    loadFilterOptions, loadProductsFromFrappeDB,
+    searchProducts, changePriceList, changeWarehouse,
+    createSampleData, deleteSampleData,
+    setSearchKeyword, clearSearch, clearError,
   }
 })

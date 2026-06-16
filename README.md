@@ -11,7 +11,7 @@
         overflow: hidden;
         margin: 0 auto;
     ">
-        <img src="/pictures/retail_suite.png" style="width: 50%; height: 50%; object-fit: cover; border-radius: 25px;">
+        <img src="/pictures/retail_suite_pos_logo.png" style="width: 50%; height: 50%; object-fit: cover; border-radius: 25px;">
     </div>
     <h2>Retail Suite</h2>
 </div>
@@ -52,7 +52,138 @@
 
 ---
 
-## Main Features
+## Version - 16 Features
+
+## UI Features
+
+* Dark / Light Mode support with a modern Vue-powered POS interface
+* Full translation support for Arabic and English languages
+
+## POS Features
+
+* Smart Search Bar with support for:
+
+  * Barcode detection
+  * Serial number search
+  * Batch tracking
+
+* Advanced Cart Management with multiple modes:
+
+  * Sale Mode
+  * Submit / Edit Draft Invoices
+  * Return Mode
+
+* Invoice support:
+
+  * Discounts
+  * Taxes
+
+* Offline Mode support for uninterrupted sales operations
+
+## Shift Dashboard Features
+
+* Complete shift analysis for:
+
+  * Sales invoices
+  * Payments
+  * Cash flow tracking
+
+* Smart reconciliation detection to help identify payment and shift issues
+
+## Closing Shift Features
+
+* Smart cash flow detection before closing the shift
+* Review expected cash balance before closing
+* Generate and print detailed shift reports
+
+## Barcode Manager
+
+* Generate barcodes for products
+* Scan product barcodes
+* Link multiple barcodes to products
+
+
+---
+
+## 🖼️ Screenshots
+<h2 align="center">Open Shift Dialog</h2>
+<p align="center">
+  <img src="/pictures/open_shift.png" alt="Open Shift Dialog" width="900">
+</p>
+
+<h2 align="center">POS Search Mode</h2>
+
+<p align="center">
+  <video width="900" controls>
+    <source src="/videos/serial_no_search_mode.webm" type="video/webm">
+    Your browser does not support the video tag.
+  </video>
+</p>
+
+<h2 align="center">Phone QR Code</h2>
+<p align="center">
+  <img src="/pictures/phone_QR.png" alt="Phone QR Code" width="900">
+</p>
+
+<h2 align="center">Closing Shift</h2>
+<p align="center">
+  <img src="/pictures/closing_shift.png" alt="Closing Shift" width="900">
+</p>
+
+<h2 align="center">Camera Scanner</h2>
+<p align="center">
+  <img src="/pictures/camera_scanner.png" alt="Camera Scanner" width="900">
+</p>
+
+<h2 align="center">Shift Dashboard</h2>
+<p align="center">
+  <img src="/pictures/shift_managment.png" alt="Shift Dashboard" width="900">
+</p>
+
+<h2 align="center">Barcode Manager</h2>
+<p align="center">
+  <img src="/pictures/barcode_manager.png" alt="Barcode Manager" width="900">
+</p>
+
+<h2 align="center">System Settings</h2>
+<p align="center">
+  <img src="/pictures/system_settings.png" alt="System Settings" width="900">
+</p>
+
+<h2 align="center">Invoice Mode</h2>
+<p align="center">
+  <img src="/pictures/invoice_mode.png" alt="Invoice Mode" width="900">
+</p>
+
+<h2 align="center">Return Mode</h2>
+<p align="center">
+  <img src="/pictures/return_mode_step_1.png" alt="Return Mode" width="900">
+</p>
+
+<p align="center">
+  <img src="/pictures/return_mode_step_2.png" alt="Return Mode" width="900">
+</p>
+
+<h2 align="center">Taxes & Discounts</h2>
+<p align="center">
+  <img src="/pictures/discounts.png" alt="Taxes & Discounts" width="900">
+</p>
+
+
+<h2 align="center">Languages</h2>
+<p align="center">
+  <img src="/pictures/language_ar_en.png" alt="Languages" width="900">
+</p>
+
+<p align="center">
+  <img src="/pictures/discounts.png" alt="Discounts" width="900">
+</p>
+
+
+---
+
+
+## communtity Features
 ## Modern Retail & POS Experience
 
 - Dark / Light Mode support with modern Vue-powered POS interface
@@ -165,8 +296,8 @@ If you find this project useful, please give it a ⭐ on GitHub!
 
 ### 1. Install Dependencies
 ```bash
-cd ~/Music/frappe-bench-v16/apps/retail/
-bench pip install qrcode[pil]
+cd ~/Music/frappe-bench-v16/
+bench pip install -r apps/retail/requirements.txt
 ```
 
 ---
@@ -335,8 +466,13 @@ npm run dev
 Dev server will be available at:
 ```
 https://192.168.8.5:5173/
-```
 
+```
+Ignore_csrf config ​
+```
+bench --site yoursite-name.com set-config ignore_csrf 1
+```
+This will prevent CSRFToken errors while using the vite dev server. In production environment, the csrf_token is attached to the window object in index.html for yo
 ---
 
 ### 5. Login First

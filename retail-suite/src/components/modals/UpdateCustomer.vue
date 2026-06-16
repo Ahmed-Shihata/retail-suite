@@ -240,7 +240,7 @@ import {
   getTerritoriesApi,
   getCountriesApi
 } from '../../services/api'
-import { createUpdateCustomerInFrappeDB, getCustomersFromFrappeDB } from '@/composables/shift'
+import { useShiftStore } from '@/stores/shift.js'
 const toast = useToast()
 
 const props = defineProps({
@@ -325,7 +325,8 @@ const loadCustomerData = async () => {
   }
 
   // Customer basic info
-  const list = await getCustomersFromFrappeDB(JSON.stringify(props.pos_profile_doc))
+  const  shiftStore = useShiftStore()
+  const list = await shiftStore.getCustomers(JSON.stringify(props.pos_profile_doc))
   const cust = (list || []).find(c => c.name === customer_id.value)
   if (cust) {
     form.value.customer_name  = cust.customer_name || cust.name || ''
@@ -387,7 +388,8 @@ const submitUpdate = async () => {
 
   saving.value = true
   try {
-    const savedCustomer = await createUpdateCustomerInFrappeDB({
+    const  shiftStore = useShiftStore()
+    const savedCustomer = await shiftStore.createUpdateCustomer({
       method:          customer_id.value ? 'update' : 'create',
       customer_id:     customer_id.value || '',
       customer_name:   form.value.customer_name,

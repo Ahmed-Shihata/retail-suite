@@ -37,7 +37,6 @@ def submit_printed_invoices(pos_opening_shift):
 
 @frappe.whitelist()
 def get_shift_pos_invoices(pos_opening_shift):
-    submit_printed_invoices(pos_opening_shift)
     data = frappe.db.sql(
         """
 	select
@@ -54,76 +53,6 @@ def get_shift_pos_invoices(pos_opening_shift):
     data = [frappe.get_doc("Sales Invoice", d.name).as_dict() for d in data]
 
     return data
-
-
-
-# @frappe.whitelist()
-# def get_shift_invoice_payments(invoice_name):
-#     """
-#     جلب كل Payment Entries المرتبطة بفاتورة معينة،
-#     مع حساب المبلغ المخصص لهذه الفاتورة تحديداً.
-#     """
-#     references = frappe.get_all(
-#         "Payment Entry Reference",
-#         filters={
-#             "reference_doctype": "Sales Invoice",
-#             "reference_name":    invoice_name,
-#             "docstatus":         1,
-#         },
-#         fields=["parent", "allocated_amount", "outstanding_amount"]
-#     )
-
-#     if not references:
-#         return []
-
-#     result = []
-#     for ref in references:
-#         try:
-#             pe = frappe.get_doc("Payment Entry", ref.parent)
-
-#             # تجاهل الدفعات الملغاة
-#             if pe.docstatus != 1:
-#                 continue
-
-#             # كل الفواتير المرتبطة بهذه الدفعة
-#             all_linked = [
-#                 {
-#                     "invoice_name":     r.reference_name,
-#                     "allocated_amount": flt(r.allocated_amount),
-#                 }
-#                 for r in pe.references
-#                 if r.reference_doctype == "Sales Invoice"
-#             ]
-
-#             # FIX: aLLOCATED FOR CURRENT INVOICE
-#             # total_allocated = sum(flt(r.allocated_amount) for r in pe.references)
-#             allocated_to_invoice = sum(
-#                 flt(r.allocated_amount)
-#                 for r in pe.references
-#                 if r.reference_doctype == "Sales Invoice" and r.reference_name == invoice_name
-#             )
-#             unallocated_amount = flt(pe.paid_amount) - allocated_to_invoice
-
-#             result.append({
-#                 "payment_entry":             pe.name,
-#                 "posting_date":              str(pe.posting_date),
-#                 "mode_of_payment":           pe.mode_of_payment,
-#                 "payment_type":              pe.payment_type,
-#                 "party":                     pe.party,
-#                 "party_name":                pe.party_name,
-#                 "paid_amount":               flt(pe.paid_amount),
-#                 "allocated_to_this_invoice": flt(ref.allocated_amount),
-#                 "unallocated_amount":        unallocated_amount,   # ← جديد
-#                 "is_fully_allocated":        unallocated_amount <= 0,  # ← جديد
-#                 "all_linked_invoices":       all_linked,
-#                 "total_invoices_count":      len(all_linked),
-#             })
-
-#         except frappe.DoesNotExistError:
-#             # الدفعة محذوفة أو غير موجودة
-#             continue
-
-#     return result
 
 @frappe.whitelist()
 def get_shift_invoice_payments(invoice_name):

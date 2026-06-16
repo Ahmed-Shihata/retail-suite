@@ -8,6 +8,7 @@ from frappe.model.naming import NamingSeries, get_default_naming_series
 from frappe.client import get_value
 from frappe.utils.file_manager import save_file
 
+
 @frappe.whitelist()
 def generate_barcode_value(barcode_type):
     import random
@@ -90,6 +91,8 @@ def generate_barcode_value(barcode_type):
     value = gen()
     return {'status': 'success', 'value': value}
 
+def normalize_barcode_type(t):
+    return (t or "").upper().replace("-", "").replace(" ", "")
 
 @frappe.whitelist()
 def get_barcode_types():
@@ -117,36 +120,17 @@ def get_default_item_series():
 
 
 @frappe.whitelist()
-def get_all_barcodes():
+def get_all_barcodes(items=None):
     """
-    جيب كل المنتجات مع الـ barcodes بتاعتها + preview image
-    FIX: استخدام frappe.db.sql مباشرة عشان نضمن إن الـ barcode field بييجي صح
+    Return Products with their barcodes + preview image.
+    barcode_list = [barcode, barcode_type, uom, preview]
     """
     try:
-        # ✅ FIX 1: جيب الـ items مع item_group
-        items = frappe.db.get_all(
-            'Item',
-            fields=['name', 'item_code', 'item_name', 'item_group', 'creation', "disabled", "image"],
-            order_by='creation desc'
-        )
 
         products_list = []
-
         for idx, item in enumerate(items, 1):
-            # ✅ FIX 2: استخدام frappe.db.sql مباشرة — frappe.db.get_list
-            # بيتجاهل أحياناً الـ barcode field لأنه اسمه نفس الـ doctype
-            barcodes_raw = frappe.db.sql("""
-                SELECT
-                    ib.barcode,
-                    ib.barcode_type,
-                    ib.uom,
-                    ib.name as barcode_name
-                FROM `tabItem Barcode` ib
-                WHERE ib.parent = %s
-                  AND ib.parenttype = 'Item'
-                ORDER BY ib.idx ASC
-            """, item['name'], as_dict=True)
 
+            barcodes_raw = item.get("item_barcode")
             barcode_list = []
             for bc in barcodes_raw:
                 barcode_value = bc.get('barcode') or ''
@@ -166,8 +150,8 @@ def get_all_barcodes():
 
             product_data = {
                 'id':           idx,
-                'sku':          item.get('item_code') or item.get('name', ''),
-                'productName':  item.get('item_name') or item.get('name', ''),
+                'sku':          item.get('item_code'),
+                'productName':  item.get('item_name'),
                 'productImage': item.get('image', ''),
                 'productId':    item.get('name', ''),
                 'item_group':   item.get('item_group') or '',
@@ -189,10 +173,6 @@ def get_all_barcodes():
 
 
 def generate_barcode_image_base64(barcode_value, barcode_type=''):
-    """
-    ✅ Helper: يولّد barcode image كـ base64 string
-    يرجع '' لو فشل (مش بيكسر الـ response كله)
-    """
     try:
         import barcode as python_barcode
         from barcode.writer import ImageWriter
@@ -214,6 +194,8 @@ def generate_barcode_image_base64(barcode_value, barcode_type=''):
             'PZN':    'pzn',
         }
 
+        print("====================================================================")
+        print("barcode_type",barcode_type)
         # QR Code — مكتبة مختلفة
         if barcode_type.upper() in ('QR', 'QRCODE', 'QR CODE'):
             qr = qrcode.QRCode(
@@ -230,7 +212,10 @@ def generate_barcode_image_base64(barcode_value, barcode_type=''):
             return 'data:image/png;base64,' + base64.b64encode(buffer.getvalue()).decode()
 
         # Standard barcodes
-        bc_type = type_map.get(barcode_type.upper(), 'code128')
+        t = normalize_barcode_type(barcode_type)
+        print("====================================================================")
+        print("t",t)
+        bc_type = type_map.get(t, 'code128')
         BarcodeClass = python_barcode.get_barcode_class(bc_type)
 
         buffer = BytesIO()
@@ -379,48 +364,40 @@ def update_item_barcode(item_code, old_barcode, barcode_data):
 
 @frappe.whitelist()
 def add_item_barcode(barcode_data):
-    """
-    إضافة barcode جديد للمنتج
-
-    Args:
-        item_code: كود المنتج
-        barcode_data: بيانات الـ Barcode الجديد
-
-    Returns:
-        dict: النتيجة
-    """
     try:
         item_doc = frappe.get_doc('Item',barcode_data.get('item_code'))
-
-        # إضافة صف جديد في الـ Child Table
         new_barcode = {
             'barcode': barcode_data.get('value'),
             'barcode_type': barcode_data.get('type', 'CODE128'),
-            'posa_uom': barcode_data.get('posa_uom'),
-            'uom': barcode_data.get('posa_uom'),
+            'posa_uom': barcode_data.get('uom'),
+            'uom': barcode_data.get('uom'),
         }
 
         item_doc.append('barcodes', new_barcode)
         item_doc.save()
 
-        # جلب الـ row الجديد
         new_row = item_doc.barcodes[-1]
+        print("====================================================================")
+        print("barcode_data",barcode_data)
+        print("new_row",new_row)
+        print("new_row.idx",new_row.idx)
+        print("new_row.barcode",new_row.barcode)
+        print("new_row.barcode_type",new_row.barcode_type)
         if new_row:
-            # image = generate_barcode_img(new_row.barcode, new_row.barcode_type)
-            preview = generate_barcode_image_base64(barcode_value, barcode_type)
+            preview = generate_barcode_image_base64(barcode_data.get('value'), barcode_data.get('type'))
             if preview:
-                    return {
-                        'status': 'success',
-                        'message': _('Barcode added successfully'),
-                        'data': {
-                            'idx': new_row.idx,
-                            'barcode': new_row.barcode,
-                            'barcode_type': new_row.barcode_type,
-                            'posa_uom': new_row.posa_uom,
-                            'uom': new_row.uom,
-                            'image': preview
-                        }
+                return {
+                    'status': 'success',
+                    'message': _('Barcode added successfully'),
+                    'data': {
+                        'idx': new_row.idx,
+                        'barcode': new_row.barcode,
+                        'barcode_type': new_row.barcode_type,
+                        'posa_uom': new_row.uom,
+                        'uom': new_row.uom,
+                        'image': preview
                     }
+                }
             else:
                 return {
                         'status': 'error',
@@ -631,16 +608,6 @@ def generate_barcode_img(barcode_value, barcode_type):
             'message': str(e),
             'data': ''
         }
-
-@frappe.whitelist()
-def get_unit_of_measures():
-    return frappe.get_list("UOM","name")
-
-@frappe.whitelist()
-def get_item_category():
-    return frappe.get_list("Item Group","name")
-
-
 
 def clear_posa_cache():
     """مسح جميع cache keys المتعلقة بـ POS Items"""
@@ -1005,3 +972,12 @@ def get_inventory_balance():
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "get_inventory_balance Error")
         return {"status": "error", "data": [], "message": str(e)}
+
+@frappe.whitelist()
+def get_item_stock(item_code, warehouse):
+    qty = frappe.db.get_value(
+        'Bin',
+        {'item_code': item_code, 'warehouse': warehouse},
+        'actual_qty'
+    ) or 0
+    return qty

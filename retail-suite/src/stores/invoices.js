@@ -3,29 +3,30 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { createResource } from 'frappe-ui'
 import { useShiftStore } from './shift'
-
+import { saveToQueue } from '@/db/sync'
+import { isOffline as checkOffline } from '@/db/network'
 // ====================================================================
 // Resources
 // ====================================================================
 const saveInvoiceResource = createResource({
-  url: 'retail.retail.api.posapp.save_invoice',
+  url: 'retail.retail.api.invoice.save_invoice',
   auto: false,
 })
 /**
- * Submit invoice
- 1-  (fast mode is 0)
-    - COMPLETE SALE → handleSubmit في PaymentSection
-    - cartStore.processTransaction()
-    - emit submit
- 2- addTransaction -> submit sales invoice (fast mode is 1)
+ * Sales Invoice
+ 1-  Normal Mode: (fast mode is 0)
+     Normal Mode: saveInvoice → save draft → بعدين proceedInvoice → submit
+
+ 2- Fast Mode: (fast mode is 1)
+    Fast Mode: addTransaction → submit مباشرة للـ server
  */
 const submitInvoiceResource = createResource({
-  url: 'retail.retail.api.posapp.submit_invoice',
+  url: 'retail.retail.api.invoice.submit_invoice',
   auto: false,
 })
 
 const getReturnableInvoicesResource = createResource({
-  url: 'retail.retail.api.invoice.get_returnable_invoices_api',
+  url: 'retail.retail.api.invoice.get_returnable_invoices',
   auto: false,
 })
 
@@ -44,7 +45,6 @@ export const useInvoicesStore = defineStore('invoices', () => {
   const isLoading = ref(false)
   const currentInvoice = ref(null)
   const cashiers = ref([])
-  const selectedInvoice = ref(null)
 
   /* ========================
      Getters (computed)
@@ -152,7 +152,7 @@ export const useInvoicesStore = defineStore('invoices', () => {
 
   async function addTransaction(transactionData) {
     try {
-
+      console.log('🔍 Apply Discount On:', transactionData.applyDiscountOn)
       const shiftStore = useShiftStore()
 
       if (!transactionData?.items?.length) throw new Error('Invalid transaction data - items missing')
@@ -181,6 +181,11 @@ export const useInvoicesStore = defineStore('invoices', () => {
               "expense_account": shiftStore.pos_profile.expense_account,
               "warehouse": shiftStore.pos_profile.warehouse,
         })),
+        "apply_discount_on": transactionData.applyDiscountOn || '',
+        "additional_discount_percentage": transactionData.additionalDiscountPercentage || 0,
+        "discount_amount": transactionData.discountAmount || 0,
+        "taxes_and_charges": shiftStore.pos_profile?.taxes_and_charges || undefined,
+        "tax_category": shiftStore.pos_profile?.tax_category || undefined,
         "company": shiftStore.pos_profile.company,
       }
       console.log('🔍 draftName:', transactionData.draftName)
@@ -196,6 +201,17 @@ export const useInvoicesStore = defineStore('invoices', () => {
       }
 
       console.log('📋 Data Payload:', dataPayload)
+
+      // offline mode
+      if (checkOffline.value) {
+        const offlineId = await saveToQueue(transactionData, 'fast')
+        return {
+          invoiceNo: offlineId,
+          message: 'Invoice saved offline',
+          status: 'offline',
+          success: true,
+        }
+      }
 
       const result = await submitInvoiceResource.submit({
         invoice: JSON.stringify(invoicePayload),
@@ -226,6 +242,7 @@ export const useInvoicesStore = defineStore('invoices', () => {
 
   async function saveInvoice(transactionData) {
   try {
+    console.log('🔍 Apply Discount On (Save Invoice):', transactionData.applyDiscountOn)
     const shiftStore = useShiftStore()
     const { summary, paymentMethod, items } = transactionData
     const paidAmount  = parseFloat(summary.cash  ?? 0)
@@ -249,6 +266,11 @@ export const useInvoicesStore = defineStore('invoices', () => {
         "expense_account": shiftStore.pos_profile.expense_account,
         "warehouse": shiftStore.pos_profile.warehouse,
       })),
+      "apply_discount_on": transactionData.applyDiscountOn || '',
+      "additional_discount_percentage": transactionData.additionalDiscountPercentage || 0,
+      "discount_amount": transactionData.discountAmount || 0,
+      "taxes_and_charges": shiftStore.pos_profile?.taxes_and_charges || undefined,
+      "tax_category": shiftStore.pos_profile?.tax_category || undefined,
       "posa_pos_opening_shift": shiftStore.pos_opening_shift?.name,
     }
 
@@ -256,6 +278,18 @@ export const useInvoicesStore = defineStore('invoices', () => {
       due_date: new Date().toISOString().slice(0, 10),
       redeemed_customer_credit: false,
       customer_credit_dict: [],
+    }
+
+    // offline mode
+    console.log('checkOffline.value', checkOffline.value)
+    if (checkOffline.value) {
+      const offlineId = await saveToQueue(transactionData, 'normal')
+      return {
+        invoiceNo: offlineId,
+        message: 'Invoice saved offline',
+        status: 'offline',
+        success: true,
+      }
     }
 
     const result = await saveInvoiceResource.submit({
@@ -275,10 +309,10 @@ export const useInvoicesStore = defineStore('invoices', () => {
   }
   }
 
-  async function proceedInvoice(receiptData) {
+  async function proceedInvoice(transactionData) {
     try {
       const shiftStore = useShiftStore()
-      const { summary, paymentMethod, items, invoiceId } = receiptData
+      const { summary, paymentMethod, items, invoiceId } = transactionData
       const paidAmount  = parseFloat(summary.cash  ?? 0)
       const totalAmount = parseFloat(summary.total ?? 0)
 
@@ -301,7 +335,18 @@ export const useInvoicesStore = defineStore('invoices', () => {
           income_account: shiftStore.pos_profile.income_account,
           expense_account: shiftStore.pos_profile.expense_account,
           warehouse: shiftStore.pos_profile.warehouse,
+          ...(item.serial_no && { serial_no: item.serial_no }),
+          ...(item.batch_no  && { batch_no:  item.batch_no  }),
+          ...(item.uom       && { uom:       item.uom       }),
+          ...(item.conversion_factor && { conversion_factor: item.conversion_factor }),
+          ...(item.barcode && { barcode: item.barcode })
         })),
+
+        apply_discount_on: transactionData.applyDiscountOn || '',
+        additional_discount_percentage: transactionData.additionalDiscountPercentage || 0,
+        discount_amount: transactionData.discountAmount || 0,
+        taxes_and_charges: shiftStore.pos_profile?.taxes_and_charges || undefined,
+        tax_category: shiftStore.pos_profile?.tax_category || undefined,
         posa_pos_opening_shift: shiftStore.pos_opening_shift?.name,
         summary: { cash: paidAmount, total: totalAmount },
       }
@@ -446,7 +491,6 @@ export const useInvoicesStore = defineStore('invoices', () => {
   }
 
   function setCurrentInvoice(invoice) { currentInvoice.value = invoice }
-  function setReturnInvoice(invoice) { selectedInvoice.value = invoice; return selectedInvoice.value }
   function getCurrentInvoice() { return currentInvoice.value }
 
   return {
@@ -456,7 +500,6 @@ export const useInvoicesStore = defineStore('invoices', () => {
     isLoading,
     currentInvoice,
     cashiers,
-    selectedInvoice,
     // Getters
     invoicesCount,
     todaysInvoices,
@@ -480,7 +523,6 @@ export const useInvoicesStore = defineStore('invoices', () => {
     exportInvoices,
     getSalesSummary,
     setCurrentInvoice,
-    setReturnInvoice,
     getCurrentInvoice,
   }
 })

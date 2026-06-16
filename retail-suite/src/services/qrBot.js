@@ -27,48 +27,8 @@ class QRBotManager {
     this.isConnected.value = true
     this.emit('connected')
 
-    // بدأ الـ polling
-    // this.poll()
   }
 
-  // ==========================================
-  // Poll for new barcodes
-  // ==========================================
-  // async poll() {
-  //   if (!this.enabled.value) return
-
-  //   try {
-  //     // استدعي الـ API لـ احصل على آخر باركود
-  //     const response = await api.get(
-  //       '/api/method/retail.retail.api.qrbot.get_latest_barcode'
-  //     )
-
-  //     const result = response.data?.message || response.data
-
-  //     if (result.status === 'success' && result.barcode) {
-  //       // تأكد إنها باركود جديدة
-  //       if (result.barcode !== this.lastBarcode) {
-  //         console.log('📲 Barcode received:', result.barcode)
-  //         this.lastBarcode = result.barcode
-
-  //         // بعت الحدث للـ listeners
-  //         this.emit('barcode', {
-  //           barcode: result.barcode,
-  //           timestamp: result.timestamp
-  //         })
-  //       }
-  //     }
-  //   } catch (error) {
-  //     console.error('❌ Polling error:', error.message)
-  //   }
-
-  //   // جدول الـ polling التالي
-  //   this.pollingTimer = setTimeout(() => this.poll(), this.pollingInterval)
-  // }
-
-  // ==========================================
-  // Wait for authentication
-  // ==========================================
   waitForAuth() {
     return new Promise((resolve) => {
       if (session.isAuthenticated) {

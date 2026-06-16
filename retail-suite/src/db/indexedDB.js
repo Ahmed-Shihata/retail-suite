@@ -1,39 +1,10 @@
-import { openDB } from 'idb'
+import Dexie from 'dexie'
 
-let dbInstance = null
-
-export async function initDB() {
-  if (dbInstance) return dbInstance
-
-  dbInstance = await openDB('TailwindPOS', 3, {
-    upgrade(db) {
-      // جدول المنتجات
-      if (!db.objectStoreNames.contains('products')) {
-        db.createObjectStore('products', { keyPath: 'id' })
-      }
-
-      // جدول الإعدادات
-      if (!db.objectStoreNames.contains('settings')) {
-        db.createObjectStore('settings', { keyPath: 'key' })
-      }
-
-      // جدول الشيفتات
-      if (!db.objectStoreNames.contains('shifts')) {
-        const shiftsStore = db.createObjectStore('shifts', { keyPath: 'id' })
-        shiftsStore.createIndex('date', 'startTime')
-        shiftsStore.createIndex('userId', 'userId')
-        shiftsStore.createIndex('status', 'status')
-      }
-
-        // جدول الفواتير    
-        if (!db.objectStoreNames.contains('invoices')) {
-            const invoicesStore = db.createObjectStore('invoices', { keyPath: 'id' })
-            invoicesStore.createIndex('date', 'date')
-            invoicesStore.createIndex('customerId', 'customerId')
-            invoicesStore.createIndex('status', 'status')
-        }
-    }
-  })
-
-  return dbInstance
-}
+export const db = new Dexie('retail_pos')
+db.version(1).stores({
+  invoice_queue: '++id, offline_id, timestamp, synced, mode',
+  stock: '&[item_code+warehouse], item_code, warehouse',
+  items: '&item_code, item_name, item_group',
+  customers: '&name, customer_name, mobile_no',
+  translations: '++id, locale',
+})

@@ -10,23 +10,23 @@
     <div class="mb-4">
 
       <!-- Original Invoice Row -->
-      <div class="flex mb-2 text-sm" :style="{ color: 'var(--text-sub)' }">
+      <div class="flex justify-between mb-2 text-sm" :style="{ color: 'var(--text-sub)' }">
         <div>Original Invoice:</div>
-        <div class="text-right w-full font-semibold" :style="{ color: 'var(--text-main)' }">
+        <div class="font-semibold" :style="{ color: 'var(--text-main)' }">
           {{ returnAgainstValue }} ({{ customerValue }})
         </div>
       </div>
 
       <!-- Total Return Row -->
       <div
-        class="flex mb-3 text-lg font-semibold pt-2"
+        class="flex justify-between mb-3 text-sm font-semibold pt-2"
         :style="{
           color: 'var(--text-main)',
           borderTop: '1px solid var(--card-border)'
         }"
       >
-        <div>Total Return</div>
-        <div class="text-right w-full">{{ formatPrice(cartStore.totalPrice) }}</div>
+        <div>{{ __('Total Return') }}</div>
+        <div>{{ formatPrice(cartStore.totalPrice) }}</div>
       </div>
     </div>
 
@@ -35,10 +35,10 @@
       class="text-white rounded-2xl text-lg w-full py-3 focus:outline-none transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
       :style="{ background: 'var(--btn-danger)' }"
       :disabled="cartStore.isProcessing"
-      @click="cartStore.handleReturnSubmit"
+      @click="handleConfirmReturn"
     >
       <ArrowUturnLeftIcon class="w-6 h-6 mr-2 inline-block" />
-      CONFIRM RETURN
+      {{ __('Confirm Return') }}
     </button>
 
     <div
@@ -46,7 +46,7 @@
       class="mt-2 text-sm"
       :style="{ color: 'var(--text-muted)' }"
     >
-      Processing return...
+      {{ __('Process Sales Return') }}
     </div>
   </div>
 </template>
@@ -56,33 +56,26 @@ import { useCartStore } from '@/stores/cart'
 import { ArrowUturnLeftIcon } from '@heroicons/vue/24/outline'
 import {formatPrice} from '../../utils/formatters.js'
 const cartStore = useCartStore()
-// const returnAgainstValue = ref('N/A')
-// const customerValue = ref('N/A')
 const returnAgainstValue = computed(() => cartStore.returnAgainst?.name || 'N/A')
 const customerValue = computed(() => cartStore.returnAgainst?.customer || 'N/A')
-// watch(
-//   () => cartStore.returnAgainst,
-//   (newVal) => {
-//     console.log('🟢 returnAgainst changed:', newVal)
-//     returnAgainstValue.value = newVal?.name || 'N/A'
-//     customerValue.value = newVal?.customer || 'N/A'
-//   },
-//   { immediate: true, deep: true }
-// )
-// watch(() => cartStore.returnAgainst, (newVal, oldVal) => {
-//   console.log('🟢 returnAgainst changed:', newVal, ' | old:', oldVal)
-// })
 
+const handleConfirmReturn = async () => {
+  if (cartStore.cart.length === 0) return
 
-// watch(
-//   () => cartStore.returnAgainst,
-//   (newVal, oldVal) => {
-//     console.log('🟢 returnAgainst changed:', newVal)
-//     if (newVal) {
-//       console.log('Customer:', newVal.customer)
-//     }
-//   },
-//   { deep: true }
-// )
+  cartStore.isProcessing = true
+
+  try {
+    const invoiceName = await cartStore.createSalesReturn(returnAgainstValue.value)
+
+    window.$toast?.success(__('Return Invoice {0} created successfully', [invoiceName]))
+    cartStore.clearCart()
+
+  } catch (error) {
+    console.error('Return submission failed:', error)
+    window.$toast?.error(error.message || __('Failed to create return'))
+  } finally {
+    cartStore.isProcessing = false
+  }
+}
 
 </script>

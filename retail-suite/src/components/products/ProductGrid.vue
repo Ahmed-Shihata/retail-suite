@@ -1,17 +1,15 @@
 <!-- ProductGrid.vue -->
 <template>
   <div class="h-full flex flex-col overflow-hidden gap-3 mt-3">
-
     <!-- Filter Bar (pricelist + warehouse) -->
     <FilterBar
-      v-model:selectedPriceList="productsStore.selectedPriceList"
-      v-model:selectedWarehouse="productsStore.selectedWarehouse"
+      v-model:selectedPriceList="selectedPriceList"
+      v-model:selectedWarehouse="selectedWarehouse"
       :price-lists="productsStore.priceLists"
       :warehouses="productsStore.warehouses"
       :is-loading="productsStore.isLoading"
-      @reload="productsStore.loadProductsFromFrappeDB()"
+      @reload="productsStore.loadProductsFromFrappeDB(true)"
     />
-
     <!-- Category Filter -->
     <CategoryFilter v-model="selectedCategory" />
 
@@ -21,12 +19,12 @@
       <!-- Empty DB -->
       <div
         v-if="productsStore.products.length === 0 && !productsStore.isLoading"
-        class="select-none rounded-3xl flex flex-wrap content-center justify-center h-full opacity-25"
+        class="select-noneflex flex-wrap content-center justify-center h-full opacity-25"
         :style="{ background: 'var(--item-bg)', color: 'var(--text-main)' }"
       >
-        <div class="w-full text-center">
+        <div class="w-full flex flex-col items-center">
           <EmptyDatabaseIcon />
-          <p class="text-xl mt-2">لا توجد منتجات</p>
+          <p class="text-xl mt-2">{{ __('There are no products') }}</p>
         </div>
       </div>
 
@@ -38,7 +36,7 @@
       >
         <div class="w-full text-center">
           <LoadingSpinner />
-          <p class="text-xl mt-4">جاري تحميل المنتجات...</p>
+          <p class="text-xl mt-4">{{ __('Loading products') }}</p>
         </div>
       </div>
 
@@ -50,7 +48,7 @@
       >
         <div class="w-full text-center">
           <EmptySearchIcon />
-          <p class="text-xl mt-2">لا توجد نتائج</p>
+          <p class="text-xl mt-2">{{ __('No results') }}</p>
           <p class="text-sm mt-1" :style="{ color: 'var(--text-muted)' }">
             "{{ searchKeyword || selectedCategory }}"
           </p>
@@ -66,6 +64,9 @@
           v-for="product in filteredProducts"
           :key="product.item_code"
           :product="product"
+          :search-context="product.item_code === productsStore.searchContext?.item_code
+          ? productsStore.searchContext
+          : {}"
           :is-in-cart="cartStore.isInCart(product.item_code)"
           :cart-quantity="cartStore.getProductQuantity(product.item_code)"
           @add-to-cart="handleAddToCart"
@@ -80,7 +81,7 @@
         class="text-center text-xs mt-2 pb-2"
         :style="{ color: 'var(--text-muted)' }"
       >
-        {{ filteredProducts.length }} منتج
+        {{ filteredProducts.length }} {{ __('Products') }}
       </div>
     </div>
   </div>
@@ -95,7 +96,11 @@ import { useProductsStore } from '@/stores/products'
 import { useCartStore } from '@/stores/cart'
 import EmptyDatabaseIcon from '@/components/icons/EmptyDatabaseIcon.svg'
 import EmptySearchIcon from '@/components/icons/EmptySearchIcon.svg'
+import { useShiftStore } from '@/stores/shift'
+import { storeToRefs } from 'pinia'
 
+const shiftStore = useShiftStore()
+const { isShiftOpen } = storeToRefs(shiftStore)
 const props = defineProps({
   searchKeyword: { type: String, default: '' }
 })
@@ -105,39 +110,39 @@ const productsStore = useProductsStore()
 const cartStore = useCartStore()
 const selectedCategory = ref('')
 
-// فلترة محلية بالـ search + category
 const filteredProducts = computed(() => {
   let list = productsStore.products
-
   if (selectedCategory.value) {
     list = list.filter(p => p.item_group === selectedCategory.value)
   }
-
-  if (props.searchKeyword) {
-    const kw = props.searchKeyword.toLowerCase().trim()
-    list = list.filter(p =>
-      p.item_code?.toLowerCase().includes(kw) ||
-      p.item_name?.toLowerCase().includes(kw) ||
-      p.description?.toLowerCase().includes(kw)
-    )
-  }
-
   return list
 })
 
-// لما يتغير الـ search keyword — reload لو فيه limit search
-watch(
-  () => props.searchKeyword,
-  (kw) => {
-    productsStore.setSearchKeyword(kw)
+const selectedPriceList = computed({
+  get: () => productsStore.selectedPriceList,
+  set: (val) => {
+    productsStore.selectedPriceList = val
   }
-)
+})
 
-const handleAddToCart    = (p) => { cartStore.addToCart(p);                emit('add-to-cart', p) }
+const selectedWarehouse = computed({
+  get: () => productsStore.selectedWarehouse,
+  set: (val) => {
+    productsStore.selectedWarehouse = val
+  }
+})
+const handleAddToCart = (p) => {
+  const added = cartStore.addToCart(p)
+  if (!added) {
+    window.$toast?.warning(__('Quantity exceeds available stock'))
+    return
+  }
+  emit('add-to-cart', p)
+}
+
 const handleRemoveFromCart = (p) => { cartStore.removeFromCart(p.item_code); emit('remove-from-cart', p) }
 const handleViewDetails  = (p) => emit('view-details', p)
 
-// Loading Spinner inline component
 const LoadingSpinner = {
   template: `
     <div style="
@@ -146,15 +151,48 @@ const LoadingSpinner = {
       border-bottom-color:var(--text-muted);
       animation:spin 1s linear infinite;
     "></div>
-  `
-}
+    `
+  }
+
+watch(() => props.searchKeyword, async (kw) => {
+  await productsStore.searchProducts(kw)
+})
+
+watch(
+  () => [productsStore.selectedPriceList, productsStore.selectedWarehouse],
+  () => productsStore.loadProductsFromFrappeDB(true)  // forceReload
+)
+
+watch(isShiftOpen, async (val) => {
+  console.log('POS saw isShiftOpen change to:', val)
+
+  if (!val) return
+
+  try {
+    const shiftStore = useShiftStore()
+    const profile = shiftStore.pos_profile
+
+    if (!profile) {
+      console.warn('⏳ POS Profile not ready yet')
+      return
+    }
+
+    await productsStore.loadFilterOptions(profile)
 
 
-onMounted(async () => {
-  await productsStore.loadFilterOptions()
+    if (!selectedPriceList.value)
+      selectedPriceList.value = profile.selling_price_list
+
+    if (!selectedWarehouse.value)
+      selectedWarehouse.value = profile.warehouse
+
+    await productsStore.loadProductsFromFrappeDB(true)
+
+  } catch (err) {
+    console.error('❌ POS init flow failed:', err)
+  }
 })
 </script>
-
 <style scoped>
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 </style>

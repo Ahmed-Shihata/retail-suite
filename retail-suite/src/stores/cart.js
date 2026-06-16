@@ -1,6 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed, toRaw } from 'vue'
-import { createSalesReturn, createSalesOrder } from '@/composables/pos'
+import { call } from 'frappe-ui'
+import { __ } from '@/i18n/index'
+
+const DISCOUNT_ON = {
+  NET_TOTAL: 'Net Total',
+  GRAND_TOTAL: 'Grand Total',
+}
 
 export const useCartStore = defineStore('cart', () => {
 
@@ -9,152 +15,250 @@ export const useCartStore = defineStore('cart', () => {
   ============================================================ */
   const cart = ref([])
   const cash = ref(0)
-  const taxRate = ref(0)
-  const discountRate = ref(0)
   const isProcessing = ref(false)
 
-  // Modes
-  const isReturnMode = ref(false)
-  const isDraftMode = ref(false)
+  // ── Payments ───────────────────────────────────────────────
+  // [{ mode_of_payment, amount }]
+  const payments = ref([])
 
-  // References
-  const returnAgainst = ref(null)
-  const currentDraftName = ref(null)   // اسم الدرافت المفتوح حالياً
-  const currentCustomer = ref(null)
+  // ── Mode ───────────────────────────────────────────────────
+  // 'sale'   → normal selling
+  // 'return' → creating a return from an existing invoice
+  // 'draft'  → editing a saved-but-not-submitted invoice
+  const mode = ref('sale')
+
+  // ── References ─────────────────────────────────────────────
+  const returnAgainst    = ref(null)
+  const currentDraftName = ref(null)
+  const currentCustomer  = ref(null)
   const pos_profile_name = ref(null)
-  const returndoc = ref(null)
+  const returndoc        = ref(null)
+
+  const returnInvoiceData = ref(null)
+
+  // ── Tax ────────────────────────────────────────────────────
+  const taxLines        = ref([])
+  const taxesAndCharges = ref(null)
+  const taxCategory     = ref(null)
+
+  // ── Discount ───────────────────────────────────────────────
+  const applyDiscountOn              = ref(DISCOUNT_ON.GRAND_TOTAL)
+  const additionalDiscountPercentage = ref(0)
+  const discountAmount               = ref(0)
 
   const moneys = [2000, 5000, 10000, 20000, 50000, 100000]
+
+  /* ============================================================
+     MODE FLAGS
+  ============================================================ */
+  const isSaleMode   = computed(() => mode.value === 'sale')
+  const isReturnMode = computed(() => mode.value === 'return')
+  const isDraftMode  = computed(() => mode.value === 'draft')
+  const isReadOnly   = computed(() => isReturnMode.value)
 
   /* ============================================================
      GETTERS
   ============================================================ */
   const itemsCount = computed(() =>
-    cart.value.reduce((total, item) => total + item.qty, 0)
+    cart.value.reduce((total, item) => total + Math.abs(item.qty), 0)
   )
 
-  const subtotal = computed(() =>
+  const netTotal = computed(() =>
     cart.value.reduce((total, item) => total + item.rate * item.qty, 0)
   )
 
+  const subtotal = netTotal
+
   const taxAmount = computed(() =>
-    Math.round(subtotal.value * (taxRate.value / 100))
+    taxLines.value.reduce((sum, t) => sum + (t.amount || 0), 0)
   )
 
-  const discountAmount = computed(() =>
-    Math.round(subtotal.value * (discountRate.value / 100))
-  )
+  const computedDiscountAmount = computed(() => {
+    if (discountAmount.value > 0) return discountAmount.value
+    if (additionalDiscountPercentage.value <= 0) return 0
+
+    const base = applyDiscountOn.value === DISCOUNT_ON.NET_TOTAL
+      ? netTotal.value
+      : netTotal.value + taxAmount.value
+
+    return Math.round(base * (additionalDiscountPercentage.value / 100) * 100) / 100
+  })
 
   const totalPrice = computed(() =>
-    subtotal.value + taxAmount.value - discountAmount.value
+    netTotal.value + taxAmount.value - computedDiscountAmount.value
   )
 
-  const changeAmount = computed(() =>
-    cash.value - totalPrice.value
+  const totalPaid = computed(() =>
+    payments.value.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
   )
+
+  const changeAmount = computed(() => totalPaid.value - totalPrice.value)
 
   const canSubmit = computed(() =>
     cart.value.length > 0 &&
-    cash.value >= totalPrice.value &&
+    totalPaid.value >= totalPrice.value &&
     !isProcessing.value
   )
 
-  const cartSummary = computed(() => ({
-    itemsCount: itemsCount.value,
-    subtotal: subtotal.value,
-    tax: taxAmount.value,
-    discount: discountAmount.value,
-    total: totalPrice.value,
-    cash: cash.value,
-    change: changeAmount.value
-  }))
-
   const isEmpty = computed(() => cart.value.length === 0)
 
-  const hasDiscount = computed(() => discountRate.value > 0)
-
-  const hasTax = computed(() => taxRate.value > 0)
+  const cartSummary = computed(() => ({
+    itemsCount:       itemsCount.value,
+    netTotal:         netTotal.value,
+    subtotal:         netTotal.value,
+    taxAmount:        taxAmount.value,
+    taxLines:         taxLines.value,
+    discountAmount:   computedDiscountAmount.value,
+    applyDiscountOn:  applyDiscountOn.value,
+    additionalDiscountPercentage: additionalDiscountPercentage.value,
+    total:            totalPrice.value,
+    payments:         payments.value,
+    cash:             totalPaid.value,
+    change:           changeAmount.value,
+    mode:             mode.value,
+    customer:         currentCustomer.value,
+    taxesAndCharges:  taxesAndCharges.value,
+    taxCategory:      taxCategory.value,
+  }))
 
   /* ============================================================
      CART ACTIONS
   ============================================================ */
   const addToCart = (product, barcode = null) => {
-    const existing = cart.value.find(i => i.item_code === product.item_code)
-    const qtyToAdd = product.qty || 1
+    if (isReadOnly.value) {
+      window.$toast?.warning(__('Cannot add items in return mode'))
+      return false
+    }
+
+    const cf         = product.conversion_factor || 1
+    const totalStock = product.actual_qty
+
+    const usedQtyInStockUom = cart.value
+      .filter(i => i.item_code === product.item_code)
+      .reduce((sum, i) => sum + (i.qty * (i.conversion_factor || 1)), 0)
+
+    const newQtyInStockUom = (product.qty || 1) * cf
+
+    if (totalStock != null && usedQtyInStockUom + newQtyInStockUom > totalStock) {
+      const available = totalStock - usedQtyInStockUom
+      window.$toast?.warning(
+        __('Not enough stock. Available: {0} {1}', [available, product.stock_uom])
+      )
+      return false
+    }
+
+    if (product.serial_no) {
+      const alreadyInCart = cart.value.find(i => i.serial_no === product.serial_no)
+      if (alreadyInCart) {
+        window.$toast?.warning(__('Serial {0} already in cart', [product.serial_no]))
+        return false
+      }
+    }
+
+    const existing = cart.value.find(
+      i => i.item_code === product.item_code
+        && i.uom === product.uom
+        && i.serial_no === (product.serial_no || '')
+        && i.batch_no  === (product.batch_no  || '')
+    )
 
     if (existing) {
-      existing.qty += qtyToAdd
+      existing.qty += (product.qty || 1)
     } else {
       cart.value.push({
-        item_code: product.item_code,
-        item_name: product.item_name,
-        rate: product.rate,
-        image: product.image || '',
-        barcode: barcode?.code || '',
-        category: product.item_group || '',
-        qty: qtyToAdd,
-        addedAt: new Date().toISOString()
+        item_code:         product.item_code,
+        item_name:         product.item_name,
+        rate:              product.rate,
+        original_rate:     product.original_rate || product.rate,
+        image:             product.image  || '',
+        barcode:           product.barcode || barcode?.code || '',
+        category:          product.item_group || '',
+        qty:               product.qty || 1,
+        uom:               product.uom || product.stock_uom,
+        conversion_factor: cf,
+        stock_uom:         product.stock_uom,
+        actual_qty:        product.actual_qty,
+        serial_no:         product.serial_no  || '',
+        batch_no:          product.batch_no   || '',
+        addedAt:           new Date().toISOString(),
       })
     }
-    _updateChange()
+
+    return true
   }
 
   const removeFromCart = (item_code) => {
+    if (isReadOnly.value) return
     const index = cart.value.findIndex(i => i.item_code === item_code)
-    if (index !== -1) {
-      cart.value.splice(index, 1)
-      _updateChange()
-    }
+    if (index !== -1) cart.value.splice(index, 1)
   }
 
-  const updateQuantity = (item_code, newQty, mode) => {
+  const updateQuantity = (item_code, newQty) => {
+    if (isReadOnly.value) {
+      window.$toast?.warning(__('Quantity is locked in return mode'))
+      return
+    }
+
     const item = cart.value.find(i => i.item_code === item_code)
     if (!item) return
 
-    if (mode === 'return') {
-      if (newQty > 0) newQty = -Math.abs(newQty)
-      if (item.originalQuantity && Math.abs(newQty) > item.originalQuantity) {
-        window.$toast?.warning('Cannot return more than original quantity')
-        return
-      }
-      item.qty = newQty
-    } else {
-      if (newQty <= 0) {
-        removeFromCart(item_code)
-        return
-      }
-      item.qty = newQty
+    if (newQty <= 0) {
+      removeFromCart(item_code)
+      return
     }
-    _updateChange()
+
+    // Stock check (only when we know actual_qty for this item)
+    if (item.actual_qty != null) {
+      const otherUsage = cart.value
+        .filter(i => i.item_code === item_code && i !== item)
+        .reduce((sum, i) => sum + (i.qty * (i.conversion_factor || 1)), 0)
+
+      const newQtyInStockUom = newQty * (item.conversion_factor || 1)
+
+      if (otherUsage + newQtyInStockUom > item.actual_qty) {
+        const available = item.actual_qty - otherUsage
+        window.$toast?.warning(
+          __('Not enough stock. Available: {0} {1}', [available, item.stock_uom || ''])
+        )
+        return
+      }
+    }
+
+    item.qty = newQty
   }
 
   const addQuantity = (item_code, amount) => {
+    if (isReadOnly.value) return
     const item = cart.value.find(i => i.item_code === item_code)
     if (!item) return
     const newQty = item.qty + amount
-    newQty <= 0 ? removeFromCart(item_code) : (item.qty = newQty, _updateChange())
+    newQty <= 0 ? removeFromCart(item_code) : updateQuantity(item_code, newQty)
   }
 
-  const getCartItem = (item_code) =>
-    cart.value.find(i => i.item_code === item_code)
+  const getCartItem = (item_code) => cart.value.find(i => i.item_code === item_code)
+  const isInCart    = (item_code) => cart.value.some(i => i.item_code === item_code)
 
-  const isInCart = (item_code) =>
-    cart.value.some(i => i.item_code === item_code)
-
-  const getProductQuantity = (item_code) =>
-    cart.value.find(i => i.item_code === item_code)?.qty ?? 0
+  const getProductQuantity = (item_code, uom = null) => {
+    if (uom) return cart.value.find(i => i.item_code === item_code && i.uom === uom)?.qty ?? 0
+    return cart.value
+      .filter(i => i.item_code === item_code)
+      .reduce((sum, i) => sum + (i.qty * (i.conversion_factor || 1)), 0)
+  }
 
   /* ============================================================
-     CASH ACTIONS
+     CASH / PAYMENTS ACTIONS
   ============================================================ */
   const setCash = (amount) => {
     cash.value = Math.max(0, amount)
-    _updateChange()
+    if (payments.value.length === 0) {
+      payments.value = [{ mode_of_payment: 'Cash', amount: cash.value }]
+    } else {
+      payments.value[0].amount = cash.value
+    }
   }
 
   const addCash = (amount) => {
-    cash.value += amount
-    _updateChange()
+    setCash(cash.value + amount)
   }
 
   const updateCashFromString = (str) => {
@@ -162,155 +266,259 @@ export const useCartStore = defineStore('cart', () => {
     setCash(amount)
   }
 
+  const setPayments = (newPayments) => {
+    payments.value = newPayments.map(p => ({
+      mode_of_payment: p.mode_of_payment,
+      amount: Number(p.amount) || 0,
+    }))
+    cash.value = totalPaid.value
+  }
+
   /* ============================================================
-     PRICING ACTIONS
+     TAX ACTIONS
   ============================================================ */
-  const setTaxRate = (rate) => {
-    taxRate.value = Math.max(0, Math.min(100, rate))
-    _updateChange()
+  const applyPOSProfileTax = (taxData) => {
+    if (!taxData) return
+
+    taxesAndCharges.value = taxData.taxes_and_charges || null
+    taxCategory.value     = taxData.tax_category       || null
+
+    taxLines.value = (taxData.taxes || []).map(t => ({
+      account_head: t.account_head,
+      description:  t.description || t.account_head,
+      rate:         t.rate || 0,
+      charge_type:  t.charge_type || 'On Net Total',
+      amount:       t.amount ?? 0,
+    }))
+
+    recalcTaxLines()
   }
 
-  const setDiscountRate = (rate) => {
-    discountRate.value = Math.max(0, Math.min(100, rate))
-    _updateChange()
+  const recalcTaxLines = () => {
+    let runningTotal = netTotal.value
+    let previousRowAmount = 0
+
+    taxLines.value = taxLines.value.map((t) => {
+      let amount = 0
+
+      switch (t.charge_type) {
+        case 'Actual':
+          amount = t.amount || 0
+          break
+        case 'On Net Total':
+          amount = Math.round(netTotal.value * (t.rate / 100) * 100) / 100
+          break
+        case 'On Previous Row Amount':
+          amount = Math.round(previousRowAmount * (t.rate / 100) * 100) / 100
+          break
+        case 'On Previous Row Total':
+          amount = Math.round(runningTotal * (t.rate / 100) * 100) / 100
+          break
+        case 'On Item Quantity':
+          amount = Math.round(itemsCount.value * t.rate * 100) / 100
+          break
+        default:
+          amount = Math.round(netTotal.value * (t.rate / 100) * 100) / 100
+      }
+
+      previousRowAmount = amount
+      runningTotal += amount
+
+      return { ...t, amount }
+    })
   }
 
-  const applyDiscountAmount = (amount) => {
-    if (subtotal.value > 0) {
-      setDiscountRate(Math.min(100, (amount / subtotal.value) * 100))
+  const loadTaxLines = (invoiceTaxes = []) => {
+    taxLines.value = invoiceTaxes.map(t => ({
+      account_head: t.account_head,
+      description:  t.description || t.account_head,
+      rate:         t.rate || 0,
+      amount:       t.tax_amount ?? t.amount ?? 0,
+      charge_type:  t.charge_type || 'On Net Total',
+    }))
+  }
+
+  /* ============================================================
+     DISCOUNT ACTIONS
+  ============================================================ */
+  const setDiscountPercentage = (pct) => {
+    additionalDiscountPercentage.value = Math.max(0, Math.min(100, pct))
+    discountAmount.value = 0
+  }
+
+  const setDiscountAmount = (amount) => {
+    discountAmount.value               = Math.max(0, amount)
+    additionalDiscountPercentage.value = 0
+  }
+
+  const setApplyDiscountOn = (value) => {
+    if (Object.values(DISCOUNT_ON).includes(value)) {
+      applyDiscountOn.value = value
     }
   }
 
+  const clearDiscount = () => {
+    additionalDiscountPercentage.value = 0
+    discountAmount.value               = 0
+    applyDiscountOn.value              = DISCOUNT_ON.GRAND_TOTAL
+  }
+
   /* ============================================================
-     DRAFT INVOICE ACTIONS
+     DRAFT MODE ACTIONS
   ============================================================ */
   const loadDraftInvoice = (invoice) => {
-    clearCart()
-
-    isDraftMode.value = true
+    _resetCartState()
+    mode.value             = 'draft'
     currentDraftName.value = invoice.name
-    currentCustomer.value = invoice.customer || null
+    currentCustomer.value  = invoice.customer || null
 
-    invoice.items?.forEach(item => {
+    const loadedPayments = Array.isArray(invoice.payments)
+      ? invoice.payments.map(p => ({
+          mode_of_payment: p.mode_of_payment,
+          amount: Number(p.amount) || 0,
+        }))
+      : []
+
+    payments.value = loadedPayments
+    cash.value = loadedPayments.reduce((sum, p) => sum + p.amount, 0)
+
+    ;(invoice.items || []).forEach(item => {
       cart.value.push({
-        item_code: item.item_code,
-        item_name: item.item_name,
-        rate: item.rate,
-        image: item.image || '',
-        category: item.item_group || '',
-        qty: item.qty,
-        addedAt: new Date().toISOString()
+        item_code:         item.item_code,
+        item_name:         item.item_name,
+        rate:              item.rate,
+        original_rate:     item.rate,
+        image:             item.image      || '',
+        category:          item.item_group || '',
+        qty:               item.qty,
+        uom:               item.uom        || item.stock_uom,
+        stock_uom:         item.stock_uom,
+        conversion_factor: item.conversion_factor || 1,
+        actual_qty:        item.actual_qty,
+        serial_no:         item.serial_no  || '',
+        batch_no:          item.batch_no   || '',
+        addedAt:           new Date().toISOString(),
       })
     })
 
-    if (invoice.discount_amount) {
-      applyDiscountAmount(invoice.discount_amount)
-    }
+    loadTaxLines(invoice.taxes || [])
 
-    _updateChange()
-    console.log('📄 Draft loaded:', invoice.name)
+    if (invoice.additional_discount_percentage) {
+      additionalDiscountPercentage.value = invoice.additional_discount_percentage
+    }
+    if (invoice.discount_amount) {
+      discountAmount.value = invoice.discount_amount
+    }
+    if (invoice.apply_discount_on) {
+      applyDiscountOn.value = invoice.apply_discount_on
+    }
   }
 
   const clearDraftMode = () => {
-    isDraftMode.value = false
+    mode.value             = 'sale'
     currentDraftName.value = null
-    currentCustomer.value = null
   }
 
   /* ============================================================
-     RETURN ACTIONS
+     RETURN MODE ACTIONS
   ============================================================ */
-  const setReturnAgainst = (invoice, profile) => {
-    returnAgainst.value = invoice
-    pos_profile_name.value = profile
+  const loadReturnInvoice = (invoice, profile = null) => {
+    _resetCartState()
+    mode.value = 'return'
+
+    if (profile) pos_profile_name.value = profile
+
+    returnInvoiceData.value = {
+      name:            invoice.name,
+      customer:        invoice.customer,
+      posting_date:    invoice.posting_date,
+      grand_total:     invoice.grand_total,
+      net_total:       invoice.net_total,
+      total_taxes_and_charges: invoice.total_taxes_and_charges,
+      discount_amount: invoice.discount_amount,
+      additional_discount_percentage: invoice.additional_discount_percentage,
+      apply_discount_on: invoice.apply_discount_on,
+      taxes:           invoice.taxes    || [],
+      payments:        invoice.payments || [],
+      remarks:         invoice.remarks  || '',
+    }
+
+    returnAgainst.value   = invoice
+    currentCustomer.value = invoice.customer || null
+
+    const items = invoice.returnable_items || invoice.items || []
+
+    items.forEach(item => {
+      const returnableQty = Math.abs(item.returnable_qty ?? item.qty ?? 0)
+      cart.value.push({
+        item_code:        item.item_code,
+        item_name:        item.item_name,
+        rate:             item.rate,
+        original_rate:    item.rate,
+        image:            item.image      || '',
+        category:         item.item_group || '',
+        qty:              -returnableQty,
+        uom:              item.uom        || item.stock_uom || '',
+        stock_uom:        item.stock_uom  || '',
+        conversion_factor: item.conversion_factor || 1,
+        serial_no:        item.serial_no  || '',
+        batch_no:         item.batch_no   || '',
+        originalQuantity: returnableQty,
+        isReturn:         true,
+      })
+    })
+
+    loadTaxLines(invoice.taxes || [])
+
+    additionalDiscountPercentage.value = invoice.additional_discount_percentage || 0
+    discountAmount.value               = invoice.discount_amount                || 0
+    applyDiscountOn.value              = invoice.apply_discount_on              || DISCOUNT_ON.GRAND_TOTAL
   }
 
   const loadReturnItems = (items = []) => {
-    clearCart()
-    isReturnMode.value = true
-
+    if (mode.value !== 'return') mode.value = 'return'
     items.forEach(it => {
       cart.value.push({
-        item_code: it.item_code || it.id,
-        item_name: it.item_name || it.name,
-        rate: it.rate || it.price || 0,
-        image: it.image || '',
-        category: it.category || '',
-        qty: -it.qty,
-        originalQuantity: it.qty || it.quantity || 1,
-        isReturn: true
+        item_code:        it.item_code || it.id,
+        item_name:        it.item_name || it.name,
+        rate:             it.rate      || it.price || 0,
+        image:            it.image     || '',
+        category:         it.category  || '',
+        qty:              -Math.abs(it.qty),
+        originalQuantity: it.qty       || it.quantity || 1,
+        isReturn:         true,
       })
     })
-    _updateChange()
   }
 
-  const handleReturnSubmit = async () => {
+  const createSalesReturn = async (invoice_name) => {
     try {
-      await processReturnTransaction({
-        is_return: 1,
-        pos_profile_name: pos_profile_name.value,
-        return_against: returnAgainst.value?.name,
-        customer: returnAgainst.value?.customer,
-        items: cart.value.map(item => ({ ...item, qty: Math.abs(item.qty) }))
-      })
-      window.$toast?.success('Return processed successfully!')
+      console.log("🔍 createSalesReturn")
+      console.log("🔍 invoice_name", invoice_name)
+      const result =  await call('retail.retail.api.invoice.create_sales_return', {invoice_name})
+      console.log("🔍 result", result)
+      return result
     } catch (error) {
-      console.error('Return failed:', error)
-      window.$toast?.error('Failed to process return.')
+      console.error('Error creating sales return:', error)
+      throw error
     }
-  }
-
-  const processReturnTransaction = async (returnDoc) => {
-    if (!returnDoc?.items) {
-      console.error('❌ Invalid returnDoc:', returnDoc)
-      return
-    }
-    isReturnMode.value = true
-    clearCart()
-
-    returnDoc.items.forEach(it => {
-      cart.value.push({
-        item_code: it.item_code || it.id,
-        item_name: it.item_name || it.name,
-        rate: it.rate || it.price || 0,
-        image: it.image || '',
-        qty: it.qty,
-        originalQuantity: it.qty,
-        isReturn: true
-      })
-    })
-
-    if (returnDoc.discount_amount) {
-      discountRate.value = Math.abs(returnDoc.discount_amount)
-    }
-
-    _updateChange()
-
-    const returnResponse = await createSalesReturn(
-      returnAgainst.value?.name,
-      returnDoc.items,
-      pos_profile_name.value
-    )
-
-    if (returnResponse) clearCart()
-    return returnResponse
   }
 
   /* ============================================================
      TRANSACTION ACTIONS
   ============================================================ */
-  const processTransaction = async (mode, originalInvoice = null) => {
+  const processTransaction = async (originalInvoice = null) => {
     isProcessing.value = true
     try {
       const transactionData = {
-        draftName: isDraftMode.value ? currentDraftName.value : undefined,   /* # if you send draft invoice #*/
-        items: toRaw(cart.value),
-        summary: cartSummary.value,
-        timestamp: new Date().toISOString(),
+        draftName:     isDraftMode.value ? currentDraftName.value : undefined,
+        items:         toRaw(cart.value),
+        summary:       cartSummary.value,
+        timestamp:     new Date().toISOString(),
         transactionId: _generateTransactionId(),
-        customer: currentCustomer.value,
-        mode,
-        originalInvoice
+        customer:      currentCustomer.value,
+        mode:          mode.value,
+        originalInvoice,
       }
       await _saveTransaction(transactionData)
       return transactionData
@@ -322,33 +530,35 @@ export const useCartStore = defineStore('cart', () => {
     }
   }
 
-  const processTransactionCreateOrder = async (customer, transactionData) => {
-    try {
-      return await createSalesOrder(customer, transactionData)
-    } catch (error) {
-      console.error('Order creation failed:', error)
-      throw error
-    }
-  }
-
   /* ============================================================
      CLEAR & RESET
   ============================================================ */
+  const _resetCartState = () => {
+    cart.value                         = []
+    cash.value                         = 0
+    payments.value                     = []
+    isProcessing.value                 = false
+    taxLines.value                     = []
+    taxesAndCharges.value              = null
+    taxCategory.value                  = null
+    additionalDiscountPercentage.value = 0
+    discountAmount.value               = 0
+    applyDiscountOn.value              = DISCOUNT_ON.GRAND_TOTAL
+    returnInvoiceData.value            = null
+    currentCustomer.value              = null
+  }
+
   const clearCart = () => {
-    cart.value = []
-    cash.value = 0
-    taxRate.value = 0
-    discountRate.value = 0
-    isProcessing.value = false
-    isReturnMode.value = false
-    clearDraftMode()
+    _resetCartState()
+    mode.value             = 'sale'
+    currentDraftName.value = null
   }
 
   const resetCart = () => {
     clearCart()
-    returnAgainst.value = null
+    returnAgainst.value    = null
     pos_profile_name.value = null
-    returndoc.value = null
+    returndoc.value        = null
   }
 
   /* ============================================================
@@ -371,11 +581,6 @@ export const useCartStore = defineStore('cart', () => {
   /* ============================================================
      PRIVATE HELPERS
   ============================================================ */
-  const _updateChange = () => {
-    // computed handles it, just trigger reactivity log
-    console.log('💰 Total:', totalPrice.value, '| Change:', changeAmount.value)
-  }
-
   const _generateTransactionId = () => {
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
     return `TXN${Date.now()}${random}`
@@ -383,10 +588,7 @@ export const useCartStore = defineStore('cart', () => {
 
   const _saveTransaction = async (transactionData) => {
     return new Promise(resolve => {
-      setTimeout(() => {
-        console.log('✅ Transaction saved:', transactionData)
-        resolve(transactionData)
-      }, 500)
+      setTimeout(() => resolve(transactionData), 500)
     })
   }
 
@@ -397,30 +599,45 @@ export const useCartStore = defineStore('cart', () => {
     // State
     cart,
     cash,
-    taxRate,
-    discountRate,
+    payments,
     isProcessing,
-    isReturnMode,
-    isDraftMode,
+    mode,
     currentDraftName,
     currentCustomer,
     returnAgainst,
     pos_profile_name,
     returndoc,
     moneys,
+    returnInvoiceData,
+
+    // Tax
+    taxLines,
+    taxesAndCharges,
+    taxCategory,
+
+    // Discount
+    applyDiscountOn,
+    additionalDiscountPercentage,
+    discountAmount,
+
+    // Mode flags
+    isSaleMode,
+    isReturnMode,
+    isDraftMode,
+    isReadOnly,
 
     // Getters
     itemsCount,
+    netTotal,
     subtotal,
     taxAmount,
-    discountAmount,
+    computedDiscountAmount,
     totalPrice,
+    totalPaid,
     changeAmount,
     canSubmit,
     cartSummary,
     isEmpty,
-    hasDiscount,
-    hasTax,
 
     // Cart
     addToCart,
@@ -431,29 +648,35 @@ export const useCartStore = defineStore('cart', () => {
     isInCart,
     getProductQuantity,
 
-    // Cash
+    // Cash / Payments
     setCash,
     addCash,
     updateCashFromString,
+    setPayments,
 
-    // Pricing
-    setTaxRate,
-    setDiscountRate,
-    applyDiscountAmount,
+    // Tax
+    applyPOSProfileTax,
+    recalcTaxLines,
+    loadTaxLines,
+
+    // Discount
+    setDiscountPercentage,
+    setDiscountAmount,
+    setApplyDiscountOn,
+    clearDiscount,
 
     // Draft
     loadDraftInvoice,
     clearDraftMode,
 
     // Return
-    setReturnAgainst,
+    // setReturnAgainst,
+    loadReturnInvoice,
     loadReturnItems,
-    handleReturnSubmit,
-    processReturnTransaction,
+    createSalesReturn,
 
     // Transaction
     processTransaction,
-    processTransactionCreateOrder,
 
     // Clear
     clearCart,
@@ -461,5 +684,8 @@ export const useCartStore = defineStore('cart', () => {
 
     // Utilities
     getChangeBreakdown,
+
+    // Constants
+    DISCOUNT_ON,
   }
 })

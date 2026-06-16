@@ -189,7 +189,7 @@ const generateQR = async () => {
 
     const url = getScannerUrl()
     await QRCode.toCanvas(qrCanvas.value, url, {
-      width: 220,
+      width: 260,
       margin: 1,
       color: { dark: '#0f172a', light: '#ffffff' },
       errorCorrectionLevel: 'M',
@@ -203,19 +203,19 @@ const generateQR = async () => {
 // Fallback: draw QR via image from api.qrserver.com
 const renderQRFallback = () => {
   const url = getScannerUrl()
-  const apiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}&color=0f172a&bgcolor=ffffff`
+  const apiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(url)}&color=0f172a&bgcolor=ffffff`
   const canvas = qrCanvas.value
   const ctx = canvas.getContext('2d')
-  canvas.width = 220
-  canvas.height = 220
+  canvas.width = 260
+  canvas.height = 260
 
   const img = new Image()
   img.crossOrigin = 'anonymous'
-  img.onload = () => ctx.drawImage(img, 0, 0, 220, 220)
+  img.onload = () => ctx.drawImage(img, 0, 0, 260, 260)
   img.onerror = () => {
     // Last resort: show text
     ctx.fillStyle = '#f1f5f9'
-    ctx.fillRect(0, 0, 220, 220)
+    ctx.fillRect(0, 0, 260, 260)
     ctx.fillStyle = '#475569'
     ctx.font = '12px monospace'
     ctx.fillText('QR Error – copy URL below', 10, 110)

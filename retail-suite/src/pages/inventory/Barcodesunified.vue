@@ -848,7 +848,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, toRaw, shallowRef } from 'vue'
+import { ref, reactive, computed, onMounted, toRaw, shallowRef, watch } from 'vue'
 import {
   Download, Eye, Edit2, Trash2, RefreshCcw, Plus,
   Search, Printer, Settings2, X, ScanLine, BarChart2, PackageSearch, ArrowLeft, XCircle
@@ -867,7 +867,7 @@ import { useCartStore }        from '@/stores/cart'
 import { useInventoryStore }   from '@/stores/inventory'
 import { useToast }            from 'vue-toastification'
 import config from '@/config/frappe'
-import {getItemsFromFrappeDB, getItemGroup} from '@/composables/pos'
+import {getItemGroup} from '@/composables/pos'
 import {
   generateBarcodePreview,
   generateBarcodeValue,
@@ -878,6 +878,7 @@ import {
   handleDeleteBarcodeFrappe
 } from '@/composables/barcode'
 import { useConfirm } from '@/composables/useConfirm'
+import { storeToRefs } from 'pinia'
 // ────────────────────────────────────────────
 // STORES & HELPERS
 // ────────────────────────────────────────────
@@ -889,6 +890,9 @@ const cartStore      = useCartStore()
 const { confirm } = useConfirm()
 const defaultImageSrc = ref(`${config.VUE_URL}/src/assets/img/default-product.jpg`)
 const handleImageError = (e) => { e.target.src = 'https://via.placeholder.com/40?text=?' }
+
+
+const { isShiftOpen } = storeToRefs(shiftStore)
 
 // ────────────────────────────────────────────
 // TABS
@@ -1047,7 +1051,7 @@ const loadData = async () => {
     if (!bRes || bRes.status !== 'success') { toast.error('Failed to load barcode data'); return }
 
     const bcProducts = bRes.data || []
-    await inventoryStore.loadItems()
+    // await inventoryStore.loadItems()
     const storeItems = JSON.parse(JSON.stringify(toRaw(inventoryStore.items))) || []
     console.log("storeItems[0]",storeItems[0])
 
@@ -1347,7 +1351,8 @@ const goBack = () => { router.back() }
 // MOUNTED
 // ────────────────────────────────────────────
 onMounted(async () => {
-  await shiftStore.checkActiveShift().catch(() => {})
+  const isOpen = await shiftStore.loadActiveShifts()
+  console.log("isOpen", isOpen)
   await loadData()
 
   const [typesRes, groupsRes, fetchedUoms, fetchedSeries, fetchedCats] = await Promise.allSettled([
@@ -1367,4 +1372,15 @@ onMounted(async () => {
   const saved = localStorage.getItem('barcodeSettings')
   if (saved) { try { Object.assign(settings.value, JSON.parse(saved)) } catch {} }
 })
+
+watch(
+  () => shiftStore.isShiftOpen,
+  (val) => {
+    if (val) {
+      console.log("✅ Shift opened, payment methods:", toRaw(payment_methods.value))
+    }
+  },
+  { immediate: true }
+)
+
 </script>
