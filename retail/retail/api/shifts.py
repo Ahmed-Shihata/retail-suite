@@ -84,11 +84,8 @@ def get_opening_dialog_data():
     for i in data["pos_profiles_data"]:
         pos_profiles_list.append(i.name)
 
-    payment_method_table = (
-        "POS Payment Method" if get_version() == 13 else "Sales Invoice Payment"
-    )
     data["payments_method"] = frappe.get_list(
-        payment_method_table,
+        "Sales Invoice Payment",
         filters={"parent": ["in", pos_profiles_list]},
         fields=["*"],
         limit_page_length=0,
@@ -103,85 +100,64 @@ def get_opening_dialog_data():
 
     return data
 
-def get_version():
-    branch_name = get_app_branch("erpnext")
-    if "12" in branch_name:
-        return 12
-    elif "13" in branch_name:
-        return 13
-    else:
-        return 13
-
-def get_app_branch(app):
-    """Returns branch of an app"""
-    import subprocess
-
-    try:
-        branch = subprocess.check_output(
-            "cd ../apps/{0} && git rev-parse --abbrev-ref HEAD".format(app), shell=True
-        )
-        branch = branch.decode("utf-8")
-        branch = branch.strip()
-        return branch
-    except Exception:
-        return ""
-
 @frappe.whitelist()
 def process_auto_attendance_api(shift_name):
     doc = frappe.get_doc('Shift Type', shift_name)
     doc.process_auto_attendance()
 
-
 @frappe.whitelist()
 def get_shift_statistics():
     today = datetime.date.today()
-
-    # بداية الأسبوع (السبت كأول يوم في الأسبوع)
     week_details = get_week_range_in_month(today)
     number_of_week = week_details["week_number"]
     start_of_week = week_details["start_date"]
     end_of_week = week_details["end_date"]
-    # بداية الشهر
     start_of_month = today.replace(day=1)
     last_day = calendar.monthrange(today.year, today.month)[1]
     end_of_month = today.replace(day=last_day)
+
+    ALLOWED_DOCTYPES = {"Sales Invoice", "Payment Entry", "POS Opening Shift"}
+    ALLOWED_FIELDS = {"grand_total", "paid_amount", "net_total", "base_grand_total"}
+
     def get_sum(doctype, filters, fieldname):
+        if doctype not in ALLOWED_DOCTYPES:
+            frappe.throw(f"Invalid doctype: {doctype}")
+        if fieldname not in ALLOWED_FIELDS:
+            frappe.throw(f"Invalid fieldname: {fieldname}")
+
         conditions = []
         values = []
         for key, val in filters.items():
             if isinstance(val, list):
-                # لو الفلتر في شكل ["between", [start, end]]
                 if val[0].lower() == "between":
-                    conditions.append(f"{key} BETWEEN %s AND %s")
+                    conditions.append(f"`{key}` BETWEEN %s AND %s")
                     values.extend(val[1])
                 else:
-                    conditions.append(f"{key} {val[0]} %s")
+                    conditions.append(f"`{key}` {val[0]} %s")
                     values.append(val[1])
             else:
-                conditions.append(f"{key}=%s")
+                conditions.append(f"`{key}` = %s")
                 values.append(val)
 
         where = " AND ".join(conditions)
-        sql = f"SELECT SUM({fieldname}) FROM `tab{doctype}` WHERE {where}"
-        result = frappe.db.sql(sql, values)
+        result = frappe.db.sql(
+            f"SELECT SUM(`{fieldname}`) FROM `tab{doctype}` WHERE {where}",
+            values
+        )
         return result[0][0] or 0
 
     stats = {
         "today_shifts": frappe.db.count("POS Opening Shift", {"posting_date": today}),
-        "today_sales": get_sum("Sales Invoice", {"posting_date": today, "docstatus": 1, "is_pos":1}, "grand_total"),
-
-        # 📅 الأسبوع الحالي (من السبت للجمعة)
+        "today_sales": get_sum("Sales Invoice", {"posting_date": today, "docstatus": 1, "is_pos": 1}, "grand_total"),
         "week_shifts": frappe.db.count(
             "POS Opening Shift",
-           {"posting_date": ["between", [start_of_week, end_of_week]]}
+            {"posting_date": ["between", [start_of_week, end_of_week]]}
         ),
         "week_sales": get_sum(
             "Sales Invoice",
             {"posting_date": ["between", [start_of_week, end_of_week]], "docstatus": 1, "is_pos": 1},
             "grand_total"
         ),
-
-        # 📆 الشهر الحالي
         "month_shifts": frappe.db.count(
             "POS Opening Shift",
             {"posting_date": [">=", start_of_month]}
@@ -193,14 +169,10 @@ def get_shift_statistics():
         ),
     }
 
-    # 🧮 متوسط المبيعات
     stats["average_sales"] = round(
         stats["month_sales"] / stats["month_shifts"] if stats["month_shifts"] else 0, 2
     )
-
     return stats
-
-
 
 def get_week_range_in_month(date=None):
     if date is None:
@@ -523,9 +495,9 @@ def get_shift_details(shift_id):
             "closing_amount":  closing,
             "difference":      closing - (opening + expected),
         })
-        print("payments_list",payments_list)
-    reconciliation_issues = []
 
+
+    reconciliation_issues = []
     for inv in invoice_list:
         invoice_total   = flt(inv["grand_total"])
         # 2-Payment in Invoice (POS)

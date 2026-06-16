@@ -46,10 +46,10 @@ def receive_barcode(session_id: str, barcode: str):
 
     barcode_logger.info(f"SESSION SENT: {session_id} | BARCODE: {barcode} | ITEM: {item_code} - {item_name}")
 
-    # BROADCAST TO DESKTOP
     frappe.publish_realtime(
         event=f"barcode_scan_{session_id}",
         message=payload,
+        user = frappe.session.user,
         after_commit=True,
         )
     barcode_logger.info("AFTER PUBLISH")

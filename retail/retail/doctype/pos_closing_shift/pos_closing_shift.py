@@ -90,11 +90,10 @@ class POSClosingShift(Document):
     @frappe.whitelist()
     def get_payment_reconciliation_details(self):
         currency = frappe.get_cached_value("Company", self.company, "default_currency")
-        return frappe.render_template(
-            "retail/templates/pos_closing_shift/pos_closing_shift.html",
-            {"data": self, "currency": currency},
+        template = frappe.get_template(
+            "templates/pos_closing_shift/pos_closing_shift.html"
         )
-
+        return template.render({"data": self, "currency": currency})
 
 @frappe.whitelist()
 def get_cashiers(doctype, txt, searchfield, start, page_len, filters):
@@ -165,7 +164,6 @@ def make_closing_shift_from_opening(opening_shift :dict, closing_details :list):
     taxes = []
     pos_payments_table = []
 
-    # ✅ get **payments** from opening shift
     payments = {}
     for row in opening_shift.get("balance_details", []):
         mop = row.get("mode_of_payment")
@@ -179,7 +177,6 @@ def make_closing_shift_from_opening(opening_shift :dict, closing_details :list):
         })
 
 
-    # ── 2. loop الفواتير ──
     for inv in invoices:
         pos_invoices.append(frappe._dict({
             "sales_invoice": inv.name,
@@ -202,13 +199,11 @@ def make_closing_shift_from_opening(opening_shift :dict, closing_details :list):
                     "amount": t.tax_amount,
                 }))
 
-        # ✅ get **payments** from invoice
         if inv.payments:
             for p in inv.payments:
                 mop = p.mode_of_payment
                 payments[mop].expected_amount += flt(p.amount)
 
-        # ✅ get **payments** from payment_entries
         payment_entries = get_shift_invoice_payments(inv["name"])
         for pe in payment_entries:
             mop = pe["mode_of_payment"]
@@ -230,13 +225,11 @@ def make_closing_shift_from_opening(opening_shift :dict, closing_details :list):
             )
         )
 
-    # ✅ get **payments** from unallocated payments
     unallocated = get_shift_unallocated_payments(opening_shift.get("name"))
     for pe in unallocated:
         mop = pe.get("mode_of_payment")
         payments[mop]["expected_amount"] += flt(pe.get("unallocated_amount", 0))
 
-    #  # ✅ get **payments** from closing_details (frontend)
     can_close = True
     for mop, pay in payments.items():
         closing_detail = next(
@@ -264,22 +257,11 @@ def make_closing_shift_from_opening(opening_shift :dict, closing_details :list):
         else:
             closing_shift.insert()
             closing_shift.submit()
-        # close both opening and closing shift
-
-        frappe.db.commit()
 
     return closing_shift
 
 @frappe.whitelist()
-def get_shift_summary(pos_opening_shift_name):
-
-    if isinstance(pos_opening_shift_name, str):
-            try:
-                parsed = json.loads(pos_opening_shift_name)
-                if isinstance(parsed, dict) and parsed.get("name"):
-                    pos_opening_shift_name = parsed.get("name")
-            except Exception:
-                pass
+def get_shift_summary(pos_opening_shift_name: str):
 
     pos_opening_shift = frappe.get_doc("POS Opening Shift", pos_opening_shift_name).as_dict()
 
@@ -291,7 +273,6 @@ def get_shift_summary(pos_opening_shift_name):
     pos_transactions = []
     pos_payments_table = []
 
-    # balance_details ممكن تكون None لو الشيفت لسه مفتوح جديد
     for detail in (pos_opening_shift.get("balance_details") or []):
         payments.append(
             frappe._dict({
@@ -328,7 +309,7 @@ def get_shift_summary(pos_opening_shift_name):
             "is_return": is_return
         }))
 
-        # 🔸 الضرائب
+
         for t in d.taxes:
             existing_tax = [tx for tx in taxes if tx.account_head == t.account_head and tx.rate == t.rate]
             if existing_tax:
@@ -344,7 +325,6 @@ def get_shift_summary(pos_opening_shift_name):
         for p in d.payments:
             existing_pay = [pay for pay in payments if pay.mode_of_payment == p.mode_of_payment]
 
-            print('existing_pay: ', existing_pay)
             payment_amount = flt(p.amount)
             if flt(d.grand_total) < 0 and payment_amount > 0:
                 payment_amount = -payment_amount
@@ -358,7 +338,6 @@ def get_shift_summary(pos_opening_shift_name):
                     "expected_amount": payment_amount,
                 }))
 
-    # 🔹 مدفوعات Payment Entry
     for py in pos_payments:
         pos_payments_table.append(frappe._dict({
             "payment_entry": py.name,
@@ -378,7 +357,6 @@ def get_shift_summary(pos_opening_shift_name):
                 "expected_amount": py.paid_amount,
             }))
 
-    # ✅ النتيجة النهائية
     return {
         "total_sales": total_sales,
         "net_total": net_total,

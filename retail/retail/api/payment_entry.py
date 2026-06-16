@@ -123,7 +123,7 @@ def set_paid_amount_and_received_amount(
 
 @frappe.whitelist()
 def get_unallocated_payments(customer=None, company=None, currency=None, mode_of_payment=None):
-    print("get_unallocated_payments called with:", customer, company, currency, mode_of_payment)
+
     filters = {
         "docstatus": 1,
         "party_type": "Customer",
@@ -251,7 +251,6 @@ def process_pos_payment(payload):
             # add the unallocated payments to the all payments entry
             for selected_payment in data.selected_payments:
                 pe_company = frappe.db.get_value("Payment Entry", selected_payment.get("name"), "company")
-                print("pe_company:", pe_company)
                 if pe_company != company:
                     frappe.throw(
                         _("Payment {0} belongs to company {1}, not {2}").format(
@@ -281,19 +280,7 @@ def process_pos_payment(payload):
                 "Customer", customer, company
             )
             reconcile_doc.get_unreconciled_entries()
-            pe = frappe.get_doc("Payment Entry", "ACC-PAY-2026-00050")
-            print("PE party:", pe.party, "| party_type:", pe.party_type)
-            print("PE paid_from:", pe.paid_from, "| paid_to:", pe.paid_to)
-            print("PE docstatus:", pe.docstatus)
-            print("PE unallocated_amount:", pe.unallocated_amount)
-            print("reconcile party:", reconcile_doc.party, "| company:", reconcile_doc.company)
-            print("reconcile receivable_payable_account:", reconcile_doc.receivable_payable_account)
-            print(f"Payments found: {len(reconcile_doc.payments)}\nInvoices found: {len(reconcile_doc.invoices)}\nPayments data: {reconcile_doc.payments}")
-            print("PE company:", pe.company)
-            print("Customer B default receivable account (company Dev):",
-            frappe.db.get_value("Company", "Dev", "default_receivable_account"))
-            print("All Debtors accounts:",
-            frappe.get_all("Account", filters={"account_name": "Debtors"}, fields=["name", "company"]))
+
             args = {
                 "invoices": [],
                 "payments": [],

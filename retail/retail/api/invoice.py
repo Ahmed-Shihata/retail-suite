@@ -295,16 +295,11 @@ def submit_invoice(invoice, data):
 
     paid_amount  = flt(invoice.get("summary", {}).get("cash", 0))
     total_amount = flt(invoice.get("summary", {}).get("total", 0))
-    print("paid_amount", paid_amount)
-    print("total_amount", total_amount)
+
     credit_change = paid_amount - total_amount
     payment_mode  = invoice.get("paymentMethod") or "Cash"
 
     allow_partial = frappe.get_value("POS Profile", invoice_doc.pos_profile, "posa_allow_partial_payment")
-
-    # you need to add discount to paid_amount  = paid_amount - discount
-    # if paid_amount > total_amount:
-    #     frappe.throw(_("Paid amount exceeds the invoice total."))
 
     if credit_change < 0 and not allow_partial:
         frappe.throw(_("Partial payment is not allowed in the current POS Profile."))
@@ -435,15 +430,9 @@ def delete_invoice(invoice):
 
 @frappe.whitelist()
 def create_sales_return(invoice_name: str):
-
-    original_invoice = frappe.get_doc("Sales Invoice", invoice_name)
-
     return_doc = make_return_doc("Sales Invoice", invoice_name)
-
     return_doc.insert()
     return_doc.submit()
-    frappe.db.commit()
-
     return return_doc.name
 
 
@@ -592,9 +581,7 @@ def get_outstanding_invoices(company, currency, customer=None, pos_profile_name=
     if customer:
         precision = frappe.get_precision("Sales Invoice", "outstanding_amount") or 2
 
-        # ✅ تحقق من الـ account أولاً
         account = get_party_account("Customer", customer, company)
-        print('account: ', account)
         if not account:
             frappe.logger().warning(f"[get_outstanding_invoices] No receivable account found for customer={customer} company={company}")
             return []
