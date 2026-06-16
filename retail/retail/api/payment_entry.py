@@ -2,16 +2,12 @@
 from frappe import _
 import frappe, erpnext, json
 from frappe.utils import nowdate, getdate, flt
+from erpnext.setup.utils import get_exchange_rate
 from erpnext.accounts.party import get_party_account
 from erpnext.accounts.utils import get_account_currency
-from erpnext.accounts.doctype.journal_entry.journal_entry import (
-    get_default_bank_cash_account,
-)
-from erpnext.setup.utils import get_exchange_rate
-from erpnext.accounts.doctype.bank_account.bank_account import get_party_bank_account
 from retail.retail.api.m_pesa import submit_mpesa_payment
-from erpnext.accounts.utils import QueryPaymentLedger, get_outstanding_invoices as _get_outstanding_invoices
-
+from erpnext.accounts.doctype.bank_account.bank_account import get_party_bank_account
+from erpnext.accounts.doctype.journal_entry.journal_entry import get_default_bank_cash_account
 
 def create_payment_entry(
     company,
@@ -124,78 +120,10 @@ def set_paid_amount_and_received_amount(
 
     return paid_amount, received_amount
 
-@frappe.whitelist()
-def get_outstanding_invoices(company, currency, customer=None, pos_profile_name=None):
-    if customer:
-        precision = frappe.get_precision("Sales Invoice", "outstanding_amount") or 2
-
-        # ✅ تحقق من الـ account أولاً
-        account = get_party_account("Customer", customer, company)
-        print('account: ', account)
-        if not account:
-            frappe.logger().warning(f"[get_outstanding_invoices] No receivable account found for customer={customer} company={company}")
-            return []
-
-        outstanding_invoices = _get_outstanding_invoices(
-            party_type="Customer",
-            party=customer,
-            account=[account],
-        )
-
-        invoices_list = []
-        customer_name = frappe.get_cached_value("Customer", customer, "customer_name")
-
-        for invoice in outstanding_invoices:
-            if invoice.get("currency") != currency:
-                continue
-
-            if pos_profile_name and frappe.get_cached_value(
-                "Sales Invoice", invoice.get("voucher_no"), "pos_profile"
-            ) != pos_profile_name:
-                continue
-
-            outstanding_amount = invoice.get("outstanding_amount", 0)
-            if outstanding_amount > 0.5 / (10 ** precision):
-                invoices_list.append({
-                    "name"              : invoice.get("voucher_no"),
-                    "customer"          : customer,
-                    "customer_name"     : customer_name,
-                    "outstanding_amount": outstanding_amount,
-                    "grand_total"       : invoice.get("invoice_amount"),
-                    "due_date"          : invoice.get("due_date"),
-                    "posting_date"      : invoice.get("posting_date"),
-                    "currency"          : invoice.get("currency"),
-                    "pos_profile"       : pos_profile_name,
-                })
-
-        return invoices_list
-
-    else:
-        filters = {
-            "company"           : company,
-            "outstanding_amount": (">", 0),
-            "docstatus"         : 1,
-            "is_return"         : 0,
-            "currency"          : currency,
-        }
-        if pos_profile_name:
-            filters["pos_profile"] = pos_profile_name
-
-        return frappe.get_all(
-            "Sales Invoice",
-            filters=filters,
-            fields=[
-                "name", "customer", "customer_name",
-                "outstanding_amount", "grand_total",
-                "due_date", "posting_date", "currency", "pos_profile",
-            ],
-            order_by="due_date asc",
-        )
-
-
 
 @frappe.whitelist()
 def get_unallocated_payments(customer=None, company=None, currency=None, mode_of_payment=None):
+    print("get_unallocated_payments called with:", customer, company, currency, mode_of_payment)
     filters = {
         "docstatus": 1,
         "party_type": "Customer",
@@ -235,8 +163,8 @@ def get_unallocated_payments(customer=None, company=None, currency=None, mode_of
 
 @frappe.whitelist()
 def process_pos_payment(payload):
-    data = json.loads(payload)
-    data = frappe._dict(data)
+    data = frappe.parse_json(payload)
+
     if not data.pos_profile.get("posa_use_pos_awesome_payments"):
         frappe.throw(_("POS Awesome Payments is not enabled for this POS Profile"))
 
@@ -322,6 +250,15 @@ def process_pos_payment(payload):
         ):
             # add the unallocated payments to the all payments entry
             for selected_payment in data.selected_payments:
+                pe_company = frappe.db.get_value("Payment Entry", selected_payment.get("name"), "company")
+                print("pe_company:", pe_company)
+                if pe_company != company:
+                    frappe.throw(
+                        _("Payment {0} belongs to company {1}, not {2}").format(
+                            selected_payment.get("name"), pe_company, company
+                        )
+                    )
+            for selected_payment in data.selected_payments:
                 all_payments_entry.append(selected_payment)
 
         if len(all_payments_entry) > 0:
@@ -344,6 +281,19 @@ def process_pos_payment(payload):
                 "Customer", customer, company
             )
             reconcile_doc.get_unreconciled_entries()
+            pe = frappe.get_doc("Payment Entry", "ACC-PAY-2026-00050")
+            print("PE party:", pe.party, "| party_type:", pe.party_type)
+            print("PE paid_from:", pe.paid_from, "| paid_to:", pe.paid_to)
+            print("PE docstatus:", pe.docstatus)
+            print("PE unallocated_amount:", pe.unallocated_amount)
+            print("reconcile party:", reconcile_doc.party, "| company:", reconcile_doc.company)
+            print("reconcile receivable_payable_account:", reconcile_doc.receivable_payable_account)
+            print(f"Payments found: {len(reconcile_doc.payments)}\nInvoices found: {len(reconcile_doc.invoices)}\nPayments data: {reconcile_doc.payments}")
+            print("PE company:", pe.company)
+            print("Customer B default receivable account (company Dev):",
+            frappe.db.get_value("Company", "Dev", "default_receivable_account"))
+            print("All Debtors accounts:",
+            frappe.get_all("Account", filters={"account_name": "Debtors"}, fields=["name", "company"]))
             args = {
                 "invoices": [],
                 "payments": [],
@@ -433,7 +383,6 @@ def process_pos_payment(payload):
         "errors": errors,
         "reconcile_doc": reconcile_doc,
     }
-
 
 @frappe.whitelist()
 def get_available_pos_profiles(company, currency):

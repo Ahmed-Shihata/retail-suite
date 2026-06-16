@@ -4,10 +4,11 @@ import {api} from '@/services/auth.js'
 // Barcodes APIs
 // ======================================================================
 // Get Barcodes From Frappe DB
-export const getBarcodesFromFrappeDB = async () => {
+export const getBarcodesFromFrappeDB = async (items) => {
     try {
-        const response = await call('retail.retail.api.inventory.get_all_barcodes')
-        console.log("api getBarcodesFromFrappeDB", response.data.message)
+        console.log("Items params", items)
+        const response = await call('retail.retail.api.inventory.get_all_barcodes',{items})
+        console.log("api getBarcodesFromFrappeDB", response)
         return response || response.data
     }
     catch (error) {
@@ -37,9 +38,10 @@ export const getBarcodeTypes = async () => {
         const response = await call(
             'retail.retail.api.inventory.get_barcode_types'
         )
+        console.log("api getBarcodeTypes", response)
         return {
             status: 'success',
-            data: response.data.message?.data || []
+            data: response?.data || []
         }
     } catch (error) {
         console.error('Error fetching barcode types:', error)
@@ -84,7 +86,7 @@ export const generateBarcodePreview = async (data) => {
     })
 
     console.log("api generateBarcodePreview", response)
-    return response.data?.message?.data || response.data?.message ||response
+    return response?.data || response.data?.message ||response
     }catch (error) {
         console.error("❌ generateBarcodePreview error:", error)
     }
@@ -138,9 +140,10 @@ export const generateBarcodeValue = async (barcodeType) => {
             'retail.retail.api.inventory.generate_barcode_value',
             { barcode_type: barcodeType }
         )
+        console.log("api generateBarcodeValue", response)
         return {
             status: 'success',
-            value:  response.data.message?.value || ''
+            value:  response?.value || ''
         }
     } catch (error) {
         console.error('generateBarcodeValue error:', error)

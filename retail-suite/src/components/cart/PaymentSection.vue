@@ -14,48 +14,51 @@
       <!-- Subtotal -->
       <div
         v-if="showDetailedSummary"
-        class="flex mb-2 text-sm"
+        class="flex justify-between mb-2 text-sm w-full"
         :style="{ color: 'var(--text-sub)' }"
       >
-        <div>Subtotal</div>
-        <div class="text-right w-full">{{ formatPrice(cartStore.subtotal) }}</div>
+        <div>{{ formatPrice(cartStore.subtotal) }}</div>
+        <div>{{ __('Subtotal') }}</div>
       </div>
 
+      <hr v-if="cartStore.taxAmount > 0 || cartStore.taxRate > 0" class="my-2">
       <!-- Tax -->
       <div
-        v-if="cartStore.taxAmount > 0"
-        class="flex mb-2 text-sm"
+        v-if="cartStore.taxAmount > 0 || cartStore.taxRate > 0"
+        class="flex justify-between mb-2 text-sm"
         :style="{ color: 'var(--text-sub)' }"
       >
-        <div>Tax ({{ cartStore.taxRate }}%)</div>
-        <div class="text-right w-full">{{ formatPrice(cartStore.taxAmount) }}</div>
+        <div>{{ formatPrice(cartStore.taxAmount > 0 ? cartStore.taxAmount : 0) }}</div>
+        <div>{{ __('Tax') }} ({{ cartStore.taxRate }}%)</div>
       </div>
 
       <!-- Discount -->
+      <hr v-if="cartStore.discountAmount > 0" class="my-2">
       <div
-        v-if="cartStore.discountAmount > 0"
-        class="flex mb-2 text-sm"
+        v-if="cartStore.discountAmount > 0 || cartStore.discountRate > 0"
+        class="flex justify-between mb-2 text-sm"
         :style="{ color: 'var(--icon-color-green)' }"
       >
-        <div>Discount ({{ cartStore.discountRate }}%)</div>
-        <div class="text-right w-full">-{{ formatPrice(cartStore.discountAmount) }}</div>
+        <div>{{ formatPrice(cartStore.discountAmount > 0 ? cartStore.discountAmount : 0) }}</div>
+        <div>{{ __('Discount') }} ({{ cartStore.discountRate }}%)</div>
       </div>
 
       <!-- Total -->
       <div
-        class="flex mb-3 text-lg font-semibold pt-2"
+        class="flex justify-between mb-3 text-sm font-semibold pt-2"
         :style="{
           color: 'var(--text-main)',
           borderTop: '1px solid var(--card-border)'
         }"
       >
-        <div>TOTAL</div>
-        <div class="text-right w-full">{{ formatPrice(cartStore.totalPrice) }}</div>
+        <div>{{ formatPrice(cartStore.totalPrice) }}</div>
+        <div>{{ __('Total') }}</div>
       </div>
     </div>
 
     <!-- Cash Payment Section -->
     <div
+      v-if="props.mode === 'sale'"
       class="mb-3 px-3 pt-2 pb-3 rounded-lg"
       :style="{
         backgroundColor: 'var(--item-bg)',
@@ -63,12 +66,23 @@
       }"
     >
       <!-- Cash Input -->
-      <div class="flex text-lg font-semibold mb-3">
-        <div class="flex-grow text-left" :style="{ color: 'var(--text-main)' }">
+      <div class="flex items-center justify-between text-lg font-semibold mb-3">
+
+        <!-- Label -->
+        <div class="text-start" :style="{ color: 'var(--text-main)' }">
           {{ selectedPaymentMethod }}
         </div>
-        <div class="flex text-right">
-          <div class="mr-2" :style="{ color: 'var(--text-sub)' }">{{ currency }}</div>
+
+        <!-- Input Group -->
+        <div class="flex items-center gap-2">
+
+          <!-- Currency -->
+          <span class="text-sm text-end whitespace-nowrap"
+                :style="{ color: 'var(--text-sub)' }">
+            {{ currency }}
+          </span>
+
+          <!-- Input -->
           <input
             ref="cashInput"
             :value="formatCashInput(cashAmount)"
@@ -79,7 +93,7 @@
             @keyup.escape="resetCash"
             type="text"
             inputmode="numeric"
-            class="w-28 text-right rounded-lg px-2 transition-all duration-200"
+            class="w-32 text-end rounded-lg px-3 transition-all duration-200 tabular-nums"
             :style="{
               backgroundColor: 'var(--input-bg)',
               color: 'var(--text-main)',
@@ -128,7 +142,6 @@
 
       <!-- Quick Actions -->
       <div class="grid grid-cols-2 gap-2 mt-2">
-
         <!-- Exact Button -->
         <button
           @click="setExactAmount"
@@ -141,9 +154,8 @@
           :disabled="cartStore.isProcessing"
         >
           <ExactIcon class="w-3 h-3 inline mr-1" />
-          Exact
+          {{ __('Exact') }}
         </button>
-
         <!-- Clear Button -->
         <button
           @click="clearCash"
@@ -156,7 +168,7 @@
           :disabled="cartStore.isProcessing"
         >
           <ClearIcon class="w-3 h-3 inline mr-1" />
-          Clear
+          {{ __('Clear') }}
         </button>
       </div>
     </div>
@@ -205,9 +217,13 @@
             aria-label="Show partial option"
           >
             <WarningIcon class="w-5 h-5 mr-2" />
-            INSUFFICIENT
+            {{ __('Insufficient') }}
           </div>
-          <div>{{ formatPrice(Math.abs(changeAmount)) }} needed</div>
+            <div>
+              {{ formatPrice(insufficientAmount) }}
+              {{ __('Needed') }}
+            </div>
+
         </div>
 
         <div v-else class="flex items-center justify-between w-full">
@@ -218,7 +234,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
             <span class="text-sm font-semibold" :style="{ color: 'var(--warning-border)' }">
-              Partial Payment
+              {{ __('Partial Payment') }}
             </span>
           </div>
 
@@ -228,7 +244,7 @@
               class="p-1.5 text-white rounded-lg transition-all duration-200"
               :style="{ background: 'var(--icon-color-green)' }"
               @click="enablePartialPayment(true)"
-              title="Confirm partial payment"
+              :title= "__('Confirm partial payment')"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -240,7 +256,7 @@
               class="p-1.5 text-white rounded-lg transition-all duration-200"
               :style="{ background: 'var(--text-muted)' }"
               @click="enablePartialPayment(false)"
-              title="Cancel"
+              :title="__('Cancel')"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -252,7 +268,7 @@
 
       <!-- Exact Amount -->
       <div
-        v-else-if="changeAmount === 0 && cashAmount > 0"
+        v-else-if="changeAmount === 0 && paidAmount > 0"
         class="flex justify-center text-lg font-semibold rounded-lg py-2 px-3"
         :style="{
           background: 'var(--info-bg)',
@@ -261,17 +277,17 @@
         }"
       >
         <ThumbsUpIcon class="w-6 h-6 inline-block mr-2" />
-        EXACT AMOUNT
+        {{ __('Exact Amount') }}
       </div>
     </div>
 
     <!-- Payment Method Selection -->
-    <div v-if="showPaymentMethods" class="mb-3">
+    <div v-if="showPaymentMethods && props.mode !== 'draft'" class="mb-3">
       <div
         class="text-sm mb-2"
         :style="{ color: 'var(--text-muted)' }"
       >
-        Payment Method
+        {{ __('Payment Method') }}
       </div>
       <div class="grid grid-cols-3 gap-2">
         <button
@@ -292,7 +308,7 @@
     </div>
 
     <!-- Submit Button -->
-    <button
+    <button data-submit-cart
       :style="{ background: primaryColor }"
       class="text-white rounded-2xl text-lg w-full py-3 focus:outline-none transition-all duration-200 transform disabled:transform-none relative overflow-hidden"
       :class="submitButtonClass"
@@ -326,10 +342,10 @@
     <!-- Additional Info -->
     <div class="mt-2 text-xs" :style="{ color: 'var(--text-muted)' }">
       <div v-if="cartStore.itemsCount > 0">
-        {{ cartStore.itemsCount }} {{ cartStore.itemsCount === 1 ? 'item' : 'items' }} in cart
+        {{ cartStore.itemsCount }} {{ cartStore.itemsCount === 1 ? __('item in cart') : __('items in cart') }}
       </div>
       <div v-if="lastTransactionId" class="mt-1">
-        Last transaction: #{{ lastTransactionId }}
+        {{ __('Last transaction: {0}', [lastTransactionId]) }}
       </div>
     </div>
   </div>
@@ -355,28 +371,41 @@ import { useSettingsStore } from '@/stores/settings'
 
 const props = defineProps({
   mode: {
-  type: String,
-  default: 'sale', // 'sale' or 'return'
-  validator: (value) => ['sale', 'return'].includes(value)
-},
-selectedInvoice: {
-  type: Object,
-  default: null
-},
-showDetailedSummary: {
-  type: Boolean,
-  default: true
-},
-showPaymentMethods: {
-  type: Boolean,
-  default: true
-},
-autoFocusCash: {
-  type: Boolean,
-  default: true
-}
-})
+    type: String,
+    default: 'sale', // 'sale' or 'return'
+    validator: (value) => ['sale', 'return', 'draft'].includes(value)
+  },
+  selectedInvoice: {
+    type: Object,
+    default: null
+  },
+  showDetailedSummary: {
+    type: Boolean,
+    default: true
+  },
+  showPaymentMethods: {
+    type: Boolean,
+    default: true
+  },
+  autoFocusCash: {
+    type: Boolean,
+    default: true
+  },
+  payments: {
+    type: Array,
+    default: () => []
+  }
+  })
 const emit = defineEmits(['submit', 'cash-update', 'payment-error', 'payment-success'])
+
+const totalPaid = computed(() =>
+  props.payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+)
+console.log("totalPaid",totalPaid.value)
+
+watch(totalPaid, (val) => {
+  console.log("totalPaid changed",val)
+})
 
 const settingsStore = useSettingsStore()
 const settings = computed(() => settingsStore.settings)
@@ -399,6 +428,7 @@ const quickCashAmounts = computed(() => cartStore.moneys || [2000, 5000, 10000, 
 // Initialize currency from store or default
 const showPartialOption = ref(false)
 const allowPartialPayment = ref(false)
+
 const enablePartialPayment = (val) => {
     allowPartialPayment.value = val
     console.log('💳 Partial payment enabled',allowPartialPayment.value)
@@ -409,7 +439,8 @@ const enablePartialPayment = (val) => {
       showPartialOption.value = false
       window.$toast.warning('Partial payment stopped ✔')
     }
-  }
+}
+
 const currency = computed(() => shiftStore.pos_profile.currency || 'SAR')
 const paymentMethods = computed(() => {
 
@@ -434,24 +465,68 @@ function mapIcon(name) {
     default: return 'CashIcon'
   }
 }
-console.log("paymentMethods",paymentMethods)
-// Computed properties
+
+const paidAmount = computed(() => {
+  return props.mode === 'draft' ? totalPaid.value : cashAmount.value
+})
+
 const changeAmount = computed(() => {
-  return cashAmount.value - cartStore.totalPrice
+  return paidAmount.value - cartStore.totalPrice
 })
 
 const isExactAmount = computed(() => {
-  return changeAmount.value === 0 && cashAmount.value > 0
+  return changeAmount.value === 0 && paidAmount.value > 0
+})
+
+const insufficientAmount = computed(() => {
+  if (props.mode === 'return') return 0
+  return Math.max(cartStore.totalPrice - paidAmount.value, 0)
 })
 
 const canSubmit = computed(() => {
-  const hasEnoughCash = cashAmount.value >= cartStore.totalPrice
-  const canPayPartially = allowPartialPayment.value && cashAmount.value < cartStore.totalPrice
-  console.log("(hasEnoughCash || canPayPartially)",(hasEnoughCash || canPayPartially))
-  return cartStore.cart.length > 0 &&
-      !cartStore.isProcessing &&
-      !hasPaymentError.value &&
-      (hasEnoughCash || canPayPartially)
+
+  if (cartStore.isProcessing || hasPaymentError.value) {
+    return false
+  }
+
+  const hasItems = cartStore.cart.length > 0
+
+  const checkPayment = (paid) => {
+    const hasEnough = paid >= cartStore.totalPrice
+
+    const partialAllowed =
+      allowPartialPayment.value &&
+      paid < cartStore.totalPrice
+
+    return hasEnough || partialAllowed
+  }
+
+  switch (props.mode) {
+
+      case 'sale':
+        return (
+          hasItems &&
+          checkPayment(cashAmount.value)
+        )
+
+
+      case 'draft':
+        return (
+          hasItems &&
+          checkPayment(totalPaid.value)
+        )
+
+
+      case 'return':
+        return (
+          !!returnInvoice.value &&
+          returnItems.value.length > 0
+        )
+
+
+      default:
+        return false
+  }
 
 })
 
@@ -465,17 +540,31 @@ const submitButtonClass = computed(() => {
   }
 })
 
-const submitButtonText = computed(() => {
-  if (cartStore.isProcessing) {
-    return 'PROCESSING...'
-  } else if (cartStore.cart.length === 0) {
-    return 'ADD ITEMS TO CART'
-  } else if (cashAmount.value < cartStore.totalPrice) {
-    return `NEED ${formatPrice(cartStore.totalPrice - cashAmount.value)} MORE`
-  } else {
-    return 'COMPLETE SALE'
-  }
-})
+const submitButtonText = computed(() =>{
+    if (props.mode === 'draft') {
+      if (cartStore.isProcessing) {
+        return __('PROCESSING')
+      } else if(totalPaid.value < cartStore.totalPrice){
+          return __('NEED {0} MORE', [formatPrice(cartStore.totalPrice - totalPaid.value)])
+      } else {
+        return __('Submit Invoice')
+      }
+    }
+    else if (props.mode === 'return') {
+      return __('Create Return')
+    }
+    else if (props.mode === 'sale') {
+      if (cartStore.isProcessing) {
+        return __('PROCESSING')
+      } else if (cartStore.cart.length === 0) {
+        return __('ADD ITEMS TO CART')
+      } else if (cashAmount.value < cartStore.totalPrice) {
+        return __('NEED {0} MORE', [formatPrice(cartStore.totalPrice - cashAmount.value)])
+      } else {
+        return __('COMPLETE SALE')
+      }
+    }
+  })
 
 const submitButtonIcon = computed(() => {
   if (cartStore.isProcessing) {
@@ -489,10 +578,11 @@ const submitButtonIcon = computed(() => {
 
 // Watch cash amount changes
 watch(cashAmount, (newAmount) => {
-  cartStore.setCash(newAmount)
+  cartStore.setPayments([
+    { mode_of_payment: selectedPaymentMethod.value || 'Cash', amount: newAmount }
+  ])
   emit('cash-update', newAmount)
 
-  // Clear errors when user types
   if (hasPaymentError.value && newAmount >= cartStore.totalPrice) {
     clearPaymentError()
   }
@@ -506,7 +596,6 @@ const formatShortPrice = (price) => {
   return price.toString()
 }
 
-// Format cash input display
 const formatCashInput = (amount) => {
   if (isFocused.value) {
     return amount.toString()
@@ -580,17 +669,16 @@ const clearPaymentError = () => {
   paymentErrorMessage.value = ''
 }
 
-// Select payment method -> return one string like "Cash"
 const selectPaymentMethod = (methodName) => {
-  if (selectedPaymentMethod.value === methodName) {
-    // ده نفسه الديفولت أو نفس الزر الحالي → ما تعملش حاجة
-    return
-  }
-
-  // لو المستخدم غير الاختيار → حدث القيمة
+  if (selectedPaymentMethod.value === methodName) return
   selectedPaymentMethod.value = methodName
-}
 
+  if (props.mode === 'sale') {
+    cartStore.setPayments([
+      { mode_of_payment: methodName, amount: cashAmount.value }
+    ])
+  }
+}
 
 // Handle quick submit (Enter key)
 const handleQuickSubmit = () => {
@@ -601,16 +689,9 @@ const handleQuickSubmit = () => {
 
 // Handle submit
 const handleSubmit = async () => {
+
   console.log("1️⃣ PaymentSection: handleSubmit started")
   if (!canSubmit.value) return
-
-  // Final validation
-  // if (cashAmount.value < cartStore.totalPrice) {
-  //   setPaymentError('Insufficient payment amount')
-  //   return
-  // }
-
-  // clearPaymentError()
 
   try {
     // Show success animation briefly
@@ -651,12 +732,17 @@ const handleSubmit = async () => {
   }
 }
 
-// Reset payment form
 const resetPaymentForm = () => {
   cashAmount.value = 0
   clearPaymentError()
-  selectedPaymentMethod.value = 'cash'
+  selectedPaymentMethod.value = paymentMethods.value.find(pm => pm.default)?.name || null
 }
+
+watch(changeAmount, (val) => {
+  if (val >= 0) {
+    showPartialOption.value = false
+  }
+})
 
 // Focus cash input
 const focusCashInput = () => {

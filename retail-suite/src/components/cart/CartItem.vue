@@ -21,7 +21,7 @@
 
     <!-- Product Info -->
     <div class="flex-grow min-w-0">
-      <div class="flex flex-col">
+      <div  class="flex flex-col">
 
         <!-- Product Name -->
         <h5
@@ -32,8 +32,35 @@
           {{ item.item_name }}
         </h5>
 
+        <!-- Serial No -->
+        <span
+          v-if="item.serial_no"
+          class="text-xs px-1.5 py-0.5 rounded mt-0.5 w-fit"
+          :style="{ background: 'rgba(16,185,129,0.1)', color: '#0F6E56' }"
+        >
+          # {{ item.serial_no }}
+        </span>
+
+        <!-- Batch No -->
+        <span
+          v-if="item.batch_no"
+          class="text-xs px-1.5 py-0.5 rounded mt-0.5 w-fit"
+          :style="{ background: 'rgba(99,102,241,0.1)', color: '#4338ca' }"
+        >
+          Batch: {{ item.batch_no }}
+        </span>
+
+        <!-- UOM -->
+        <span
+          v-if="item.uom && item.uom !== item.stock_uom"
+          class="text-xs px-1.5 py-0.5 rounded mt-0.5 w-fit"
+          :style="{ background: 'rgba(245,158,11,0.1)', color: '#b45309' }"
+        >
+          {{ item.uom }}
+        </span>
+
         <!-- Product Price & Category -->
-        <div class="flex items-center justify-between mt-1">
+        <div class="flex items-center justify-between mt-1" dir="ltr">
           <p class="text-xs font-semibold" :style="{ color: 'var(--text-sub)' }">
             {{ formatPrice(item.rate) }}
           </p>
@@ -47,8 +74,8 @@
         </div>
 
         <!-- Item Total -->
-        <p class="text-xs mt-1" :style="{ color: 'var(--text-muted)' }">
-          Total:
+        <p class="text-xs mt-1" :style="{ color: 'var(--text-muted)' }" dir="ltr">
+          {{ __('Total') }}:
           <span class="font-semibold" :style="{ color: 'var(--primary-600)' }">
             {{ formatPrice(itemTotal) }}
           </span>
@@ -68,8 +95,8 @@
             background: 'var(--input-border)',
             color: 'var(--text-main)'
           }"
-          :disabled="isUpdating"
-          title="Decrease quantity"
+          :disabled="isUpdating || isSerialItem"
+          :title="__('Decrease  Quantity')"
         >
           <MinusIcon class="w-3 h-3 mx-auto" />
         </button>
@@ -91,7 +118,7 @@
               color: 'var(--text-main)',
               border: hasError ? '1px solid var(--warning-border)' : '1px solid var(--input-border)'
             }"
-            :disabled="isUpdating"
+            :disabled="isUpdating || isSerialItem"
           >
           <!-- Error indicator -->
           <div
@@ -109,8 +136,8 @@
             background: 'var(--input-border)',
             color: 'var(--text-main)'
           }"
-          :disabled="isUpdating || item.qty >= 999"
-          title="Increase quantity"
+          :disabled="isUpdating || item.qty >= 999 || isSerialItem"
+          :title="__('Increase  Quantity')"
         >
           <PlusIcon class="w-3 h-3 mx-auto" />
         </button>
@@ -127,10 +154,10 @@
         @mouseover="$event.currentTarget.style.background = 'var(--warning-bg)'"
         @mouseleave="$event.currentTarget.style.background = 'transparent'"
         :disabled="isUpdating"
-        title="Remove from cart"
+        :title="__('Remove this {0} from cart?', { 0: props.item.item_name })"
       >
         <TrashIcon class="w-3 h-3 inline mr-1" />
-        Remove
+        {{ __('Remove') }}
       </button>
     </div>
 
@@ -153,6 +180,7 @@ import {formatPrice} from '@/utils/formatters'
 import { useSettingsStore } from '@/stores/settings'
 import config from '@/config/frappe'
 import { useConfirm } from '@/composables/useConfirm'
+
 const props = defineProps({
   mode: {
     type: String,
@@ -167,6 +195,7 @@ const props = defineProps({
     }
   }
 })
+
 const emit = defineEmits(['update-quantity', 'remove-item', 'quantity-error'])
 
 const { confirm } = useConfirm()
@@ -189,13 +218,13 @@ const currentSrc = ref(
     ? `${config.VUE_URL}${props.item?.image}`
     : defaultImageSrc
 )
+const isSerialItem = computed(() => !!props.item.serial_no)
 
 // Computed properties
 const itemTotal = computed(() => {
   return props.item.rate * props.item.qty
 })
 
-// Watch for prop changes
 watch(
   () => props.item.qty,
   (newQty) => {
@@ -209,44 +238,55 @@ const handleImageError = () => {
   currentSrc.value = defaultImage
   imageError.value = false
 }
-
-// Increase quantity
 const increaseQuantity = () => {
+
+  if (isSerialItem.value) {
+    window.$toast?.warning(__('Serial items cannot have quantity more than 1'))
+    return
+  }
+
   let newQty = props.item.qty
 
   if (props.mode === 'return') {
     if (newQty < props.item.originalQuantity) {
       newQty -= 1
-
-            console.log("(+) newQty ", newQty)
     } else {
-      if (window.$toast) window.$toast.warning('You cannot return more than original quantity')
+      window.$toast?.warning(__('You cannot return more than original quantity'))
     }
   } else {
-    console.log("Mode: Sale")
+    const cf = props.item.conversion_factor || 1
+    const availableQty = Math.floor((props.item.actual_qty || 0) / cf)
+
+    if (newQty >= availableQty) {
+      window.$toast?.warning(__('Quantity exceeds available stock'))
+      return
+    }
     newQty += 1
   }
-  console.log("increaseQuantity", newQty, props.mode,props.item.originalQuantity)
+
   emit('update-quantity', props.item.item_code, newQty, props.mode)
 }
 
 const decreaseQuantity = () => {
+
+  if (isSerialItem.value) {
+    emit('remove-item', props.item.item_code)
+    return
+  }
+
   let newQty = props.item.qty
-  console.log("(-) decreaseQuantity ",props.mode)
   if (props.mode === 'return') {
 
     if (newQty < -1) {
       newQty += 1
-      console.log("(-) decreaseQuantity & newQty",props.mode, newQty)
     } else {
-      if (window.$toast) window.$toast.info('Cannot reduce below -1')
+      if (window.$toast) window.$toast.info(__('Can not reduce Quantity below 1 Quantity'))
     }
   } else {
     if (newQty > 1) {
       newQty -= 1
     } else {
       emit('remove-item', props.item.item_code)
-      console.log("(-) props mode",props.mode)
       return
     }
   }
@@ -254,8 +294,6 @@ const decreaseQuantity = () => {
   emit('update-quantity', props.item.item_code, newQty)
 }
 
-
-// Handle quantity input
 const handleQuantityInput = (event) => {
   const value = parseInt(event.target.value) || 0
   displayQuantity.value = value
@@ -268,7 +306,6 @@ const handleQuantityInput = (event) => {
   }
 }
 
-// Handle quantity blur (when user finishes editing)
 const handleQuantityBlur = async () => {
   if (hasError.value) {
     resetQuantity()
@@ -276,10 +313,19 @@ const handleQuantityBlur = async () => {
   }
 
   if (pendingQuantity.value !== props.item.qty) {
+    // ← تحقق من الـ stock
+    const cf = props.item.conversion_factor || 1
+    const availableQty = Math.floor((props.item.actual_qty || 0) / cf)
+
+    if (pendingQuantity.value > availableQty) {
+      window.$toast?.warning(__('Quantity exceeds available stock'))
+      resetQuantity()
+      return
+    }
+
     await updateQuantity(pendingQuantity.value)
   }
 }
-
   // Handle enter key on quantity input
   const handleQuantityEnter = async (event) => {
     event.target.blur() // This will trigger handleQuantityBlur
@@ -343,7 +389,7 @@ const updateQuantity = async (newQuantity) => {
       const confirmed = await confirm({
         type: 'delete',
         title: 'Remove Item',
-        message: `Remove this ${props.item.item_name} from cart?`,
+        message: __(`Remove this ${0} from cart?`,[props.item.item_name]),
         confirmLabel: 'Remove Item',
       })
       if (!confirmed) return

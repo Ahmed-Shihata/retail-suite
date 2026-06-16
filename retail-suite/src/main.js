@@ -28,6 +28,11 @@ import {
 // socket (lazy init)
 import { initSocket } from "./socket"
 
+import '@/db/network'
+
+// i18n translations
+import i18nPlugin from '@/i18n'
+
 /* ─────────────────────────────────────────────
    CORE APP SETUP
 ───────────────────────────────────────────── */
@@ -55,7 +60,7 @@ app.use(router)
 app.use(pinia)
 app.use(Toast)
 app.use(vuetify)
-
+app.use(i18nPlugin)
 /* ─────────────────────────────────────────────
    GLOBAL TOAST (safe init)
 ───────────────────────────────────────────── */

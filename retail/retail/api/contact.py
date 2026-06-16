@@ -59,9 +59,6 @@ def _contact_dict(doc) -> dict:
     }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ── CONTACT endpoints ────────────────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
 
 @frappe.whitelist(allow_guest=False)
 def create_contact(customer, first_name, last_name=None, designation=None,
@@ -160,40 +157,3 @@ def update_contact(contact_name, first_name=None, last_name=None, designation=No
     frappe.db.commit()
 
     return _contact_dict(doc)
-
-
-@frappe.whitelist(allow_guest=False)
-def delete_contact(contact_name):
-    """
-    احذف Contact — بس لو مربوط بـ Customer الـ logged-in فقط.
-    """
-    # تحقق إن الكونتكت مرتبط بـ customer الحالي
-    customer = frappe.db.get_value(
-        "Dynamic Link",
-        {"parenttype": "Contact", "parent": contact_name, "link_doctype": "Customer"},
-        "link_name",
-    )
-    if not customer:
-        frappe.throw(_("Contact not linked to any customer"))
-
-    frappe.delete_doc("Contact", contact_name, ignore_permissions=False)
-    frappe.db.commit()
-    return {"deleted": contact_name}
-
-
-@frappe.whitelist(allow_guest=False)
-def link_address_to_contact(contact_name, address_name):
-    """اربط عنوان بـ Contact"""
-    doc = frappe.get_doc("Contact", contact_name)
-    doc.address = address_name or None
-    doc.save(ignore_permissions=False)
-    frappe.db.commit()
-
-    linked_address = None
-    if address_name:
-        try:
-            linked_address = _address_dict(frappe.get_doc("Address", address_name))
-        except Exception:
-            pass
-
-    return {"contact": contact_name, "linked_address": linked_address}

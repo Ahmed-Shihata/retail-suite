@@ -1,25 +1,20 @@
 <template>
-  <div class="sticky top-0 z-10 flex px-2 flex-row gap-2">
-    <!-- Status Display -->
-    <div v-if="lastBarcode" class="barcode-display">
-      <h3>آخر باركود:</h3>
-      <p>{{ lastBarcode }}</p>
-    </div>
-
+  <div class="sticky top-0 z-0 flex px-2 flex-row gap-2">
     <!-- Mode Toggle Button -->
     <div
-      @click="switchToBarcode()"
+      @click="switchMode()"
       class="absolute left-5 top-3 px-2 py-2 rounded-full text-white z-10 transition-colors duration-200 cursor-pointer"
       :class="{
-        'animate-pulse': qrBot.isConnected.value,
-        'bg-cyan-500': !qrBot.isConnected.value && !isScannerConnected,
-        'bg-blue-500': isScannerConnected && !qrBot.isConnected.value,
+        'animate-pulse': isScannerMode,
+        'bg-slate-400': !isScannerMode,
         'bg-red-500': isLoading
       }"
-      :style="qrBot.isConnected.value ? { backgroundColor: primaryColor } : {}"
+      :style="(isScannerMode && !isLoading) ? { backgroundColor: primaryColor } : {}"
       :title="getStatusTitle()"
     >
+      <BarcodeScannerIcon v-if="isScannerMode" class="w-5 h-5" />
       <svg
+        v-else
         xmlns="http://www.w3.org/2000/svg"
         class="h-6 w-6"
         fill="none"
@@ -34,7 +29,6 @@
         />
       </svg>
     </div>
-
     <!-- Loading Indicator -->
     <div v-if="isLoading" class="absolute right-5 top-3 px-2 py-2">
       <div class="animate-spin h-6 w-6 border-2 border-cyan-500 border-t-transparent rounded-full"></div>
@@ -42,7 +36,7 @@
 
     <!-- Results Count -->
     <div
-      v-else-if="showResultsCount && modelValue && resultsCount !== null && !isBarcodeMode"
+      v-else-if="showResultsCount && modelValue && resultsCount !== null && !isScannerMode"
       class="absolute right-5 top-2 bg-cyan-100 text-cyan-800 text-xs px-2 py-1 rounded-full"
     >
       {{ resultsCount }} {{ resultsCount === 1 ? 'result' : 'results' }}
@@ -50,11 +44,11 @@
 
     <!-- Barcode Mode Indicator -->
     <div
-      v-else-if="isBarcodeMode"
+      v-else-if="isScannerMode"
       class="absolute right-5 top-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full flex items-center gap-1 animate-pulse"
     >
       <span class="w-2 h-2 bg-green-600 rounded-full"></span>
-      Scanner Mode
+      {{ __('Scanner Mode') }}
     </div>
 
     <!-- Clear Button -->
@@ -70,7 +64,6 @@
       </svg>
     </button>
 
-    <!-- UNIFIED INPUT - يعمل في الـ mode الاثنين -->
     <input
       ref="mainInput"
       type="text"
@@ -83,320 +76,189 @@
         boxShadow: 'var(--input-shadow)',
       }"
       autocomplete="off"
-      :placeholder="currentPlaceholder"
+      :placeholder="__(currentPlaceholder)"
       @input="handleInput"
       @keydown="handleKeydown"
-      @focus="handleFocus"
-      @blur="handleBlur"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, computed, watch } from 'vue'
+import { ref, onMounted, nextTick, computed } from 'vue'
 import { useShiftStore } from '../stores/shift'
 import { useSettingsStore } from '../stores/settings'
 import { useCartStore } from '@/stores/cart'
-import { getItemsFromFrappeDB } from '@/composables/pos'
-import qrBot from '@/services/qrBot.js'
+import { __ } from '@/i18n/index'
+import BarcodeScannerIcon from '@/components/icons/BarcodeScanner.svg'
 
+const props = defineProps({
+  modelValue: {
+    type: String,
+    default: ''
+  },
+  placeholder: {
+    type: String,
+    default: __('Search by product name or barcode')
+  },
+  showResultsCount: {
+    type: Boolean,
+    default: false
+  },
+  resultsCount: {
+    type: Number,
+    default: null
+  },
+  autofocus: {
+    type: Boolean,
+    default: true
+  }
+})
+const emit = defineEmits(['update:modelValue', 'search', 'clear', 'enter', 'barcode-detected'])
 
-  const props = defineProps( {
-      modelValue: {
-        type: String,
-        default: ''
-    },
-    placeholder: {
-      type: String,
-      default: 'Search by product name or barcode...'
-    },
-    showResultsCount: {
-      type: Boolean,
-      default: false
-    },
-    resultsCount: {
-      type: Number,
-      default: null
-    },
-    autofocus: {
-      type: Boolean,
-      default: true
+const mainInput = ref(null)
+const isLoading = ref(false)
+const isProcessingBarcode = ref(false)
+
+// Stores
+const shiftStore = useShiftStore()
+const cartStore = useCartStore()
+const settingsStore = useSettingsStore()
+
+const settings = computed(() => settingsStore.settings)
+const primaryColor = computed(() => settings.value?.appearance?.primaryColor || '#06b6d4')
+
+const isScannerMode = ref(false)
+
+const currentPlaceholder = computed(() => {
+  if (isScannerMode.value) {
+    return 'Turn on scanner'
+  }
+  return props.placeholder || 'Search by product name Serial No Barcode.'
+})
+
+const getStatusTitle = () => {
+  return isScannerMode.value ? __('Scanner Mode') : __('Manual Mode')
+}
+
+const switchMode = () => {
+  isScannerMode.value = !isScannerMode.value
+
+  if (window.$toast) {
+    window.$toast.info(
+      isScannerMode.value
+        ? __('Scanner Mode Activated')
+        : __('Manual Mode Activated')
+    )
+  }
+
+  nextTick(() => {
+    if (mainInput.value) {
+      mainInput.value.focus()
     }
   })
-  const emit = defineEmits(['update:modelValue', 'search', 'clear', 'enter', 'barcode-detected'])
+}
 
-    // ==========================================
-    // ✅ States
-    // ==========================================
-    const mainInput = ref(null)
-    const lastBarcode = ref(null)
-    const isLoading = ref(false)
-    const isBarcodeMode = ref(false)
-    const barcodeBuffer = ref('')
-    const lastInputTime = ref(0)
-    const isProcessingBarcode = ref(false)
+const handleBarcodeDetected = async (barcodeData) => {
+  if (isProcessingBarcode.value) return
+  isProcessingBarcode.value = true
+  isLoading.value = true
 
-    // Scanner detection
-    const keyPressTimings = ref([])
-    const isScannerConnected = ref(false)
-    const scannerConfidence = ref(0)
+  try {
+    const { barcode } = barcodeData
 
-    // Stores
-    const shiftStore = useShiftStore()
-    const cartStore = useCartStore()
-    const settingsStore = useSettingsStore()
-
-    const settings = computed(() => settingsStore.settings)
-    const primaryColor = computed(() => settings.value?.appearance?.primaryColor || '#06b6d4')
-
-    // ==========================================
-    // ✅ Computed Properties
-    // ==========================================
-    const currentPlaceholder = computed(() => {
-      if (qrBot.isConnected.value) {
-        return isScannerConnected.value
-          ? 'Scan the barcode now...'
-          : 'Use the scanner or type manually...'
-      }
-      return props.placeholder || 'Search by product name or barcode...'
-    })
-
-
-    // ==========================================
-    // ✅ Handler Functions
-    // ==========================================
-
-    const getStatusTitle = () => {
-      if (qrBot.isConnected.value) {
-        return '📱 وضع الباسح - جاهز للمسح أو الكتابة'
-      }
-      return '⌨️ وضع البحث اليدوي'
-    }
-
-    const switchToBarcode = () => {
-      qrBot.isConnected.value = !qrBot.isConnected.value
-      isBarcodeMode.value = !isBarcodeMode.value
-
-      const state = qrBot.isConnected.value ? 'Scanner Mode' : 'Manual Mode'
-      console.log(`🔄 Switched to: ${state}`)
-
-      if (window.$toast) {
-        if (qrBot.isConnected.value) {
-          window.$toast.success('📱 Scanner Mode Activated')
-        } else {
-          window.$toast.info('⌨️ Manual Mode Activated')
-        }
-      }
-
-      // Focus على الـ input
-      nextTick(() => {
-        if (mainInput.value) {
-          mainInput.value.focus()
-        }
-      })
-    }
-
-    const updateScannerConfidence = () => {
-      if (keyPressTimings.value.length < 5) return
-
-      const timeDifferences = []
-      for (let i = 1; i < keyPressTimings.value.length; i++) {
-        timeDifferences.push(keyPressTimings.value[i] - keyPressTimings.value[i - 1])
-      }
-
-      const avgDifference = timeDifferences.reduce((a, b) => a + b, 0) / timeDifferences.length
-      const variance = timeDifferences.reduce((a, b) => a + Math.pow(b - avgDifference, 2), 0) / timeDifferences.length
-
-      if (avgDifference < 70 && variance < 400) {
-        scannerConfidence.value = Math.min(100, Math.round((70 - avgDifference) * 3 - variance / 100))
-        isScannerConnected.value = scannerConfidence.value > 60
-      } else {
-        scannerConfidence.value = Math.max(0, scannerConfidence.value - 10)
-        isScannerConnected.value = false
-      }
-
-      console.log(`📊 Speed: ${Math.round(avgDifference)}ms, Confidence: ${scannerConfidence.value}%`)
-    }
-
-    const handleBarcodeDetected = async (barcodeData) => {
-      if (isProcessingBarcode.value) return
-      isProcessingBarcode.value = true
-      isLoading.value = true
-
-      try {
-        const { barcode, detectedByScanner, source = 'scanner' } = barcodeData
-
-        console.log('🔍 Processing barcode:', barcode)
-
-        if (!shiftStore.isShiftOpen) {
-          if (window.$toast) {
-            window.$toast.warning('الرجاء فتح الشيفت أولاً')
-          }
-          return
-        }
-
-        const response = await getItemsFromFrappeDB(
-          shiftStore.pos_profile,
-          shiftStore.pos_profile?.selling_price_list,
-          null,
-          barcode
-        )
-
-        if (response && response.length > 0) {
-          const product = response[0]
-          cartStore.addToCart(product)
-          lastBarcode.value = barcode
-
-          if (window.$toast) {
-            window.$toast.success(`✅ ${product.item_name}`)
-          }
-
-          console.log('✅ Product found and added to cart:', product.item_name)
-        } else {
-          if (window.$toast) {
-            window.$toast.error(`❌ المنتج برقم ${barcode} غير موجود`)
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error processing barcode:', error)
-        if (window.$toast) {
-          window.$toast.error('خطأ في معالجة الباركود')
-        }
-      } finally {
-        isLoading.value = false
-        isProcessingBarcode.value = false
-        // مسح الـ input بعد المعالجة
-        emit('update:modelValue', '')
-        barcodeBuffer.value = ''
-      }
-    }
-
-    const handleInput = (event) => {
-      const value = event.target.value
-      emit('update:modelValue', value)
-
-      // التحقق من الباركود التلقائي
-      const isBarcodePattern = /^\d{8,20}$/.test(value)
-
-      if (qrBot.isConnected.value && isBarcodePattern) {
-        console.log('📱 Barcode detected from input:', value)
-        handleBarcodeDetected({
-          barcode: value,
-          detectedByScanner: true,
-          source: 'manual_input'
-        })
-      }
-    }
-
-    const handleKeydown = async (event) => {
-      const currentTime = Date.now()
-      const timeSinceLastInput = currentTime - lastInputTime.value
-
-      // سجّل توقيت الضغطة
-      if (event.key.length === 1) {
-        keyPressTimings.value.push(currentTime)
-        if (keyPressTimings.value.length > 20) {
-          keyPressTimings.value.shift()
-        }
-        updateScannerConfidence()
-      }
-
-      lastInputTime.value = currentTime
-
-      // إذا Escape = امسح الـ input
-      if (event.key === 'Escape') {
-        emit('update:modelValue', '')
-        barcodeBuffer.value = ''
-        return
-      }
-
-      // إذا Enter = معالجة البحث أو الباركود
-      if (event.key === 'Enter') {
-        event.preventDefault()
-        const value = event.target.value.trim()
-
-        if (qrBot.isConnected.value && /^\d{8,20}$/.test(value)) {
-          // معالجة كـ barcode
-          await handleBarcodeDetected({
-            barcode: value,
-            detectedByScanner: isScannerConnected.value,
-            source: 'scanner'
-          })
-        } else if (value.length >= 2) {
-          // معالجة كـ search عادي
-          emit('enter', value)
-        }
-      }
-
-      // إذا تأخير كبير = مستخدم يكتب يدوياً
-      if (timeSinceLastInput > 100 && event.key.length === 1) {
-        barcodeBuffer.value = ''
-      }
-    }
-
-    const handleFocus = () => {
-      console.log('Input focused')
-    }
-
-    const handleBlur = () => {
-      // Keep focus على الـ input
-      // nextTick(() => {
-      //   if (mainInput.value) {
-      //     mainInput.value.focus()
-      //   }
-      // })
+    if (!shiftStore.isShiftOpen) {
+      window.$toast?.warning(__('Please open the POS first'))
       return
     }
 
-    const clearSearch = () => {
-      emit('update:modelValue', '')
-      emit('clear')
-      barcodeBuffer.value = ''
+    const response = await shiftStore.getItemsFromFrappeDB(
+      shiftStore.pos_profile,
+      shiftStore.pos_profile?.selling_price_list,
+      null,
+      barcode
+    )
 
-      nextTick(() => {
-        if (mainInput.value) {
-          mainInput.value.focus()
-        }
+    const items = response?.items ?? (Array.isArray(response) ? response : [])
+    const searchContext = response?.search_context || {}
+
+    if (items.length > 0) {
+      const product = items[0]
+      const selectedUom = searchContext.uom || product.stock_uom
+
+      cartStore.addToCart({
+        ...product,
+        uom: selectedUom,
+        rate: product.uom_prices?.[selectedUom]?.rate || product.rate,
+        conversion_factor: product.uom_prices?.[selectedUom]?.conversion_factor || 1,
+        barcode: searchContext.barcode || '',
       })
+
+      window.$toast?.success(`${product.item_name}`)
+    } else {
+      window.$toast?.error(__('Product {0} not found', { 0: barcode }))
     }
+  } catch (error) {
+    console.error('❌ Error processing barcode:', error)
+    window.$toast?.error(__('Error processing barcode'))
+  } finally {
+    isLoading.value = false
+    isProcessingBarcode.value = false
+    emit('update:modelValue', '')
+  }
+}
 
-    const focus = () => {
-      if (mainInput.value) {
-        mainInput.value.focus()
-      }
-    }
+const handleInput = (event) => {
+  const value = event.target.value
+  emit('update:modelValue', value)
+}
 
-    // ==========================================
-    // ✅ Lifecycle
-    // ==========================================
-    onMounted(() => {
-      console.log('🚀 SearchBar mounted')
+const handleKeydown = async (event) => {
+  if (event.key === 'Escape') {
+    emit('update:modelValue', '')
+    return
+  }
 
-      if (mainInput.value && props.autofocus) {
-        nextTick(() => {
-          mainInput.value.focus()
-        })
-      }
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    const value = event.target.value.trim()
 
-      // Listen to QRBot events
-      qrBot.on('barcode', (data) => {
-        console.log('📲 Received barcode from QRBot:', data.barcode)
-        lastBarcode.value = data.barcode
-        emit('update:modelValue', data.barcode)
-        handleBarcodeDetected({
-          barcode: data.barcode,
-          detectedByScanner: true,
-          source: 'iPhone_QRBot'
-        })
+    if (/^\d{8,20}$/.test(value)) {
+      await handleBarcodeDetected({
+        barcode: value,
+        source: isScannerMode.value ? 'scanner' : 'manual'
       })
+    } else if (value.length >= 2) {
+      emit('enter', value)
+    }
+  }
+}
+
+const clearSearch = () => {
+  emit('update:modelValue', '')
+  emit('clear')
+
+  nextTick(() => {
+    if (mainInput.value) {
+      mainInput.value.focus()
+    }
+  })
+}
+
+const focus = () => {
+  if (mainInput.value) {
+    mainInput.value.focus()
+  }
+}
+
+defineExpose({ focus })
+
+onMounted(() => {
+  if (mainInput.value && props.autofocus) {
+    nextTick(() => {
+      mainInput.value.focus()
     })
-
-    onUnmounted(() => {
-      console.log('🛑 SearchBar unmounted')
-      qrBot.off('barcode', null)
-    })
-
-
+  }
+})
 </script>
 
 <style scoped>

@@ -1,49 +1,40 @@
 import { defineStore } from 'pinia'
 import { toRaw } from 'vue'
-import {
-  getCurrentUserInfoApi,
-  processAutoAttendanceApi,
-  fetchShiftAssignmentsApi,
-  createShiftAssignmentApi,
-  updateShiftAssignmentApi,
-  deleteShiftAssignmentApi,
-} from '@/services/api'
-import {
-  getAllShifts,
-  fetchShiftsApi,
-  make_closing_shift_from_opening_shift,
-  loadHolidayListsApi,
-  get_user_opening_shift,
-  createShiftApi,
-  updateShiftApi,
-  deleteShiftApi,
-  submit_closing_shift,
-  get_shift_summary,
-  getShiftStatistics,
-  get_available_pos_profiles,
-} from '@/composables/shift'
+import {call, createResource, createListResource, createDocumentResource} from 'frappe-ui'
+import { cacheOfflineData } from '@/db/sync'
+import { db } from '@/db/indexedDB'
+import { isOffline } from '@/db/network'
+import { session } from '@/services/auth'
+import { useCartStore } from './cart'
 export const useShiftStore = defineStore('shift', {
   state: () => ({
+    availableShifts: [],
     currentShift: null,
-    CurrentUserInfo: null,
     pos_profile: null,
+    warehouses: [],
+    products: [],
+    company: null,
     pos_profile_name:null,
     pos_opening_shift: null,
     closingShift: null,
+    // Actions
     currentCustomer: null,
+    pos_profiles_list: [],
+    CurrentUserInfo: null,
     shifts: [],
+    customers: [],
     summary: null,
     isShiftOpen: false,
     statistics: {},
     users: [],
-    showOpeningVoucherDialog: false, // ✨ جديد
+    showOpeningVoucherDialog: false,
     payment_methods: [],
-    pos_profiles_list: []
+    _currentUserResource: null,
+    _userDocResource: null,
   }),
 
   getters: {
 
-    // Current shift info
     currentShiftInfo: (state) => {
       if (!state.currentShift) return null
 
@@ -98,114 +89,259 @@ export const useShiftStore = defineStore('shift', {
   },
 
   actions: {
+
     async setCustomer(customer) {
       this.currentCustomer = customer
     },
+
     async getAvailablePosprofiles(company, currency) {
-      console.log("this.pos_profile.posa_allow_mpesa_reconcile_payments", this.pos_profile.posa_allow_mpesa_reconcile_payments)
-      if (!this.pos_profile.posa_allow_mpesa_reconcile_payments) return;
-      console.log("API get_available_pos_profiles")
-      console.log("currency", currency)
-      console.log("company", company)
-      const posProfiles = await get_available_pos_profiles(company, currency)
-      console.log("posProfiles", posProfiles)
-      this.pos_profiles_list = posProfiles
-    },
-    async getCurrentUserInfo() {
       try {
+          const posProfiles = await call('retail.retail.api.payment_entry.get_available_pos_profiles',
+            {company,currency}
+          )
 
-        const CurrentUserInfo = await getCurrentUserInfoApi()
-        console.log("CurrentUserInfo", CurrentUserInfo)
-        console.log("CurrentUserInfo of name", CurrentUserInfo.user)
-        console.log("CurrentUserInfo of user", CurrentUserInfo.user)
+          this.pos_profiles_list = posProfiles
+      }
+      catch (error) {
+          console.error("❌ Get POS Profiles error:", error)
+      }
+    },
 
-        this.CurrentUserInfo = CurrentUserInfo
-        return this.CurrentUserInfo
+    async getCurrentUserInfo() {
+        try {
+
+            // 1. Get current user
+          if (this._currentUserResource?.data && this._currentUserResource.data !== 'Guest') {
+            return { user: this._currentUserResource.data }
+          }
+
+          // أول مرة بس
+          if (!this._currentUserResource) {
+            this._currentUserResource = createResource({
+              url: '/api/method/frappe.auth.get_logged_user'
+            })
+          }
+            console.log('📦 currentUser resource created:', this._currentUserResource)
+
+            await this._currentUserResource.reload()
+
+            if (this._currentUserResource.error) {
+              throw new Error(`get_logged_user failed: ${this._currentUserResource.error}`)
+            }
+
+            console.log('📥 currentUser response raw:', this._currentUserResource.data)
+
+            const user = this._currentUserResource.data
+
+            console.log('👤 extracted user:', user)
+
+            if (!user || user === 'Guest') {
+              console.warn('⚠️ Guest or empty user')
+              return null
+            }
+
+            // 2. Get User Doc
+            const userDoc = createDocumentResource({
+              doctype: 'User',
+              name: user
+            })
+
+            console.log('📦 userDoc resource created:', userDoc)
+
+            await userDoc.reload()
+
+            console.log('📥 userDoc raw doc:', userDoc.doc)
+
+            const userData = userDoc.doc
+
+            // 3. Roles
+            console.log('🔐 fetching roles for:', user)
+
+            const CurrentUserInfo = {
+              user,
+              email: userData?.email || '',
+              full_name: userData?.full_name || user,
+              user_image: userData?.user_image || '',
+
+            }
+
+          this.CurrentUserInfo = CurrentUserInfo
+          return CurrentUserInfo
+
       } catch (error) {
-        console.log(error)
+        console.error('❌ ERROR in getCurrentUserInfoApi:', error)
+        throw error
       }
 
     },
-    async checkActiveShift() {
+    // في الـ store — فنكشن جديدة مش بتأثر على القديمة
+   async getCurrentUser(){
+        // frappe.session.user دايماً موجود
+        return frappe.session.user || null
+    },
+    async get_user_opening_shift(user){
+        try {
+            const response = await call('retail.retail.api.shifts.check_opening_shift',
+                {user: user}
+                );
+            console.log('Api Get User Opening Shift:', response);
+            return response;
+        } catch (error) {
+            console.error('Error Api Get User Opening Shift:', error);
+            throw error;
+        }
+
+    },
+
+    async get_shift_summary(pos_opening_shift) {
+        try {
+            const shiftParam =
+                typeof pos_opening_shift === 'string'
+                    ? pos_opening_shift
+                    : pos_opening_shift.name;
+
+            const response = await call(
+                'retail.retail.doctype.pos_closing_shift.pos_closing_shift.get_shift_summary',
+                { pos_opening_shift_name: shiftParam }
+
+            );
+
+            console.log('API Get Shift Summary:', response);
+            return response;
+        } catch (error) {
+            console.error('Error API Get Shift Summary:', error);
+            throw error;
+        }
+    },
+
+    // need refactor u can get user from session this getCurrentUserInfo not needed
+    // refactor: is it needed to git summary of this shiftممكن نعزل النفكشن عناها
+    // refactor: get_shift_summaryهل ممكن نعزله ولا لازم تكون جوه الفنكشن
+    async loadActiveShifts() {
       try {
-        const currentUserInfo = await this.getCurrentUserInfo()
-        const currentUser = currentUserInfo.user
-        const result = await get_user_opening_shift(currentUser);
 
-        if (result) {
-          console.log('✅ Opening shift found:', result);
-          // ✅ فيه shift مفتوح
-          this.pos_profile = result.pos_profile || null
-          this.pos_profile_name = result.pos_profile.name || null
-          this.pos_opening_shift = result.pos_opening_shift || null
-
-          const shift = this.pos_opening_shift || {};
-          const balanceDetails = shift.balance_details || [];
-          const openingBalance = balanceDetails.reduce(
-            (sum, b) => sum + (b.amount || 0),
-            0
-          );
-
-          if (shift.name) {
-            this.summary = await get_shift_summary(shift.name);
-          }
-
-          const totalSales = this.summary?.total_sales || 0;
-          const transactions = this.summary?.transactions || [];
-
-          this.currentShift = {
-            name: shift.name,
-            user: shift.user,
-            company: shift.company,
-            pos_profile: shift.pos_profile,
-            period_start_date: shift.period_start_date,
-            period_end_date: shift.period_end_date || null,
-            status: shift.status,
-            posting_date: shift.posting_date,
-            posting_time: shift.posting_time,
-            all: shift,
-            openingBalance,
-            totalSales,
-            closingBalance: 0,
-            transactions,
-            balance_details: balanceDetails
-          };
-
-          this.isShiftOpen = true
-          this.showOpeningVoucherDialog = false // ✅ أغلق الـ dialog
-          this.set_payment_methods() // ✅ حدّث payment methods
-          this.getAvailablePosprofiles(this.pos_profile.company, this.pos_profile.currency)
-          // if (!this.pos_profiles_list.includes(this.pos_profile.name)) {
-          //   this.pos_profiles_list.push(this.pos_profile.name);
-          // }
-          console.log("this.pos_profiles_list", this.pos_profiles_list)
-          console.log("this.pos_profile.company", this.pos_profile.company)
-          console.log("this.pos_profile.currency", this.pos_profile.currency)
-          console.log('✅ Current Shift (from backend):', this.currentShift);
+        if (this.isShiftOpen && this.currentShift) {
+          console.log('✅ Shift already loaded, skipping...')
           return true
         }
-        else {
-          // ❌ مفيش shift مفتوح
-          this.pos_opening_shift = null;
-          this.currentShift = null
-          this.isShiftOpen = false;
-          this.showOpeningVoucherDialog = true // ✅ افتح الـ dialog
 
-          console.log('⚠️ No opening shift found for user');
-          return false
+        const currentUser = session.user
+        if (!currentUser) {
+            console.warn('⚠️ No logged user')
+            this.showOpeningVoucherDialog = true
+            return false
+        }
+        const result = await this.get_user_opening_shift(currentUser);
+
+        console.log('Result:', result)
+
+         if (!result || result.count === 0) {
+            this.isShiftOpen             = false
+            this.currentShift            = null
+            this.showOpeningVoucherDialog = true
+            return false
+        }else{
+            this.availableShifts          = result.shifts
+            this.showShiftSelectionDialog = true
+            return true
         }
       } catch (error) {
         console.error('Error fetching opening shift:', error);
-        this.pos_opening_shift = null;
         this.isShiftOpen = false
-        this.showOpeningVoucherDialog = true // ✅ في حالة الخطأ افتح الـ dialog
+        this.showOpeningVoucherDialog = true
         return false
       }
     },
+
+    async setActiveShift(shiftData) {
+        this.pos_profile      = shiftData.pos_profile || null
+        this.pos_profile_name = shiftData.pos_profile?.name || null
+        this.pos_opening_shift = shiftData.pos_opening_shift || null
+
+        const shift          = this.pos_opening_shift || {}
+        const balanceDetails = shift.balance_details || []
+        const openingBalance = balanceDetails.reduce((sum, b) => sum + (b.amount || 0), 0)
+
+        if (shift.name) {
+            this.summary = await this.get_shift_summary(shift.name)
+        }
+
+        this.currentShift = {
+            name:             shift.name,
+            user:             shift.user,
+            company:          shift.company,
+            pos_profile:      shift.pos_profile,
+            period_start_date: shift.period_start_date,
+            period_end_date:  shift.period_end_date || null,
+            status:           shift.status,
+            posting_date:     shift.posting_date,
+            posting_time:     shift.posting_time,
+            all:              shift,
+            openingBalance,
+            totalSales:       this.summary?.total_sales || 0,
+            closingBalance:   0,
+            transactions:     this.summary?.transactions || [],
+            balance_details:  balanceDetails,
+            payments:         this.summary?.payments || []
+        }
+
+        this.isShiftOpen             = true
+        this.showOpeningVoucherDialog = false
+        this.showShiftSelectionDialog = false
+
+        await cacheOfflineData(
+            this.pos_profile,
+            this.getItemsFromFrappeDB.bind(this),
+            this.getCustomers.bind(this),
+        )
+        this.set_payment_methods()
+        try {
+            const taxData = await call(
+              'retail.retail.api.invoice.get_pos_profile_taxes',
+              { pos_profile_name: this.pos_profile.name }
+            )
+            const cartStore = useCartStore()
+            cartStore.applyPOSProfileTax(taxData)
+          } catch (e) {
+            console.error('Could not load POS taxes:', e)
+        }
+        this.getAvailablePosprofiles(this.pos_profile.company, this.pos_profile.currency)
+    },
+
+    async getOpeningDialogData() {
+        try {
+            const response = await call('retail.retail.api.shifts.get_opening_dialog_data');
+            console.log('Api Get Opening Dialog Data:', response);
+            return response;
+        }
+        catch (error) {
+            console.error('Error Api Get Opening Dialog Data:', error);
+            throw error;
+        }
+    },
+
+    async openShift(shiftData){
+        try {
+          const response = await call('retail.retail.api.shifts.create_opening_voucher',
+              {
+                  pos_profile: shiftData.pos_profile,
+                  company: shiftData.company,
+                  balance_details: shiftData.balance_details
+              }
+          );
+          console.log('Api Open Shift:', response);
+          return response;
+        } catch (error) {
+            console.error('Error Api opening shift:', error);
+            throw error;
+        }
+    },
+
     set_payment_methods() {
-      // get payment methods from pos profile
+
       if (!this.pos_profile.posa_allow_make_new_payments) return;
       this.payment_methods = [];
+
       this.pos_profile.payments.forEach((method) => {
         this.payment_methods.push({
           row_id: method.name,
@@ -216,12 +352,14 @@ export const useShiftStore = defineStore('shift', {
         });
       });
     },
+
     setShowOpeningVoucherDialog(value) {
       this.showOpeningVoucherDialog = value
     },
+
     async fetchShiftStatistics() {
       try {
-        const stats = await getShiftStatistics()
+        const stats = await call('retail.retail.api.shifts.get_shift_statistics');
         this.statistics = stats || {}
         return this.statistics
       } catch (error) {
@@ -229,49 +367,47 @@ export const useShiftStore = defineStore('shift', {
       }
     },
 
-  async loadShifts(filters = {}) {
-  try {
-    const response = await getAllShifts(filters)
-    console.log("Shifts response:", response)
+    // async loadShifts(filters = {}) {
+    //   try {
+    //     const response = await call('retail.retail.api.shifts.get_shifts', {
+    //             name: filters.name,
+    //             status: filters.status || '',   // "Open" أو "Closed"
+    //             order_by: 'creation desc'
+    //       });
+    //     console.log("Shifts response:", response)
 
-    if (response.status !== "success") {
-      console.warn(response.message)
-      this.shifts = []
-      return { status: "error", data: [] }
-    }
+    //     if (response.status !== "success") {
+    //       console.warn(response.message)
+    //       this.shifts = []
+    //       return { status: "error", data: [] }
+    //     }
 
-    const shifts = response.data || []
+    //     const shifts = response.data || []
 
-    this.shifts = shifts.map(shift => ({
-      ...shift,
-      duration: shift.start_datetime
-        ? Math.floor((new Date(shift.end_datetime || Date.now()) - new Date(shift.start_datetime)) / 60000) + ' mins'
-        : 'In Progress'
-    }))
+    //     this.shifts = shifts.map(shift => ({
+    //       ...shift,
+    //       duration: shift.start_datetime
+    //         ? Math.floor((new Date(shift.end_datetime || Date.now()) - new Date(shift.start_datetime)) / 60000) + ' mins'
+    //         : 'In Progress'
+    //     }))
 
-    return { status: "success", data: this.shifts }
+    //     return { status: "success", data: this.shifts }
 
-  } catch (error) {
-    console.error('Failed to load shifts:', error)
-    this.shifts = []
-    return { status: "error", data: [] }
-  }
-},
+    //   } catch (error) {
+    //     console.error('Failed to load shifts:', error)
+    //     this.shifts = []
+    //     return { status: "error", data: [] }
+    //   }
+    // },
 
-    async submitClosingShift(closingShift) {
+    async closingOpenShift(opening_shift, closing_details) {
       try {
-        const res = await submit_closing_shift(JSON.stringify(closingShift))
-        return res.message || res // بيرجع اسم الشيفت اللي اتقفل
-      } catch (err) {
-        console.error("Error submitting closing shift:", err)
-        throw err
-      }
-    },
-    async closingOpenShift(opening_shift) {
-      try {
-        const closing_shift = await make_closing_shift_from_opening_shift(opening_shift);
+        const closing_shift = await call('retail.retail.doctype.pos_closing_shift.pos_closing_shift.make_closing_shift_from_opening', {
+            opening_shift: opening_shift,
+            closing_details: closing_details
+        });
         console.log('Closing shift created:', closing_shift);
-        this.pos_opening_shift = null   // 🟢 بعد ما تقفل، فضيه
+        this.pos_opening_shift = null
         return closing_shift;
       } catch (error) {
         console.error('Error creating closing shift:', error);
@@ -295,22 +431,10 @@ export const useShiftStore = defineStore('shift', {
       })
     },
 
-    // Get shifts by user
-    getShiftsByUser(userId) {
-      return this.shifts.filter(shift => shift.userId === userId)
-    },
-
     // Calculate shift duration
     getShiftDuration(shift) {
       const start = new Date(shift.period_start_date)
       const end = shift.period_end_date ? new Date(shift.period_end_date) : new Date()
-
-      // getTIme return in Date ms
-      // const diffMs = 10845000 // يعني حوالي 3 ساعات و 0 دقيقة و 45 ثانية
-      // const hours = Math.floor(diffMs / 3600000) // 3
-      // const minutes = Math.floor((diffMs % 3600000) / 60000) // 0
-      // const seconds = Math.floor((diffMs % 60000) / 1000) // 45
-      // console.log(`${hours}h ${minutes}m ${seconds}s`)
 
       return end.getTime() - start.getTime()
     },
@@ -323,11 +447,6 @@ export const useShiftStore = defineStore('shift', {
       const minutes = Math.floor((duration % (3600000)) / (60000))
       const seconds = Math.floor((duration % (60000)) / 1000)
       return `${hours}h ${minutes}m ${seconds}s`
-    },
-
-    // Get user info
-    getUserById(userId) {
-      return this.users.find(user => user.id === userId)
     },
 
     // Validate shift operations
@@ -364,8 +483,8 @@ export const useShiftStore = defineStore('shift', {
     async exportShiftData(shiftId = null) {
       try {
         const shiftsToExport = shiftId ?
-          [this.getShiftById(shiftId)].filter(Boolean) :
-          this.shifts
+        [this.getShiftById(shiftId)].filter(Boolean) :
+        this.shifts
 
         const exportData = {
           shifts: shiftsToExport,
@@ -387,190 +506,152 @@ export const useShiftStore = defineStore('shift', {
       }
     },
 
-    async fetchShifts(company){
+    async getCustomers(pos_profile) {
+      try {
+          console.log("getCustomers",pos_profile)
+          if (isOffline.value) {
+              return await db.customers.toArray()
+          }
 
+          const response = await call('retail.retail.api.posapp.get_customer_names',
+              { pos_profile: pos_profile}
+          )
+          console.log("API Get Customers from Frappe DB", response)
+          this.customers = response
+          return response
+      }
+      catch (error) {
+         if (error instanceof TypeError && error.message.includes('NetworkError')) {
+            console.log('📴 Network error, falling back to IndexedDB')
+            return await db.customers.toArray()
+          }
+          console.error("❌ Error API Get Customers from Frappe DB:", error)
+      }
+    },
+
+    async createUpdateCustomer(args) {
+          const {
+        method = 'create',
+        customer_id,
+        customer_name,
+        pos_profile_doc,
+        company,
+        first_mobile,
+        second_mobile,
+        email_id,
+        city,
+        address_line1,
+        address_line2,
+        state,
+        country,
+        pincode,
+        first_name,
+        last_name,
+        customer_group,
+        territory,
+        customer_type,
+        gender,
+        note,
+      } = args
       try{
-        const response = await fetchShiftsApi(company)
-        return response
-      }
-      catch(error){
-        console.log(error)
-      }
-
-    },
-      async createShift(data) {
-     try{
-       const response = await createShiftApi(data);
-       return response
-
-     }catch(error){
-        console.log(error)
-    }
-  },
-    // Update an existing shift
-    async updateShift(data) {
-      try {
-
-        const response = await updateShiftApi(data)
-        return {
-          status: response.status === 200 ? 'success' : 'error',
-          data: response.data || {},
-          message: response.message || 'تم تحديث الوردية بنجاح'
-        }
-      } catch (error) {
-        console.error('Error updating shift:', error)
-        return {
-          status: 'error',
-          data: {},
-          message: error.response?.data?.message || 'حدث خطأ في تحديث الوردية'
-        }
-      }
-    },
-     // Delete a shift
-    async deleteShift(shiftName) {
-      try {
-        const response = await deleteShiftApi(shiftName)
-        console.log("//respoonse",response)
-        return {
-          status: response.status === 200 ? 'success' : 'error',
-          data: response.data || {},
-          message: response.message
-        }
-      } catch (error) {
-        console.error('Error deleting shift:', error)
-        return {
-          status: 'error',
-          data: {},
-          message: error.response?.data?.message
-        }
-      }
-    },
-     // Process auto attendance for a shift
-    async processAutoAttendance(shiftName) {
-      try {
-        const response = await processAutoAttendanceApi(shiftName)
-        return {
-          status: response.status === 200 ? 'success' : 'error',
-          data: response.data || {},
-          message: response.message || 'تم معالجة الحضور بنجاح'
-        }
-      } catch (error) {
-        console.error('Error processing auto attendance:', error)
-        return {
-          status: 'error',
-          data: {},
-          message: error.response?.data?.message || 'حدث خطأ في معالجة الحضور'
-        }
-      }
-    },
-    async loadHolidayLists() {
-        try{
-        const response = await loadHolidayListsApi();
-
-        console.log("loadHolidayLists=>",response)
-        return response
-
-      }catch(error){
-          console.log(error)
-      }
-    },
-      async fetchShiftsAssignments(company = null) {
-      try {
-
-        const companyToUse = company
-        const response = await fetchShiftAssignmentsApi(companyToUse)
-
-        this.shifts = response.data || []
-
-        return {
-          status: 'success',
-          data: response.data,
-          message: response.message
-        }
-      } catch (error) {
-        console.error('Error fetching shifts:', error)
-
-        return {
-          status: 'error',
-          data: [],
-          message: error.message || 'حدث خطأ في تحميل الورديات'
-        }
-      }
-    },
-    // Create new shift assignment
-    async createShiftAssignment(data) {
-      try {
-
-
-        const response = await createShiftAssignmentApi({
-          ...data,
-
+        const res = await call('retail.retail.api.posapp.create_customer', {
+          method,
+          customer_id    : customer_id   || '',
+          customer_name,
+          pos_profile_doc: typeof pos_profile_doc === 'string'
+                            ? pos_profile_doc
+                            : JSON.stringify(pos_profile_doc || {}),
+          company        : company       || '',
+          first_mobile   : first_mobile  || '',
+          second_mobile  : second_mobile || '',
+          email_id       : email_id      || '',
+          city           : city          || '',
+          address_line1  : address_line1 || '',
+          address_line2  : address_line2 || '',
+          state          : state         || '',
+          country        : country       || 'Egypt',
+          pincode        : pincode       || '',
+          first_name     : first_name    || '',
+          last_name      : last_name     || '',
+          customer_group : customer_group || '',
+          territory      : territory      || '',
+          customer_type  : customer_type  || 'Individual',
+          gender         : gender         || '',
+          note           : note           || '',
         })
+        console.log("✅ API Create Update Customer in Frappe DB:", res)
+        return res
 
-        // Refresh shifts list
-        await this.fetchShifts()
-
-        return {
-          status: 'success',
-          data: response.data,
-          message: response.message
-        }
-      } catch (error) {
-        console.error('Error creating shift assignment:', error)
-
-        return {
-          status: 'error',
-          data: {},
-          message: error.response?.data?.message || 'حدث خطأ في إنشاء تعيين الوردية'
-        }
+      }catch (e){
+        console.error("❌ Error Api Create Update Customer in Frappe DB:", e)
       }
     },
 
-    // Update shift assignment
-    async updateShiftAssignment(data) {
+    async getItemsFromFrappeDB(
+      currentPOSProfile,
+      currentPriceList,
+      currentCustomer,
+      searchValue = '',
+      selectedWarehouse = null
+    ){
       try {
-        const response = await updateShiftAssignmentApi(data)
+        const response = await call('retail.retail.api.posapp.get_items',{
+                        pos_profile: JSON.stringify(currentPOSProfile),
+                        price_list: currentPriceList,
+                        search_value: searchValue,
+                        item_group: '',
+                        customer: currentCustomer,
+                        warehouse: selectedWarehouse || '',
+                    })
 
-        // Refresh shifts list
-        await this.fetchShifts()
 
-        return {
-          status: 'success',
-          data: response.data,
-          message: response.message
-        }
+        const items = response?.message || response || []
+        console.log("response items",items)
+        return items
       } catch (error) {
-        console.error('Error updating shift assignment:', error)
-
-        return {
-          status: 'error',
-          data: {},
-          message: error.response?.data?.message || 'حدث خطأ في تحديث تعيين الوردية'
-        }
+        console.error('❌ getItemsFromFrappeDB:', error)
+        return []
       }
     },
 
-    // Delete shift assignment
-    async deleteShiftAssignment(assignmentId) {
-      try {
-
-        const response = await deleteShiftAssignmentApi(assignmentId)
-        console.log("//respose delete ShiftAssignmentApi",response)
-        return response
-      } catch (error) {
-
-        console.error('Error deleting shift assignment:', error)
-
-        return {
-          status: 'error',
-          data: {},
-          message: error.response?.data?.message || 'حدث خطأ في حذف تعيين الوردية'
+    async loadWarehouses(){
+        error.value = null
+        console.log("loadWarehouses", pos_profile)
+        try{
+            const resource = createListResource({
+                doctype: 'Warehouse',
+                fields: JSON.stringify(["name"]),
+                filters: JSON.stringify({company: pos_profile.company}),
+                auto: true,
+                debug: 0,
+            })
+             resource.fetch()
+            await resource.list.promise
+            console.log("API Get Notifications: ", resource.data)
+            warehouses.value = resource.data || []
+            return resource.data || []
+        }catch(error){
+            console.log("error",error)
         }
-      }
+    },
+    async getShiftDetails(shift_id){
+        try {
+            const response = await call('retail.retail.api.shifts.get_shift_details',
+                { shift_id }
+            );
+            console.log('API Get Shift Dtails:', response);
+            return response;
+
+        } catch (error) {
+            console.error('Error API Get Shift Dtails:', error);
+            throw error;
+        }
+
     }
 
-
-
-
   },
+
+  persist: {
+    paths: ['isShiftOpen', 'currentShift', 'pos_profile', 'availableShifts']
+  }
 })

@@ -54,7 +54,9 @@ const settingsStore = useSettingsStore()
 const settings = computed(() => settingsStore.settings)
 const isDark    = computed(() => settings.value?.appearance?.theme !== 'light')
 const iconComponent = computed(() => Icons[props.icon])
-
+const primaryColor = computed(() => {
+  return settings.value?.appearance?.primaryColor || '#06b6d4'
+})
 
     const iconClass = () => {
 
@@ -68,6 +70,9 @@ const iconComponent = computed(() => Icons[props.icon])
       blue: 'bg-[rgba(59,130,246,0.12)] text-[#60a5fa]',
       red: 'bg-[rgba(239,68,68,0.12)] text-[#f87171]',
       green: 'bg-[rgba(34,197,94,0.12)] text-[#4ade80]',
+      orange: 'bg-[rgba(255,165,0,0.12)] text-[#ffa500]',
+      pink: 'bg-[rgba(255,0,128,0.12)] text-[#ff0080]',
+      primaryColor: primaryColor.value
     }
 
     return colorClasses[props.color] || colorClasses.gray

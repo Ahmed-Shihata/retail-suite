@@ -1,360 +1,457 @@
 import frappe
 from frappe import _
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import flt, add_days, getdate, add_days, nowdate
-from retail.retail.doctype.pos_coupon.pos_coupon import update_coupon_code_count
-from retail.retail.api.posapp import get_company_domain
-from retail.retail.doctype.delivery_charges.delivery_charges import (
-    get_applicable_delivery_charges,
-)
+from erpnext.accounts.party import get_party_account
+from frappe.utils import flt, add_days, getdate, nowdate
+from frappe.utils.background_jobs import enqueue
 from erpnext.controllers.sales_and_purchase_return import make_return_doc
+from erpnext.stock.doctype.batch.batch import get_batch_no, get_batch_qty
+from erpnext.accounts.utils import get_outstanding_invoices as _get_outstanding_invoices
 
 
-def create_sales_order(doc):
-    if (
-        doc.posa_pos_opening_shift
-        and doc.pos_profile
-        and doc.is_pos
-        and doc.posa_delivery_date
-        and not doc.update_stock
-        and frappe.get_value("POS Profile", doc.pos_profile, "posa_allow_sales_order")
-    ):
-        sales_order_doc = make_sales_order(doc.name)
-        if sales_order_doc:
-            sales_order_doc.posa_notes = doc.posa_notes
-            sales_order_doc.flags.ignore_permissions = True
-            sales_order_doc.flags.ignore_account_permission = True
-            sales_order_doc.save()
-            sales_order_doc.submit()
-            url = frappe.utils.get_url_to_form(
-                sales_order_doc.doctype, sales_order_doc.name
-            )
-            msgprint = "Sales Order Created at <a href='{0}'>{1}</a>".format(
-                url, sales_order_doc.name
-            )
-            frappe.msgprint(
-                _(msgprint), title="Sales Order Created", indicator="green", alert=True
-            )
-            i = 0
-            for item in sales_order_doc.items:
-                doc.items[i].sales_order = sales_order_doc.name
-                doc.items[i].so_detail = item.name
-                i += 1
+@frappe.whitelist()
+def get_pos_profile_taxes(pos_profile_name):
+    pos = frappe.get_cached_doc("POS Profile", pos_profile_name)
 
-def make_sales_order(source_name, target_doc=None, ignore_permissions=True):
-    def set_missing_values(source, target):
-        target.ignore_pricing_rule = 1
-        target.flags.ignore_permissions = ignore_permissions
-        target.run_method("set_missing_values")
-        target.run_method("calculate_taxes_and_totals")
-
-    def update_item(obj, target, source_parent):
-        target.stock_qty = flt(obj.qty) * flt(obj.conversion_factor)
-        target.delivery_date = (
-            obj.posa_delivery_date or source_parent.posa_delivery_date
+    taxes = []
+    if pos.taxes_and_charges:
+        template = frappe.get_cached_doc(
+            "Sales Taxes and Charges Template", pos.taxes_and_charges
         )
+        for t in template.taxes:
+            taxes.append({
+                "account_head": t.account_head,
+                "description":  t.description or t.account_head,
+                "rate":         flt(t.rate),
+                "charge_type":  t.charge_type,
+                "amount":       flt(t.amount) if t.charge_type == "Actual" else None,
+            })
 
-    doclist = get_mapped_doc(
-        "Sales Invoice",
-        source_name,
-        {
-            "Sales Invoice": {
-                "doctype": "Sales Order",
-            },
-            "Sales Invoice Item": {
-                "doctype": "Sales Order Item",
-                "field_map": {
-                    "cost_center": "cost_center",
-                    "Warehouse": "warehouse",
-                    "delivery_date": "posa_delivery_date",
-                    "posa_notes": "posa_notes",
-                },
-                "postprocess": update_item,
-            },
-            "Sales Taxes and Charges": {
-                "doctype": "Sales Taxes and Charges",
-                "add_if_empty": True,
-            },
-            "Sales Team": {"doctype": "Sales Team", "add_if_empty": True},
-            "Payment Schedule": {"doctype": "Payment Schedule", "add_if_empty": True},
-        },
-        target_doc,
-        set_missing_values,
-        ignore_permissions=ignore_permissions,
+    return {
+        "taxes_and_charges": pos.taxes_and_charges,
+        "tax_category":      pos.tax_category,
+        "taxes": taxes,
+    }
+
+
+def get_cash_account(invoice_doc, payment_mode):
+    mop_account = frappe.db.get_value(
+        "Mode of Payment Account",
+        {"parent": payment_mode, "company": invoice_doc.company},
+        "default_account",
     )
 
-    return doclist
+    if not mop_account:
+        frappe.throw(
+            _("Please set a default account for Mode of Payment {0} in company {1}").format(
+                payment_mode, invoice_doc.company
+            )
+        )
 
-def update_coupon(doc, transaction_type):
-    for coupon in doc.posa_coupons:
-        if not coupon.applied:
-            continue
-        update_coupon_code_count(coupon.coupon, transaction_type)
+    return mop_account
 
-def add_loyalty_point(invoice_doc):
-    for offer in invoice_doc.posa_offers:
-        if offer.offer == "Loyalty Point":
-            original_offer = frappe.get_doc("POS Offer", offer.offer_name)
-            if original_offer.loyalty_points > 0:
-                loyalty_program = frappe.get_value(
-                    "Customer", invoice_doc.customer, "loyalty_program"
+
+def redeeming_customer_credit(invoice_doc, data, is_payment_entry, total_cash, cash_account, payments):
+    today = nowdate()
+    if data.get("redeemed_customer_credit"):
+        cost_center = frappe.get_value(
+            "POS Profile", invoice_doc.pos_profile, "cost_center"
+        )
+        if not cost_center:
+            cost_center = frappe.get_value(
+                "Company", invoice_doc.company, "cost_center"
+            )
+        if not cost_center:
+            frappe.throw(
+                _("Cost Center is not set in pos profile {}").format(
+                    invoice_doc.pos_profile
                 )
-                if not loyalty_program:
-                    loyalty_program = original_offer.loyalty_program
-                doc = frappe.get_doc(
+            )
+        for row in data.get("customer_credit_dict"):
+            if row["type"] == "Invoice" and row["credit_to_redeem"]:
+                outstanding_invoice = frappe.get_doc(
+                    "Sales Invoice", row["credit_origin"]
+                )
+
+                jv_doc = frappe.get_doc(
                     {
-                        "doctype": "Loyalty Point Entry",
-                        "loyalty_program": loyalty_program,
-                        "loyalty_program_tier": original_offer.name,
-                        "customer": invoice_doc.customer,
-                        "invoice_type": "Sales Invoice",
-                        "invoice": invoice_doc.name,
-                        "loyalty_points": original_offer.loyalty_points,
-                        "expiry_date": add_days(invoice_doc.posting_date, 10000),
-                        "posting_date": invoice_doc.posting_date,
+                        "doctype": "Journal Entry",
+                        "voucher_type": "Journal Entry",
+                        "posting_date": today,
                         "company": invoice_doc.company,
                     }
                 )
-                doc.insert(ignore_permissions=True)
 
-def auto_set_delivery_charges(doc):
-    if not doc.pos_profile:
-        return
-    if not frappe.get_cached_value(
-        "POS Profile", doc.pos_profile, "posa_auto_set_delivery_charges"
-    ):
-        return
+                jv_debit_entry = {
+                    "account": outstanding_invoice.debit_to,
+                    "party_type": "Customer",
+                    "party": invoice_doc.customer,
+                    "reference_type": "Sales Invoice",
+                    "reference_name": outstanding_invoice.name,
+                    "debit_in_account_currency": row["credit_to_redeem"],
+                    "cost_center": cost_center,
+                }
 
-    delivery_charges = get_applicable_delivery_charges(
-        doc.company,
-        doc.pos_profile,
-        doc.customer,
-        doc.shipping_address_name,
-        doc.posa_delivery_charges,
-        restrict=True,
+                jv_credit_entry = {
+                    "account": invoice_doc.debit_to,
+                    "party_type": "Customer",
+                    "party": invoice_doc.customer,
+                    "reference_type": "Sales Invoice",
+                    "reference_name": invoice_doc.name,
+                    "credit_in_account_currency": row["credit_to_redeem"],
+                    "cost_center": cost_center,
+                }
+
+                jv_doc.append("accounts", jv_debit_entry)
+                jv_doc.append("accounts", jv_credit_entry)
+
+                jv_doc.flags.ignore_permissions = True
+                frappe.flags.ignore_account_permission = True
+                jv_doc.set_missing_values()
+                jv_doc.save()
+                jv_doc.submit()
+
+    if is_payment_entry and total_cash > 0:
+        for payment in payments:
+            if not payment.amount:
+                continue
+            payment_entry_doc = frappe.get_doc(
+                {
+                    "doctype": "Payment Entry",
+                    "posting_date": today,
+                    "payment_type": "Receive",
+                    "party_type": "Customer",
+                    "party": invoice_doc.customer,
+                    "paid_amount": payment.amount,
+                    "received_amount": payment.amount,
+                    "paid_from": invoice_doc.debit_to,
+                    "paid_to": payment.account,
+                    "company": invoice_doc.company,
+                    "mode_of_payment": payment.mode_of_payment,
+                    "reference_no": invoice_doc.posa_pos_opening_shift,
+                    "reference_date": today,
+                }
+            )
+
+            payment_reference = {
+                "allocated_amount": payment.amount,
+                "due_date": data.get("due_date"),
+                "reference_doctype": "Sales Invoice",
+                "reference_name": invoice_doc.name,
+            }
+
+            payment_entry_doc.append("references", payment_reference)
+            payment_entry_doc.flags.ignore_permissions = True
+            frappe.flags.ignore_account_permission = True
+            payment_entry_doc.save()
+            payment_entry_doc.submit()
+
+
+def submit_in_background_job(kwargs):
+    invoice = kwargs.get("invoice")
+    data = kwargs.get("data")
+    is_payment_entry = kwargs.get("is_payment_entry")
+    total_cash = kwargs.get("total_cash")
+    cash_account = kwargs.get("cash_account")
+    payments = kwargs.get("payments")
+
+    invoice_doc = frappe.get_doc("Sales Invoice", invoice)
+    invoice_doc.update_stock = 1
+
+    invoice_doc.submit()
+    redeeming_customer_credit(
+        invoice_doc, data, is_payment_entry, total_cash, cash_account, payments
     )
 
-    if doc.posa_delivery_charges:
-        if doc.posa_delivery_charges_rate:
-            return
-        else:
-            if len(delivery_charges) > 0:
-                doc.posa_delivery_charges_rate = delivery_charges[0].rate
-    else:
-        if len(delivery_charges) > 0:
-            doc.posa_delivery_charges = delivery_charges[0].name
-            doc.posa_delivery_charges_rate = delivery_charges[0].rate
-        else:
-            doc.posa_delivery_charges = None
-            doc.posa_delivery_charges_rate = None
 
-def calc_delivery_charges(doc):
-    if not doc.pos_profile:
-        return
+def apply_customer_credit(invoice_doc, data):
+    is_payment_entry = 0
+    if data.get("redeemed_customer_credit"):
+        for row in data.get("customer_credit_dict", []):
+            if row.get("credit_to_redeem"):
+                invoice_doc.append("advances", {
+                    "reference_type": "Payment Entry",
+                    "reference_name": row["credit_origin"],
+                    "allocated_amount": row["credit_to_redeem"],
+                })
+                invoice_doc.is_pos = 0
+                is_payment_entry = 1
 
-    old_doc = None
-    calculate_taxes_and_totals = False
-    if not doc.is_new():
-        old_doc = doc.get_doc_before_save()
-        if not doc.posa_delivery_charges and not old_doc.posa_delivery_charges:
-            return
-    else:
-        if not doc.posa_delivery_charges:
-            return
-    if not doc.posa_delivery_charges:
-        doc.posa_delivery_charges_rate = 0
+    return is_payment_entry
 
-    charges_doc = None
-    if doc.posa_delivery_charges:
-        charges_doc = frappe.get_cached_doc(
-            "Delivery Charges", doc.posa_delivery_charges
-        )
-        doc.posa_delivery_charges_rate = charges_doc.default_rate
-        charges_profile = next(
-            (i for i in charges_doc.profiles if i.pos_profile == doc.pos_profile), None
-        )
-        if charges_profile:
-            doc.posa_delivery_charges_rate = charges_profile.rate
 
-    if old_doc and old_doc.posa_delivery_charges:
-        old_charges = next(
-            (
-                i
-                for i in doc.taxes
-                if i.charge_type == "Actual"
-                and i.description == old_doc.posa_delivery_charges
-            ),
-            None,
-        )
-        if old_charges:
-            doc.taxes.remove(old_charges)
-            calculate_taxes_and_totals = True
+def set_batch_nos(doc, warehouse_field, throw=False, child_table="items"):
+    for d in doc.get(child_table):
+        qty = d.get("stock_qty") or d.get("transfer_qty") or d.get("qty") or 0
+        warehouse = d.get(warehouse_field, None)
+        if warehouse and qty > 0 and frappe.db.get_value("Item", d.item_code, "has_batch_no"):
+            if not d.batch_no:
+                d.batch_no = get_batch_no(d.item_code, warehouse, qty, throw, d.serial_no)
+            else:
+                batch_qty = get_batch_qty(batch_no=d.batch_no, warehouse=warehouse)
+                if flt(batch_qty, d.precision("qty")) < flt(qty, d.precision("qty")):
+                    frappe.throw(
+                        _(
+                            "Row #{0}: The batch {1} has only {2} qty. Please select another batch which has {3} qty available or split the row into multiple rows, to deliver/issue from multiple batches"
+                        ).format(d.idx, d.batch_no, batch_qty, qty)
+                    )
 
-    if doc.posa_delivery_charges:
-        doc.append(
-            "taxes",
-            {
-                "charge_type": "Actual",
-                "description": doc.posa_delivery_charges,
-                "tax_amount": doc.posa_delivery_charges_rate,
-                "cost_center": charges_doc.cost_center,
-                "account_head": charges_doc.shipping_account,
-            },
-        )
-        calculate_taxes_and_totals = True
 
-    if calculate_taxes_and_totals:
-        doc.calculate_taxes_and_totals()
+def set_batch_nos_for_bundels(doc, warehouse_field, throw=False):
+    for d in doc.packed_items:
+        qty = d.get("stock_qty") or d.get("transfer_qty") or d.get("qty") or 0
+        has_batch_no = frappe.db.get_value("Item", d.item_code, "has_batch_no")
+        warehouse = d.get(warehouse_field, None)
+        if has_batch_no and warehouse and qty > 0:
+            if not d.batch_no:
+                d.batch_no = get_batch_no(
+                    d.item_code, warehouse, qty, throw, d.serial_no
+                )
+            else:
+                batch_qty = get_batch_qty(batch_no=d.batch_no, warehouse=warehouse)
+                if flt(batch_qty, d.precision("qty")) < flt(qty, d.precision("qty")):
+                    frappe.throw(
+                        _(
+                            "Row #{0}: The batch {1} has only {2} qty. Please select another batch which has {3} qty available or split the row into multiple rows, to deliver/issue from multiple batches"
+                        ).format(d.idx, d.batch_no, batch_qty, qty)
+                    )
+
+
+def prepare_invoice(invoice_doc, data, invoice=None):
+    use_new_fields = frappe.db.get_single_value(
+        "Stock Settings", "use_serial_batch_fields"
+    )
+
+    if invoice:
+        cart_items = {i.get("item_code"): i for i in invoice.get("items", [])}
+        for item in invoice_doc.items:
+            cart_item = cart_items.get(item.item_code)
+            if not cart_item:
+                continue
+
+            serial_no = cart_item.get("serial_no")
+            batch_no  = cart_item.get("batch_no")
+            barcode   = cart_item.get("barcode")
+
+            if use_new_fields:
+                if serial_no or batch_no:
+                    item.use_serial_batch_fields = 1
+                    if serial_no:
+                        item.serial_no = serial_no
+                    if batch_no:
+                        item.batch_no = batch_no
+            else:
+                if serial_no:
+                    item.serial_no = serial_no
+                if batch_no:
+                    item.batch_no = batch_no
+
+            if barcode:
+                item.barcode = barcode
+
+    if frappe.get_value("POS Profile", invoice_doc.pos_profile, "posa_auto_set_batch"):
+        set_batch_nos(invoice_doc, "warehouse", throw=True)
+
+    set_batch_nos_for_bundels(invoice_doc, "warehouse", throw=True)
+
+    invoice_doc.update_stock = 1
+    invoice_doc.due_date = data.get("due_date")
+
+    invoice_doc.apply_discount_on = invoice.get("apply_discount_on") or "Grand Total"
+    invoice_doc.additional_discount_percentage = flt(invoice.get("additional_discount_percentage") or 0)
+    invoice_doc.discount_amount = flt(invoice.get("discount_amount") or 0)
+
+    invoice_doc.calculate_taxes_and_totals()
+    invoice_doc.flags.ignore_permissions = True
+    frappe.flags.ignore_account_permission = True
+    invoice_doc.posa_is_printed = 1
+    invoice_doc.save()
+
 
 @frappe.whitelist()
-def create_sales_return(invoice_name: str, items: list, pos_profile_name: str):
-    """
-    إنشاء فاتورة مرتجع من فاتورة بيع معينة لعدة منتجات وكميات.
+def submit_invoice(invoice, data):
+    data = frappe.parse_json(data)
+    invoice = frappe.parse_json(invoice)
 
-    Args:
-        invoice_name (str): اسم فاتورة البيع الأصلية.
-        items (list): قائمة من العناصر بالشكل:
-            [
-                {"item_code": "Choco Glazed", "qty": 2},
-                {"item_code": "Donut Caramel", "qty": 1}
-            ]
-    """
+    if invoice.get("name") and frappe.db.exists("Sales Invoice", invoice.get("name")):
+        invoice_doc = frappe.get_doc("Sales Invoice", invoice["name"])
+    else:
+        invoice_doc = frappe.get_doc(invoice)
 
-    validate_items_before_return(invoice_name, items)
+    pos = frappe.get_cached_doc("POS Profile", invoice_doc.pos_profile)
+
+    invoice_doc.cost_center        = pos.cost_center
+    invoice_doc.taxes_and_charges  = pos.taxes_and_charges
+    invoice_doc.selling_price_list = pos.selling_price_list
+    invoice_doc.write_off_account  = pos.write_off_account
+    invoice_doc.company            = pos.company
+    invoice_doc.tax_category       = pos.tax_category
+
+    for item in invoice_doc.items:
+        item.cost_center     = pos.cost_center
+        item.warehouse       = pos.warehouse
+        item.project         = pos.project
+        item.expense_account = pos.expense_account
+
+    paid_amount  = flt(invoice.get("summary", {}).get("cash", 0))
+    total_amount = flt(invoice.get("summary", {}).get("total", 0))
+    print("paid_amount", paid_amount)
+    print("total_amount", total_amount)
+    credit_change = paid_amount - total_amount
+    payment_mode  = invoice.get("paymentMethod") or "Cash"
+
+    allow_partial = frappe.get_value("POS Profile", invoice_doc.pos_profile, "posa_allow_partial_payment")
+
+    # you need to add discount to paid_amount  = paid_amount - discount
+    # if paid_amount > total_amount:
+    #     frappe.throw(_("Paid amount exceeds the invoice total."))
+
+    if credit_change < 0 and not allow_partial:
+        frappe.throw(_("Partial payment is not allowed in the current POS Profile."))
+
+    cash_account = get_cash_account(invoice_doc, payment_mode)
+
+    is_payment_entry = apply_customer_credit(invoice_doc, data)
+
+    prepare_invoice(invoice_doc, data, invoice=invoice)
+
+    return submit_invoice_doc(invoice_doc, data, is_payment_entry, cash_account)
+
+
+def submit_invoice_doc(invoice_doc, data, is_payment_entry, cash_account):
+    allow_background = frappe.get_value(
+        "POS Profile",
+        invoice_doc.pos_profile,
+        "posa_allow_submissions_in_background_job",
+    )
+
+    if allow_background:
+        job = enqueue(
+            method=submit_in_background_job,
+            queue="short",
+            kwargs={
+                "invoice": invoice_doc.name,
+                "data": data,
+                "is_payment_entry": is_payment_entry,
+                "cash_account": cash_account,
+            },
+        )
+
+        return {
+            "success": True,
+            "status": "queued",
+            "message": "Invoice queued for background submission",
+            "invoice": invoice_doc.name,
+            "job_id": job.id if job else None,
+        }
+
+    invoice_doc.submit()
+
+    return {
+        "success": True,
+        "status": "submitted",
+        "message": "Invoice submitted successfully",
+        "invoice": invoice_doc.name,
+        "docstatus": invoice_doc.docstatus,
+    }
+
+
+@frappe.whitelist()
+def save_invoice(invoice, data):
+    data = frappe.parse_json(data)
+    invoice = frappe.parse_json(invoice)
+
+    if invoice.get("name") and frappe.db.exists("Sales Invoice", invoice.get("name")):
+        invoice_doc = frappe.get_doc("Sales Invoice", invoice["name"])
+
+        if invoice.get("customer"):
+            invoice_doc.customer = invoice["customer"]
+
+        if invoice.get("items"):
+            existing_items = {row.item_code: row for row in invoice_doc.items}
+            for item in invoice.get("items"):
+                if item.get("item_code") in existing_items:
+                    row = existing_items[item.get("item_code")]
+                    row.qty = item.get("qty", 1)
+                else:
+                    invoice_doc.append("items", item)
+
+        payments = invoice.get("payments", [])
+        new_payments = {
+            p["mode_of_payment"]: p["amount"]
+            for p in payments
+
+        }
+
+        total_paid = sum(new_payments.values())
+
+        if total_paid > invoice_doc.grand_total:
+            frappe.throw(
+                f"Payment amount ({total_paid}) cannot be greater than invoice grand total ({invoice_doc.grand_total})"
+            )
+
+        for row in invoice_doc.payments:
+            if row.mode_of_payment in new_payments:
+                row.amount = new_payments[row.mode_of_payment]
+                del new_payments[row.mode_of_payment]
+            else:
+                invoice_doc.remove(row)
+        for mode, amount in new_payments.items():
+            invoice_doc.append("payments", {"mode_of_payment": mode, "amount": amount})
+
+    else:
+        invoice_doc = frappe.get_doc(invoice)
+
+    prepare_invoice(invoice_doc, data, invoice=invoice)
+    return {"name": invoice_doc.name, "status": invoice_doc.docstatus}
+
+
+@frappe.whitelist()
+def get_draft_invoices(pos_opening_shift):
+    invoices_list = frappe.get_list(
+        "Sales Invoice",
+        filters={
+            "posa_pos_opening_shift": pos_opening_shift,
+            "docstatus": 0,
+            "posa_is_printed": 0,
+            "is_pos": 1,
+        },
+        fields=["name"],
+        limit_page_length=0,
+        order_by="modified desc",
+    )
+    data = []
+    for invoice in invoices_list:
+        data.append(frappe.get_cached_doc("Sales Invoice", invoice["name"]))
+    return data
+
+
+@frappe.whitelist()
+def delete_invoice(invoice):
+    if frappe.get_value("Sales Invoice", invoice, "posa_is_printed"):
+        frappe.throw(_("This invoice {0} cannot be deleted").format(invoice))
+    frappe.delete_doc("Sales Invoice", invoice, force=1)
+    return _("Invoice {0} Deleted").format(invoice)
+
+@frappe.whitelist()
+def create_sales_return(invoice_name: str):
 
     original_invoice = frappe.get_doc("Sales Invoice", invoice_name)
 
-    # 🔹 التحقق من أن الفاتورة Submitted
-    if original_invoice.docstatus != 1:
-        frappe.throw(_("Invoice {0} must be submitted before creating a return.").format(invoice_name))
-
-    # 🔹 إنشاء فاتورة المرتجع
     return_doc = make_return_doc("Sales Invoice", invoice_name)
-    return_doc.items = []
 
-    total_refund = 0
-
-    for item_data in items:
-        item_code = item_data.get("item_code")
-        qty = item_data.get("qty")
-
-        if not item_code or not qty:
-            frappe.throw(_("Each item must include 'item_code' and 'qty'."))
-
-        # 🔹 ابحث عن المنتج في الفاتورة الأصلية
-        original_item = next((i for i in original_invoice.items if i.item_code == item_code), None)
-        if not original_item:
-            frappe.throw(_("Item {0} not found in invoice {1}.").format(item_code, invoice_name))
-
-        # 🔹 تحقق من الكمية
-        if qty <= 0:
-            frappe.throw(_("Return quantity for {0} must be greater than 0.").format(item_code))
-
-        if qty > original_item.qty:
-            frappe.throw(_("Return quantity for {0} cannot exceed sold quantity ({1}).")
-                         .format(item_code, original_item.qty))
-
-        # 🔹 أضف الصنف للفاتورة المرتجع
-        amount = -qty * original_item.rate
-        total_refund += abs(amount)
-
-        return_doc.append("items", {
-            "item_code": item_code,
-            "qty": -qty,
-            "rate": original_item.rate,
-            "amount": amount
-        })
-
-    # 🔹 إعادة الحساب
-    return_doc.calculate_taxes_and_totals()
-
-    # 🔹 إعداد الدفعة المستردة
-    refund_amount = abs(return_doc.grand_total)
-    return_doc.payments = []
-
-    if original_invoice.payments:
-        return_doc.append("payments", {
-            "mode_of_payment": original_invoice.payments[0].mode_of_payment,
-            "amount": -refund_amount  # سالب = استرداد للعميل
-        })
-
-    return_doc.paid_amount = 0
-    return_doc.outstanding_amount = 0
-    return_doc.posa_pos_opening_shift = pos_profile_name
-    # 🔹 حفظ وتأكيد
     return_doc.insert()
     return_doc.submit()
     frappe.db.commit()
 
-    frappe.msgprint(_(
-        f"✅ Return Invoice {return_doc.name} created successfully.\n"
-        f"Refund Amount: {refund_amount}"
-    ))
-
-    return {
-        "return_invoice": return_doc.name,
-        "refund_amount": refund_amount,
-        "items": items
-    }
+    return return_doc.name
 
 
-frappe.whitelist()
-def validate_items_before_return(invoice_name, items: list):
-    """
-    Validate items before creating a return invoice.
-    - Ensure invoice exists.
-    - Ensure item exists in the original invoice.
-    - Ensure quantity is valid (not zero, not exceeding sold quantity).
-    """
-    if not frappe.db.exists("Sales Invoice", invoice_name):
-        frappe.throw(_("Sales Invoice {0} not found").format(invoice_name))
-
-    original_invoice = frappe.get_doc("Sales Invoice", invoice_name)
-    original_items = {i.item_code: i.qty for i in original_invoice.items}
-
-
-    if not isinstance(items, list) or not items:
-        frappe.throw(_("Please provide at least one item to return."))
-
-    for item_data in items:
-        item_code = item_data.get("item_code")
-        item_qty = item_data.get("qty")
-
-        if not item_code:
-            frappe.throw(_("Missing item_code in return items."))
-
-        if item_code not in original_items:
-            frappe.throw(_(f"Item {item_code} does not exist in Invoice {invoice_name}"))
-
-        original_qty = original_items[item_code]
-
-        # الكمية لازم تكون موجبة فقط، إحنا هنحولها لسالبة بعدين
-        if item_qty <= 0:
-            frappe.throw(_(f"Return quantity for item {item_code} must be greater than 0."))
-
-        if item_qty > original_qty:
-            frappe.throw(_(f"You cannot return more than sold quantity ({original_qty}) for item {item_code}"))
-
-    return True
-
+@frappe.whitelist()
 def get_returnable_invoices(customer=None, from_date=None, to_date=None, return_days_limit=None):
-    """
-    جلب الفواتير القابلة للإرجاع
-
-    Args:
-        customer (str): اسم العميل (اختياري)
-        from_date (str): تاريخ البداية (اختياري)
-        to_date (str): تاريخ النهاية (اختياري)
-        return_days_limit (int): عدد الأيام المسموح فيها بالإرجاع (اختياري - مثلاً 7 أيام)
-
-    Returns:
-        list: قائمة الفواتير القابلة للإرجاع مع تفاصيلها
-    """
-
-    # Build filters
     filters = {
-        "docstatus": 1,  # Submitted only
-        "is_return": 0   # ليست فاتورة مرتجعة
+        "docstatus": 1,
+        "is_return": 0,
     }
 
     if customer:
@@ -369,7 +466,6 @@ def get_returnable_invoices(customer=None, from_date=None, to_date=None, return_
         else:
             filters["posting_date"] = ["<=", to_date]
 
-    # Get all submitted non-return invoices
     invoices = frappe.get_all(
         "Sales Invoice",
         filters=filters,
@@ -380,74 +476,61 @@ def get_returnable_invoices(customer=None, from_date=None, to_date=None, return_
             "posting_date",
             "grand_total",
             "status",
-            "is_pos"
+            "is_pos",
+            "posa_pos_opening_shift",
         ],
-        order_by="posting_date desc"
+        order_by="posting_date desc",
     )
 
     returnable_invoices = []
 
     for invoice in invoices:
-        # Check 1: التحقق من الفترة الزمنية
         if return_days_limit:
             invoice_date = getdate(invoice.posting_date)
             max_return_date = add_days(invoice_date, return_days_limit)
             today = getdate(nowdate())
 
             if today > max_return_date:
-                continue  # تجاوزت فترة الإرجاع
+                continue
 
-        # Check 2: هل فيه كميات متبقية قابلة للإرجاع؟
         returnable_qty = get_returnable_qty(invoice.name)
 
         if not returnable_qty or returnable_qty["total_returnable"] <= 0:
-            continue  # كل الكميات مرتجعة
+            continue
 
-        # Check 3: هل فيه Return Invoice كاملة؟
         if has_full_return(invoice.name):
-            continue  # فيه فاتورة مرتجع كاملة
+            continue
 
-        # إضافة الفاتورة للقائمة
         invoice_data = {
             "name": invoice.name,
             "customer": invoice.customer,
             "customer_name": invoice.customer_name,
+            "posa_pos_opening_shift": invoice.posa_pos_opening_shift,
             "posting_date": invoice.posting_date,
             "grand_total": invoice.grand_total,
             "status": invoice.status,
             "is_pos": invoice.is_pos,
             "returnable_items": returnable_qty["items"],
             "total_returnable_qty": returnable_qty["total_returnable"],
-            "days_since_invoice": (getdate(nowdate()) - getdate(invoice.posting_date)).days
+            "days_since_invoice": (getdate(nowdate()) - getdate(invoice.posting_date)).days,
         }
 
         returnable_invoices.append(invoice_data)
 
     return returnable_invoices
 
+
 def get_returnable_qty(invoice_name):
-    """
-    حساب الكميات القابلة للإرجاع في الفاتورة
-
-    Args:
-        invoice_name (str): اسم الفاتورة
-
-    Returns:
-        dict: تفاصيل الكميات القابلة للإرجاع
-    """
-
-    # Get original invoice items
     original_items = frappe.get_all(
         "Sales Invoice Item",
         filters={"parent": invoice_name},
-        fields=["item_code", "item_name", "qty", "rate", "amount", "name"]
+        fields=["item_code", "item_name", "qty", "rate", "amount", "name"],
     )
 
     returnable_items = []
     total_returnable = 0
 
     for item in original_items:
-        # Get returned quantity for this item
         returned_qty = frappe.db.sql("""
             SELECT SUM(ABS(sii.qty)) as returned_qty
             FROM `tabSales Invoice Item` sii
@@ -460,7 +543,6 @@ def get_returnable_qty(invoice_name):
 
         returned_qty = returned_qty[0].returned_qty if returned_qty and returned_qty[0].returned_qty else 0
 
-        # Calculate returnable quantity
         returnable_qty = item.qty - returned_qty
 
         if returnable_qty > 0:
@@ -471,27 +553,17 @@ def get_returnable_qty(invoice_name):
                 "returned_qty": returned_qty,
                 "returnable_qty": returnable_qty,
                 "rate": item.rate,
-                "amount": item.amount
+                "amount": item.amount,
             })
             total_returnable += returnable_qty
 
     return {
         "items": returnable_items,
-        "total_returnable": total_returnable
+        "total_returnable": total_returnable,
     }
 
+
 def has_full_return(invoice_name):
-    """
-    التحقق من وجود فاتورة مرتجعة كاملة
-
-    Args:
-        invoice_name (str): اسم الفاتورة
-
-    Returns:
-        bool: True إذا كان فيه فاتورة مرتجعة كاملة
-    """
-
-    # Get original total qty
     original_total = frappe.db.sql("""
         SELECT SUM(qty) as total_qty
         FROM `tabSales Invoice Item`
@@ -500,7 +572,6 @@ def has_full_return(invoice_name):
 
     original_qty = original_total[0].total_qty if original_total else 0
 
-    # Get returned total qty
     returned_total = frappe.db.sql("""
         SELECT SUM(ABS(sii.qty)) as returned_qty
         FROM `tabSales Invoice Item` sii
@@ -512,129 +583,74 @@ def has_full_return(invoice_name):
 
     returned_qty = returned_total[0].returned_qty if returned_total and returned_total[0].returned_qty else 0
 
-    # Check if fully returned
     return returned_qty >= original_qty
 
-@frappe.whitelist()
-def get_returnable_invoices_api(customer=None, from_date=None, to_date=None, return_days_limit=None):
-    """
-    API للحصول على الفواتير القابلة للإرجاع
-    يمكن استدعاؤها من Frontend
-    """
-    if return_days_limit:
-        return_days_limit = int(return_days_limit)
 
-    return get_returnable_invoices(
-        customer=customer,
-        from_date=from_date,
-        to_date=to_date,
-        return_days_limit=return_days_limit
-    )
 
 @frappe.whitelist()
-def get_invoice_return_details(invoice_name):
-    """
-    الحصول على تفاصيل الإرجاع لفاتورة معينة
-    """
-    if not frappe.has_permission("Sales Invoice", "read"):
-        frappe.throw(_("No permission to read Sales Invoice"))
+def get_outstanding_invoices(company, currency, customer=None, pos_profile_name=None):
+    if customer:
+        precision = frappe.get_precision("Sales Invoice", "outstanding_amount") or 2
 
-    returnable_qty = get_returnable_qty(invoice_name)
-    has_full = has_full_return(invoice_name)
+        # ✅ تحقق من الـ account أولاً
+        account = get_party_account("Customer", customer, company)
+        print('account: ', account)
+        if not account:
+            frappe.logger().warning(f"[get_outstanding_invoices] No receivable account found for customer={customer} company={company}")
+            return []
 
-    invoice = frappe.get_doc("Sales Invoice", invoice_name)
-
-    return {
-        "invoice_name": invoice_name,
-        "customer": invoice.customer,
-        "posting_date": invoice.posting_date,
-        "grand_total": invoice.grand_total,
-        "returnable_items": returnable_qty["items"],
-        "total_returnable_qty": returnable_qty["total_returnable"],
-        "has_full_return": has_full,
-        "can_return": returnable_qty["total_returnable"] > 0 and not has_full
-    }
-
-def examples():
-    """
-    أمثلة على استخدام الـ Functions
-    """
-
-    # مثال 1: جلب كل الفواتير القابلة للإرجاع
-    all_returnable = get_returnable_invoices()
-    print(f"Found {len(all_returnable)} returnable invoices")
-
-    # مثال 2: جلب فواتير عميل معين
-    customer_returnable = get_returnable_invoices(customer="John Doe")
-
-    # مثال 3: جلب فواتير خلال فترة معينة
-    date_range_returnable = get_returnable_invoices(
-        from_date="2025-01-01",
-        to_date="2025-10-12"
-    )
-
-    # مثال 4: جلب فواتير يمكن إرجاعها خلال 7 أيام فقط
-    recent_returnable = get_returnable_invoices(return_days_limit=7)
-
-    # مثال 5: تفاصيل فاتورة معينة
-    details = get_invoice_return_details("ACC-SINV-2025-00259")
-    print(f"Can return: {details['can_return']}")
-    print(f"Returnable items: {len(details['returnable_items'])}")
-
-    # مثال 6: طباعة تفاصيل الفواتير
-    for invoice in all_returnable:
-        print(f"\nInvoice: {invoice['name']}")
-        print(f"Customer: {invoice['customer_name']}")
-        print(f"Date: {invoice['posting_date']}")
-        print(f"Days old: {invoice['days_since_invoice']}")
-        print(f"Returnable items: {invoice['total_returnable_qty']}")
-
-        for item in invoice['returnable_items']:
-            print(f"  - {item['item_name']}: {item['returnable_qty']} units")
-
-def get_overpaid_invoices(shift_name):
-    # نجيب الفواتير المدفوعة في الشيفت
-    invoices = frappe.get_all(
-        "Sales Invoice",
-        filters={
-            "docstatus": 1,
-            "status": "Paid",
-            "posa_pos_opening_shift": shift_name,
-            "paid_amount": [">", "grand_total"]
-        },
-        fields=["name", "grand_total", "paid_amount"]
-    )
-
-    result = [
-         {"name": inv["name"],"grand_total": inv["grand_total"], "paid_amount": inv["paid_amount"],"overpaid": inv["paid_amount"] - inv["grand_total"]}
-        for inv in invoices
-        if inv["paid_amount"] > inv["grand_total"]
-    ]
-
-    return result
-
-
-def get_payment(invoice_name):
-    doc = frappe.get_doc("Sales Invoice", invoice_name)
-    for payment in doc.payments:
-        print(payment.mode_of_payment, payment.amount)
-
-
-def fix_overpaid_invoice(invoice_name):
-    doc = frappe.get_doc("Sales Invoice", invoice_name)
-    correct_amount = doc.grand_total
-
-    # تعديل مباشر على child table
-    for payment in doc.payments:
-        frappe.db.set_value(
-            "Sales Invoice Payment",  # child doctype
-            payment.name,             # row name
-            "amount",
-            correct_amount
+        outstanding_invoices = _get_outstanding_invoices(
+            party_type="Customer",
+            party=customer,
+            account=[account],
         )
 
-    # تعديل paid_amount على الفاتورة
-    frappe.db.set_value("Sales Invoice", invoice_name, "paid_amount", correct_amount)
-    frappe.db.commit()
+        invoices_list = []
+        customer_name = frappe.get_cached_value("Customer", customer, "customer_name")
 
-    print(f"✓ Fixed {invoice_name}: {doc.paid_amount} → {correct_amount}")
+        for invoice in outstanding_invoices:
+            if invoice.get("currency") != currency:
+                continue
+
+            if pos_profile_name and frappe.get_cached_value(
+                "Sales Invoice", invoice.get("voucher_no"), "pos_profile"
+            ) != pos_profile_name:
+                continue
+
+            outstanding_amount = invoice.get("outstanding_amount", 0)
+            if outstanding_amount > 0.5 / (10 ** precision):
+                invoices_list.append({
+                    "name"              : invoice.get("voucher_no"),
+                    "customer"          : customer,
+                    "customer_name"     : customer_name,
+                    "outstanding_amount": outstanding_amount,
+                    "grand_total"       : invoice.get("invoice_amount"),
+                    "due_date"          : invoice.get("due_date"),
+                    "posting_date"      : invoice.get("posting_date"),
+                    "currency"          : invoice.get("currency"),
+                    "pos_profile"       : pos_profile_name,
+                })
+
+        return invoices_list
+
+    else:
+        filters = {
+            "company"           : company,
+            "outstanding_amount": (">", 0),
+            "docstatus"         : 1,
+            "is_return"         : 0,
+            "currency"          : currency,
+        }
+        if pos_profile_name:
+            filters["pos_profile"] = pos_profile_name
+
+        return frappe.get_all(
+            "Sales Invoice",
+            filters=filters,
+            fields=[
+                "name", "customer", "customer_name",
+                "outstanding_amount", "grand_total",
+                "due_date", "posting_date", "currency", "pos_profile",
+            ],
+            order_by="due_date asc",
+        )

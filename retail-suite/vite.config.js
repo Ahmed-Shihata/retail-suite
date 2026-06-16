@@ -1,3 +1,4 @@
+// vite.config.js
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
@@ -21,9 +22,7 @@ const SITE_NAME = process.env.VITE_SITE_NAME
 const FRAPPE_HOST = process.env.VITE_FRAPPE_HOST
 const CERTS_DIR = process.env.VITE_CERTS_DIR
 
-console.log("FRAPPE_URL", FRAPPE_URL)
-console.log("FRAPPE_URL", FRAPPE_URL)
-
+console.log("⌘ FRAPPE_URL", FRAPPE_URL)
 
 export default defineConfig({
   optimizeDeps: {

@@ -31,21 +31,28 @@
         <div
           id="receipt-content"
           ref="receiptContent"
-          class="text-left w-full text-sm p-6 overflow-auto max-h-96"
-        >
+          class="text-left w-full text-sm p-6 overflow-x-hidden"
+          >
+          <!-- :style="{
+            class="text-left w-full text-sm p-6 overflow-auto max-h-96"
+            width: receiptConfig.width,
+            maxWidth: receiptConfig.maxWidth,
+            fontSize: receiptConfig.fontSize
+          }" -->
           <!-- Receipt Header -->
           <div class="text-center mb-4">
             <img
-              src="@/assets/img/receipt-logo.png"
-              alt="Tailwind POS"
+              v-if="showLogo"
+              :src="storeLogo"
               class="mb-3 w-8 h-8 inline-block"
+              crossorigin="use-credentials"
+              :alt="storeName"
               @error="handleLogoError"
             />
             <div v-if="logoError" class="mb-3 w-8 h-8 inline-block">
               <ReceiptLogoIcon class="w-8 h-8 text-cyan-600" />
             </div>
             <h2 class="text-xl font-semibold text-gray-800">{{ storeName }}</h2>
-            <p class="text-gray-600 text-sm">{{ storeAddress }}</p>
           </div>
 
           <!-- Receipt Info -->
@@ -127,9 +134,28 @@
           </div>
 
           <!-- Footer -->
-          <div class="text-center mt-6 pt-4 border-t text-xs text-gray-500">
-            <p>Thank you for your visit!</p>
-            <p class="mt-1">{{ getCurrentDateTime() }}</p>
+          <div class="mt-6 pt-5 border-t border-dashed border-gray-300 text-center text-xs text-gray-900">
+
+            <p v-if="showThankYou" class="tracking-wide uppercase text-[11px] text-gray-700">
+              {{footerMessage}}
+            </p>
+
+            <div class="mt-3 space-y-1 leading-relaxed">
+              <p>{{ storeAddress }}</p>
+
+              <div class="flex items-center justify-center gap-2 flex-wrap">
+                <span>{{ storePhone }}</span>
+
+                <span class="text-gray-500">|</span>
+
+                <span>{{ storeEmail }}</span>
+              </div>
+
+              <p class="text-[11px] text-gray-700">
+                {{ getCurrentDateTime() }}
+              </p>
+            </div>
+
           </div>
         </div>
 
@@ -137,7 +163,7 @@
         <div class="p-4 w-full bg-gray-50 border-t">
           <div class="flex space-x-3">
             <!-- Print Button -->
-            <button
+            <button data-print-btn
               class="flex-1 bg-cyan-500 text-white text-lg px-4 py-3 rounded-2xl focus:outline-none hover:bg-cyan-600 transition-colors duration-200 flex items-center justify-center"
               @click="handlePrint"
               :disabled="isProcessing"
@@ -190,15 +216,6 @@
     </transition>
   </div>
 
-  <!-- Invoice Template -->
-  <div class="hidden">
-    <invoiceTemplate
-    ref="invoiceTemplateRef"
-    :invoiceNo="props.receiptData?.invoiceNo"
-    :items="props.receiptData?.items"
-    :summary="props.receiptData?.summary"
-  />
-  </div>
   <!-- Hidden Print Area -->
   <div id="print-area" class="print-area hidden">
     <div v-html="printContent"></div>
@@ -212,19 +229,12 @@ import ReceiptLogoIcon from '@/components/icons/ReceiptLogoIcon.svg'
 import PrintIcon from '@/components/icons/PrintIcon.svg'
 import CheckIcon from '@/components/icons/CheckIcon.svg'
 import CloseIcon from '@/components/icons/CloseIcon.svg'
-import invoiceTemplate from './invoiceTemplate.vue';
+import { useSettingsStore } from '@/stores/settings'
+import config from '@/config/frappe'
 const props = defineProps({
     receiptData: {
       type: Object,
       default: () => ({})
-    },
-    storeName: {
-      type: String,
-      default: 'TAILWIND POS'
-    },
-    storeAddress: {
-      type: String,
-      default: 'CABANG KONOHA SELATAN'
     },
     autoShow: {
       type: Boolean,
@@ -237,166 +247,433 @@ const props = defineProps({
 })
 const emit = defineEmits(['close', 'proceed', 'print', 'email', 'save'])
 
+// const logoSrc = '@/assets/img/receipt-logo.png'
+// Stores
+const settingsStore = useSettingsStore()
+const settings = computed(() => settingsStore.settings)
+const storeName = computed(() => settings.value?.store?.name || 'TAILWIND POS')
+const defaultLogoSrc = `${config.VUE_URL}/src/assets/img/receipt-logo.png`
+const storeLogo = computed(() => {
+  const logo = settings.value?.store?.storeLogo
+  if (!logo) return defaultLogoSrc
+
+  // decode أي encoding موجود الأول، وبعدين encode صح
+  const cleanPath = decodeURIComponent(logo.replace(/%2520/g, '%20'))
+  console.log('cleanPath', cleanPath)
+  return new URL(cleanPath, config.FRAPPE_URL).href
+})
+
+console.log('storeLogo', storeLogo.value)
+const storeAddress = computed(() => settings.value?.store?.address || 'CABANG KONOHA SELATAN')
+const storePhone = computed(() => settings.value?.store?.phone || '+1 (555) 000-0000')
+const storeEmail = computed(() => settings.value?.store?.email || 'info@tailwindpos.com')
+const showLogo = computed(() => settings.value?.receipt?.showLogo)
+console.log('showLogo', showLogo.value)
+const showThankYou = computed(() => settings.value?.receipt?.showThankYou)
+const footerMessage = computed(() => settings.value?.receipt?.footerMessage || 'Thank You For Shopping With Us')
+const receiptSize = computed(() => settings.value?.receipt?.size || '80mm')
+const receiptConfig = computed(() => {
+  const receipt = settings.value?.receipt
+
+  return (
+    receipt?.sizes?.[receipt?.size] ||
+    receipt?.sizes?.["80mm"]
+  )
+})
 const invoiceTemplateRef = ref(null)
+const receiptContent = ref(null)
+const isProcessing = ref(false)
+const logoError = ref(false)
+
+// Computed properties
+const summary = computed(() => props.receiptData?.summary || {})
+
+const printContent = computed(() => {
+  if (!receiptContent.value) return ''
+  return receiptContent.value.innerHTML
+})
+// Format date
+const formatDate = (timestamp) => {
+  if (!timestamp) return new Date().toLocaleString('id-ID')
+  return new Date(timestamp).toLocaleString('id-ID')
+}
+
+// Get current date time
+const getCurrentDateTime = () => {
+  return new Date().toLocaleString('id-ID')
+}
+
+// Generate receipt number
+const generateReceiptNo = () => {
+  const now = new Date()
+  const timestamp = now.getTime().toString().slice(-6)
+  return `TW${timestamp}`
+}
+
+// Handle logo error
+const handleLogoError = () => {
+  logoError.value = true
+}
+
+// Handle background click
+const handleBackgroundClick = () => {
+  if (!isProcessing.value) {
+    handleClose()
+  }
+}
+
+// Handle close
+const handleClose = () => {
+  if (isProcessing.value) return
+  emit('close')
+}
+
+// Handle email receipt
+const handleEmailReceipt = () => {
+  if (isProcessing.value) return
+
+  // This would typically open an email dialog or send to server
+  const emailBody = `Receipt from ${props.storeName}\n\nTotal: ${formatPrice(summary.value.total)}\nDate: ${formatDate(props.receiptData?.timestamp)}`
+  const emailSubject = `Receipt #${props.receiptData?.receiptNo || generateReceiptNo()}`
+  const mailtoLink = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`
+
+  window.open(mailtoLink)
+  emit('email', props.receiptData)
+}
+
+// Handle save receipt
+const isSaved = ref(false)  // هل اتحفظت في Frappe
+const savedInvoiceName = ref(null)  // الـ name بتاع الـ draft
+
+const handleSaveReceipt = async () => {
+  if (isProcessing.value) return
+  isProcessing.value = true
+  try {
+    const result = await emit('save', props.receiptData)
+    isSaved.value = true
+    savedInvoiceName.value = result?.name
+    // تحميل نسخة نصية
+    const receiptText = generateReceiptText()
+    const blob = new Blob([receiptText], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `receipt_${props.receiptData?.invoiceNo || generateReceiptNo()}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('Save failed:', error)
+    alert('Save failed. Please try again.')
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+
+// const handlePrint = async () => {
+//   if (isProcessing.value) return
+
+//   try {
+//     isProcessing.value = true
+//     await nextTick()
+
+//     const content = receiptContent.value?.innerHTML
+//     if (!content) return
 
 
 
-    const receiptContent = ref(null)
-    const isProcessing = ref(false)
-    const logoError = ref(false)
+//     const styles = Array.from(document.styleSheets)
+//       .map(sheet => {
+//         try {
+//           return Array.from(sheet.cssRules).map(rule => rule.cssText).join('\n')
+//         } catch {
+//           return sheet.href ? `@import url("${sheet.href}");` : ''
+//         }
+//       })
+//       .join('\n')
 
-    // Computed properties
-    const summary = computed(() => props.receiptData?.summary || {})
+//     const win = window.open('', '_blank')
+//     win.document.write(`
+//       <!DOCTYPE html>
+//       <html>
+//         <head>
+//           <title>Receipt</title>
+//           <style>
+//             ${styles}
 
-    const printContent = computed(() => {
-      if (!receiptContent.value) return ''
-      return receiptContent.value.innerHTML
-    })
-    // Format date
-    const formatDate = (timestamp) => {
-      if (!timestamp) return new Date().toLocaleString('id-ID')
-      return new Date(timestamp).toLocaleString('id-ID')
+//             /* ── Reset & Layout ── */
+//             body {
+//               background: white !important;
+//               display: flex;
+//               justify-content: center;
+//               padding: 16px;
+//               font-family: 'Courier New', monospace;
+//             }
+//             #receipt-print-wrapper {
+//               width: 100%;
+//               max-width: 360px;
+//             }
+//             * {
+//               overflow: visible !important;
+//               max-height: none !important;
+//             }
+
+//             /* ── Table borders ── */
+//             table {
+//               width: 100%;
+//               border-collapse: collapse !important;
+//             }
+//             thead tr {
+//               border-bottom: 2px solid #000 !important;
+//             }
+//             th {
+//               padding: 6px 4px !important;
+//               font-weight: 700 !important;
+//               font-size: 11px !important;
+//               border-bottom: 2px solid #000 !important;
+//             }
+//             td {
+//               padding: 6px 4px !important;
+//               font-size: 11px !important;
+//               border-bottom: 1px solid #d1d5db !important;
+//             }
+//             tbody tr:last-child td {
+//               border-bottom: none !important;
+//             }
+
+//             /* ── Summary section ── */
+//             .border-t {
+//               border-top: 1px solid #d1d5db !important;
+//             }
+//             .border-b {
+//               border-bottom: 1px solid #d1d5db !important;
+//             }
+
+//             @media print {
+//               body { padding: 0; }
+//               @page { margin: 8mm; size: 80mm auto; }
+//             }
+//           </style>
+//         </head>
+//         <body>
+//           <div id="receipt-print-wrapper">
+//             ${content}
+//           </div>
+//         </body>
+//       </html>
+//     `)
+
+//     win.document.close()
+//     win.focus()
+//     setTimeout(() => { win.print(); win.close() }, 600)
+
+//     emit('print', props.receiptData)
+
+//   } catch (error) {
+//     console.error('Print failed:', error)
+//     alert('Print failed. Please try again.')
+//   } finally {
+//     setTimeout(() => { isProcessing.value = false }, 1000)
+//   }
+// }
+const handlePrint = async () => {
+  if (isProcessing.value) return
+
+  try {
+    isProcessing.value = true
+    await nextTick()
+
+    const content = receiptContent.value?.innerHTML
+    if (!content) return
+
+    // ─────────────────────────────────────
+    // Receipt Size Config
+    // ─────────────────────────────────────
+    const receiptSize = settings.value?.receipt?.size || '80mm'
+
+    let pageSize = '80mm auto'
+    let maxWidth = '320px'
+    let padding = '8px'
+
+    switch (receiptSize) {
+      case '58mm':
+        pageSize = '58mm auto'
+        maxWidth = '220px'
+        padding = '4px'
+        break
+
+      case 'A4':
+        pageSize = 'A4'
+        maxWidth = '800px'
+        padding = '20px'
+        break
+
+      default:
+        pageSize = '80mm auto'
+        maxWidth = '320px'
+        padding = '8px'
     }
 
-    // Get current date time
-    const getCurrentDateTime = () => {
-      return new Date().toLocaleString('id-ID')
-    }
-
-    // Generate receipt number
-    const generateReceiptNo = () => {
-      const now = new Date()
-      const timestamp = now.getTime().toString().slice(-6)
-      return `TW${timestamp}`
-    }
-
-    // Handle logo error
-    const handleLogoError = () => {
-      logoError.value = true
-    }
-
-    // Handle background click
-    const handleBackgroundClick = () => {
-      if (!isProcessing.value) {
-        handleClose()
-      }
-    }
-
-    // Handle close
-    const handleClose = () => {
-      if (isProcessing.value) return
-      emit('close')
-    }
-
-    // Handle email receipt
-    const handleEmailReceipt = () => {
-      if (isProcessing.value) return
-
-      // This would typically open an email dialog or send to server
-      const emailBody = `Receipt from ${props.storeName}\n\nTotal: ${formatPrice(summary.value.total)}\nDate: ${formatDate(props.receiptData?.timestamp)}`
-      const emailSubject = `Receipt #${props.receiptData?.receiptNo || generateReceiptNo()}`
-      const mailtoLink = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`
-
-      window.open(mailtoLink)
-      emit('email', props.receiptData)
-    }
-
-    // Handle save receipt
-    const isSaved = ref(false)  // هل اتحفظت في Frappe
-    const savedInvoiceName = ref(null)  // الـ name بتاع الـ draft
-
-      const handleSaveReceipt = async () => {
-        if (isProcessing.value) return
-        isProcessing.value = true
+    const styles = Array.from(document.styleSheets)
+      .map(sheet => {
         try {
-          const result = await emit('save', props.receiptData)
-          isSaved.value = true
-          savedInvoiceName.value = result?.name
-          // تحميل نسخة نصية
-          const receiptText = generateReceiptText()
-          const blob = new Blob([receiptText], { type: 'text/plain' })
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = `receipt_${props.receiptData?.invoiceNo || generateReceiptNo()}.txt`
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
-        } catch (error) {
-          console.error('Save failed:', error)
-          alert('Save failed. Please try again.')
-        } finally {
-          isProcessing.value = false
+          return Array.from(sheet.cssRules)
+            .map(rule => rule.cssText)
+            .join('\n')
+        } catch {
+          return sheet.href
+            ? `@import url("${sheet.href}");`
+            : ''
         }
-      }
+      })
+      .join('\n')
 
-      const handlePrint = async () => {
-        if (isProcessing.value) return
+    const win = window.open('', '_blank')
 
-        if (!props.receiptData.isSaved) {
-          alert('Please save the invoice first before printing.')
-          return
-        }
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Receipt</title>
 
-        try {
-          isProcessing.value = true
+          <style>
+            ${styles}
 
-          await nextTick()
+            * {
+              overflow: visible !important;
+              max-height: none !important;
+              box-sizing: border-box;
+            }
 
-          await invoiceTemplateRef.value?.print()
+            body {
+              background: white !important;
+              display: flex;
+              justify-content: center;
+              padding: ${padding};
+              margin: 0;
+              font-family: 'Courier New', monospace;
+            }
 
-        } catch (error) {
-          console.error('Print failed:', error)
-          alert('Print failed. Please try again.')
-        } finally {
-          setTimeout(() => {
-            isProcessing.value = false
-          }, 1000)
-        }
-      }
+            #receipt-print-wrapper {
+              width: 100%;
+              max-width: ${maxWidth};
+            }
 
-      const handleProceed = () => {
-        if (isProcessing.value) return
-        emit('proceed', { ...props.receiptData, savedInvoiceName: savedInvoiceName.value })
-      }
+            table {
+              width: 100%;
+              border-collapse: collapse !important;
+            }
 
-    // Generate receipt text for saving
-    const generateReceiptText = () => {
-      const lines = []
-      lines.push(`${props.storeName}`)
-      lines.push(`${props.storeAddress}`)
-      lines.push(``)
-      lines.push(`Subtotal: ${formatPrice(summary.value.subtotal)}`)
-      if (summary.value.tax > 0) {
-        lines.push(`Tax: ${formatPrice(summary.value.tax)}`)
-      }
-      if (summary.value.discount > 0) {
-        lines.push(`Discount: -${formatPrice(summary.value.discount)}`)
-      }
-      lines.push(`Total: ${formatPrice(summary.value.total)}`)
-      lines.push(`Cash: ${formatPrice(summary.value.cash)}`)
-      lines.push(`Change: ${formatPrice(summary.value.change)}`)
-      lines.push(``)
-      lines.push(`Thank you for your visit!`)
+            thead tr {
+              border-bottom: 2px solid #000 !important;
+            }
 
-      return lines.join('\n')
-    }
+            th {
+              padding: 6px 4px !important;
+              font-weight: 700 !important;
+              font-size: 11px !important;
+              border-bottom: 2px solid #000 !important;
+            }
 
-    // Handle escape key
-    const handleEscape = (event) => {
-      if (event.key === 'Escape' && !isProcessing.value) {
-        handleClose()
-      }
-    }
+            td {
+              padding: 6px 4px !important;
+              font-size: 11px !important;
+              border-bottom: 1px solid #d1d5db !important;
+            }
 
-    // Lifecycle
-    onMounted(() => {
-      document.addEventListener('keydown', handleEscape)
-    })
+            tbody tr:last-child td {
+              border-bottom: none !important;
+            }
+
+            .border-t {
+              border-top: 1px solid #d1d5db !important;
+            }
+
+            .border-b {
+              border-bottom: 1px solid #d1d5db !important;
+            }
+
+            @media print {
+              body {
+                padding: 0;
+              }
+
+              @page {
+                margin: 5mm;
+                size: ${pageSize};
+              }
+            }
+          </style>
+        </head>
+
+        <body>
+          <div id="receipt-print-wrapper">
+            ${content}
+          </div>
+        </body>
+      </html>
+    `)
+
+    win.document.close()
+    win.focus()
+
+    setTimeout(() => {
+      win.print()
+      win.close()
+    }, 600)
+
+    emit('print', props.receiptData)
+
+  } catch (error) {
+    console.error('Print failed:', error)
+    alert('Print failed. Please try again.')
+  } finally {
+    setTimeout(() => {
+      isProcessing.value = false
+    }, 1000)
+  }
+}
+const handleProceed = () => {
+  if (isProcessing.value) return
+  emit('proceed', { ...props.receiptData, savedInvoiceName: savedInvoiceName.value })
+}
+
+// Generate receipt text for saving
+const generateReceiptText = () => {
+const lines = []
+lines.push(`${props.storeName}`)
+lines.push(`${props.storeAddress}`)
+lines.push(`${props.storePhone}`)
+lines.push(`${props.storeEmail}`)
+lines.push(``)
+lines.push(`Subtotal: ${formatPrice(summary.value.subtotal)}`)
+if (summary.value.tax > 0) {
+  lines.push(`Tax: ${formatPrice(summary.value.tax)}`)
+}
+if (summary.value.discount > 0) {
+  lines.push(`Discount: -${formatPrice(summary.value.discount)}`)
+}
+lines.push(`Total: ${formatPrice(summary.value.total)}`)
+lines.push(`Cash: ${formatPrice(summary.value.cash)}`)
+lines.push(`Change: ${formatPrice(summary.value.change)}`)
+lines.push(``)
+lines.push(`Thank you for your visit!`)
+
+return lines.join('\n')
+}
+
+// Handle escape key
+const handleEscape = (event) => {
+if (event.key === 'Escape' && !isProcessing.value) {
+  handleClose()
+}
+}
+
+// Lifecycle
+onMounted(() => {
+document.addEventListener('keydown', handleEscape)
+})
 
 </script>
-
-<style scoped>
-
-</style>

@@ -7,7 +7,7 @@
       :style="modelValue === '' ? activeStyle : inactiveStyle"
       @click="emit('update:modelValue', '')"
     >
-      All Categories
+      {{ __('All Categories') }}
     </button>
 
     <!-- Category buttons -->
@@ -24,23 +24,20 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+
+import { computed, watch } from 'vue'
 import { useProductsStore } from '@/stores/products'
 import { useSettingsStore } from '@/stores/settings'
+defineProps({
+  modelValue: { type: String, default: '' }
+})
 const settingsStore = useSettingsStore()
 const settings = computed(() => settingsStore.settings)
 const primaryColor = computed(() => {
   return settings.value?.appearance?.primaryColor || '#06b6d4'
 })
-
-defineProps({
-  modelValue: { type: String, default: '' }
-})
-
 const emit = defineEmits(['update:modelValue'])
 const productsStore = useProductsStore()
-
-// استخرج الـ categories الفريدة من الـ products
 const categories = computed(() => {
   const cats = productsStore.products
     .map(p => p.item_group)
@@ -48,17 +45,20 @@ const categories = computed(() => {
   return [...new Set(cats)].sort()
 })
 
-const activeStyle = {
+const activeStyle = computed(() => ({
   background: primaryColor.value,
   color: '#fff',
-  boxShadow: '0 2px 8px rgba(6,182,212,0.3)'
-}
+  boxShadow: `0 2px 8px ${primaryColor.value}33`
+}))
 
 const inactiveStyle = {
   background: 'var(--item-bg)',
   color: 'var(--text-muted)',
   border: '1px solid var(--card-border)'
 }
+
+watch(
+  () => settingsStore.settings.appearance.primaryColor)
 </script>
 
 <style scoped>

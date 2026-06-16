@@ -511,7 +511,7 @@
                 >
 
                   <option value="" disabled>
-                    — select a product —
+                    — {{ __('select a product') }} —
                   </option>
 
                   <option
@@ -606,7 +606,7 @@
                     class="input-ui w-full px-3 py-2 text-sm rounded-lg"
                   >
 
-                    <option value="">— optional —</option>
+                    <option value="">— {{ __('optional') }} —</option>
 
                     <option
                       v-for="u in uoms"

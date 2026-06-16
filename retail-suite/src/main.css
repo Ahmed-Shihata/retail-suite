@@ -132,7 +132,10 @@
     --icon-bg-purple: #ede9fe;
     --icon-color-purple: #7c3aed;
 
-
+    --close-bg: #fee2e2;
+    --close-border: #fecaca;
+    --close-color: #dc2626;
+    --close-hover: #fecaca;
 }
 
 .theme-dark {
@@ -317,4 +320,9 @@
     --icon-color-purple: #c084fc;
 
     --text-muted: #a8d5cc;
+
+    --close-bg: rgba(220, 38, 38, 0.12);
+    --close-border: rgba(248, 113, 113, 0.25);
+    --close-color: #fca5a5;
+    --close-hover: rgba(220, 38, 38, 0.22);
 }
