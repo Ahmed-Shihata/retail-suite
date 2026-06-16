@@ -10,8 +10,15 @@ def get_translations(lang="en"):
     if lang == "en":
         return {}
 
+    if not frappe.db.exists("Language", lang):
+        return {}
+
     app_path = frappe.get_app_path("retail")
-    csv_path = os.path.join(app_path, "translations-retail", f"{lang}.csv")
+    translations_dir = os.path.join(app_path, "translations-retail")
+    csv_path = os.path.join(translations_dir, f"{lang}.csv")
+
+    if not os.path.abspath(csv_path).startswith(os.path.abspath(translations_dir)):
+        return {}
 
     if not os.path.exists(csv_path):
         return {}
@@ -22,10 +29,6 @@ def get_translations(lang="en"):
         for row in reader:
             if len(row) >= 2 and row[0] and row[1]:
                 messages[row[0]] = row[1]
-
-    translations = translate.get_all_translations(lang)
-    translations.update(messages)
-    return translations
 
 
 def _get_user_language():

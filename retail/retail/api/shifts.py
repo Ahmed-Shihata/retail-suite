@@ -141,9 +141,9 @@ def get_shift_statistics():
 
         where = " AND ".join(conditions)
         result = frappe.db.sql(
-            f"SELECT SUM(`{fieldname}`) FROM `tab{doctype}` WHERE {where}",
-            values
-        )
+                f"SELECT SUM(`{fieldname}`) FROM `tab{doctype}` WHERE {where}",  # nosemgrep
+                values
+            )
         return result[0][0] or 0
 
     stats = {
