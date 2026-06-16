@@ -112,12 +112,8 @@
 </p>
 
 <h2 align="center">POS Search Mode</h2>
-
 <p align="center">
-  <video width="900" controls>
-    <source src="/videos/serial_no_search_mode.webm" type="video/webm">
-    Your browser does not support the video tag.
-  </video>
+  <img src="videos/serial_no_search_mode.gif" width="900" />
 </p>
 
 <h2 align="center">Phone QR Code</h2>
