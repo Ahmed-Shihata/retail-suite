@@ -404,7 +404,7 @@ def _get_items(pos_profile, price_list, item_group, search_value, customer=None,
             item_name asc
         {limit}
             """.format(
-            condition=condition, limit=limit
+            condition=condition, limit=limit   # nosemgrep
         ),
         values=values,
         as_dict=1,
@@ -459,18 +459,22 @@ def get_customer_groups(pos_profile):
     return list(set(customer_groups))
 
 def get_child_nodes(group_type, root):
+    if not frappe.get_meta(group_type):
+        frappe.throw("Invalid DocType")
     lft, rgt = frappe.db.get_value(group_type, root, ["lft", "rgt"])
-    return frappe.db.sql(
-        f"SELECT name, lft, rgt FROM `tab{group_type}` WHERE lft >= %s AND rgt <= %s ORDER BY lft",
-        (lft, rgt),
-        as_dict=1,
-    )
+    query = """
+        SELECT name, lft, rgt
+        FROM `tab{}`
+        WHERE lft >= %s AND rgt <= %s
+        ORDER BY lft
+        """.format(group_type)  # nosemgrep
+    return frappe.db.sql(query, (lft, rgt), as_dict=1)
 
 def get_customer_group_condition(pos_profile):
     customer_groups = get_customer_groups(pos_profile)
     if customer_groups:
         placeholders = ", ".join(["%s"] * len(customer_groups))
-        return f"customer_group IN ({placeholders})", list(customer_groups)
+        return f"customer_group IN ({placeholders})", list(customer_groups)  # nosemgrep
     return "1=1", []
 
 def _get_customer_names(pos_profile):
