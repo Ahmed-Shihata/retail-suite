@@ -366,40 +366,6 @@ export const useShiftStore = defineStore('shift', {
         console.error('Error fetching shift statistics:', error)
       }
     },
-
-    // async loadShifts(filters = {}) {
-    //   try {
-    //     const response = await call('retail.retail.api.shifts.get_shifts', {
-    //             name: filters.name,
-    //             status: filters.status || '',   // "Open" أو "Closed"
-    //             order_by: 'creation desc'
-    //       });
-    //     console.log("Shifts response:", response)
-
-    //     if (response.status !== "success") {
-    //       console.warn(response.message)
-    //       this.shifts = []
-    //       return { status: "error", data: [] }
-    //     }
-
-    //     const shifts = response.data || []
-
-    //     this.shifts = shifts.map(shift => ({
-    //       ...shift,
-    //       duration: shift.start_datetime
-    //         ? Math.floor((new Date(shift.end_datetime || Date.now()) - new Date(shift.start_datetime)) / 60000) + ' mins'
-    //         : 'In Progress'
-    //     }))
-
-    //     return { status: "success", data: this.shifts }
-
-    //   } catch (error) {
-    //     console.error('Failed to load shifts:', error)
-    //     this.shifts = []
-    //     return { status: "error", data: [] }
-    //   }
-    // },
-
     async closingOpenShift(opening_shift, closing_details) {
       try {
         const closing_shift = await call('retail.retail.doctype.pos_closing_shift.pos_closing_shift.make_closing_shift_from_opening', {

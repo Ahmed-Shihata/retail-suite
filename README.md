@@ -25,30 +25,6 @@
 # Technology
 **Vue.js & Tailwind CSS**  **frontend**
 **Frappe / ERPNext** **backend**
-<h2 align="center">
-  📫 Connect with me
-  <img src="https://media.giphy.com/media/WUlplcMpOCEmTGBtBW/giphy.gif" width="30">
-</h2>
-
-<p align="center">
-  <a href="http://linkedin.com/in/ahmed-abukhatwa-641a76251" target="_blank">
-    <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/linkedin/linkedin-original.svg"
-         alt="LinkedIn"
-         width="42" />
-  </a>
-
-  <a href="https://wa.me/201010871072" target="_blank">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
-         alt="WhatsApp"
-         width="42" />
-  </a>
-
-  <a href="mailto:ahmedabukhatwa1@gmail.com" target="_blank">
-    <img src="https://cdn-icons-png.flaticon.com/512/5968/5968534.png"
-         alt="Gmail"
-         width="42" />
-  </a>
-</p>
 
 ---
 
@@ -263,21 +239,6 @@ Retail Suite leverages the powerful backend capabilities of ERPNext, including:
 
 ---
 
-## 🧰 Tech Stack
-
-![Vue.js](https://img.shields.io/badge/Vue.js-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![Frappe](https://img.shields.io/badge/Frappe-0089FF?style=for-the-badge&logo=frappe&logoColor=white)
-![ERPNext](https://img.shields.io/badge/ERPNext-0089FF?style=for-the-badge&logo=erpnext&logoColor=white)
-![MariaDB](https://img.shields.io/badge/MariaDB-003545?style=for-the-badge&logo=mariadb&logoColor=white)
-
-- **Frontend:** Vue.js + Tailwind CSS
-- **Backend:** Frappe / ERPNext
-- **Database:** MariaDB
-- Designed for small & medium retail businesses
-
----
-
 ## 📄 License
 
 MIT License
@@ -309,14 +270,14 @@ npm install
 Create a `.env` file inside `retail-suite/`:
 
 ```env
-VITE_FRAPPE_HOST=192.168.8.5
-VITE_FRAPPE_URL_LOCAL=https://192.168.8.5:81
-VITE_VUE_URL=https://192.168.8.5:5173
+VITE_FRAPPE_HOST=your-server-ip
+VITE_FRAPPE_URL_LOCAL=https://your-server-ip:81
+VITE_VUE_URL=https://your-server-ip:5173
 VITE_ENV=development
 VITE_SITE_NAME=site.com
-VITE_SOCKET_URL=http://192.168.8.5:9000
+VITE_SOCKET_URL=http://your-server-ip:9000
 SOCKET_PORT=9000
-VITE_CERTS_DIR=/home/frappe/Music/frappe-bench-v15/certs
+VITE_CERTS_DIR=/path/to/your/bench/certs
 ```
 
 > ⚠️ Replace `site.com` with your actual Frappe site name.
@@ -349,14 +310,14 @@ This creates a root CA at:
 ```
 
 # Generate certificate for your server IP
-cd /home/frappe/Music/frappe-bench-v15/certs
-mkcert 192.168.8.5 localhost
+cd /path/to/your/bench/certs
+mkcert your-server-ip localhost
 ```
 
 This creates two files:
 ```
-192.168.8.5+1.pem       ← certificate
-192.168.8.5+1-key.pem   ← private key
+your-server-ip+1.pem       ← certificate
+your-server-ip+1-key.pem   ← private key
 ```
 
 These paths match what `vite.config.js` expects via `VITE_CERTS_DIR` and `VITE_FRAPPE_HOST`.
@@ -372,8 +333,8 @@ sudo nano /etc/nginx/conf.d/frappe-bench-v15.conf
 Inside the `server` block for port 81, update the certificate paths:
 
 ```nginx
-ssl_certificate     /home/frappe/Music/frappe-bench-v15/certs/192.168.8.5+1.pem;
-ssl_certificate_key /home/frappe/Music/frappe-bench-v15/certs/192.168.8.5+1-key.pem;
+ssl_certificate     /path/to/your/bench/certs/your-server-ip+1.pem;
+ssl_certificate_key /path/to/your/bench/certs/your-server-ip+1-key.pem;
 ```
 
 Then reload nginx:
@@ -413,7 +374,7 @@ python3 -m http.server 9999
 
 Open on Android browser:
 ```
-http://192.168.8.5:9999/rootCA.crt
+http://your-server-ip:9999/rootCA.crt
 ```
 
 Then: **Settings → Security → More security settings → Install certificate → CA Certificate** → select the downloaded file.
@@ -433,7 +394,7 @@ python3 -m http.server 9999
 
 Open **Safari** (not Chrome) on your iPhone:
 ```
-http://192.168.8.5:9999/rootCA.crt
+http://your-server-ip:9999/rootCA.crt
 ```
 
 Safari will prompt: **"Allow download?"** → tap **Allow**
@@ -461,7 +422,7 @@ npm run dev
 
 Dev server will be available at:
 ```
-https://192.168.8.5:5173/
+https://your-server-ip:5173/
 
 ```
 Ignore_csrf config ​
@@ -476,12 +437,12 @@ This will prevent CSRFToken errors while using the vite dev server. In productio
 Before opening the app, log in to Frappe first:
 
 ```
-https://192.168.8.5:81/login
+https://your-server-ip:81/login
 ```
 
 Then open the app:
 ```
-https://192.168.8.5:5173/
+https://your-server-ip:5173/
 ```
 
 > The app relies on a Frappe session cookie — it must exist before the app loads.
@@ -544,7 +505,7 @@ location /socket.io {
     proxy_set_header Connection "upgrade";
 
     proxy_set_header Host $host;
-    proxy_set_header X-Frappe-Site-Name dms.com;
+    proxy_set_header X-Frappe-Site-Name <site-name.com>; #  ← Replace <site-name.com> with your site name
 
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;

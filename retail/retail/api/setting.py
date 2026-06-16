@@ -44,9 +44,6 @@ def create_Sample_items(item_data):
     })
 
     item.insert(ignore_permissions=True)
-    frappe.db.commit()
-
-    frappe.msgprint(f"Sample Item created: {item.name}")
     return item.name
 
 @frappe.whitelist()
@@ -63,7 +60,6 @@ def create_all_sample_items(sample_products):
             created.append(name)
         except Exception as e:
             frappe.log_error(message=str(e), title=f"Error creating {product.get('item_code')}")
-            frappe.msgprint(f"❌ Failed to create {product.get('item_name')}: {e}")
             failed.append(product.get("item_code"))
     return {
         "created": created,
@@ -81,9 +77,7 @@ def ensure_item_group(group_name: str):
             "is_group": 0
         })
         item_group.insert(ignore_permissions=True)
-        frappe.db.commit()
-        frappe.msgprint(f"🆕 Created missing Item Group: {group_name}")
-
+        return item_group.name
 
 @frappe.whitelist()
 def delete_all_sample_items():
@@ -103,8 +97,6 @@ def delete_all_sample_items():
             except Exception as e:
                 frappe.log_error(f"Failed to delete {name}: {str(e)}", "Delete Sample Items")
 
-        frappe.db.commit()
-
         return {
             "status": "success",
             "deleted_count": deleted_count,
@@ -118,10 +110,7 @@ def delete_all_sample_items():
 @frappe.whitelist()
 def update_pos_profile_settings(pos_profile_name, settings):
     settings = frappe.parse_json(settings)
-
     frappe.db.set_value("POS Profile", pos_profile_name, settings, update_modified=False)
-    frappe.db.commit()
-
     return {"success": True}
 
 def get_paper_size(paper_size: str) -> tuple[int, int | None]:
@@ -369,9 +358,7 @@ def view_invoice(invoice_name: str, printer):
     frappe.has_permission("Sales Invoice", doc=invoice_name, throw=True)
 
     printer_config = _parse_printer_config(printer)
-    print("printer_config", printer_config)
     page_size = printer_config.get("paperSize", "80mm")
-    print("page_size", page_size)
     print_format = _resolve_print_format(page_size)
 
     html = frappe.get_print(
