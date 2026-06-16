@@ -22,7 +22,7 @@
           border: 'none'
         }"
       >
-        <option value="">+ Create New Customer</option>
+        <option value="">+ {{ __('Create New Customer') }}</option>
         <option
           v-for="cust in customers"
           :key="cust.name"
@@ -41,26 +41,13 @@
           color: '#fff',
           borderLeft: '1px solid var(--card-border)'
         }"
-        title="Add New Customer"
+        :title="__('Create New Customer')"
       >
         <svg class="w-5 h-5 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" />
         </svg>
-        <span class="font-semibold text-sm">Customer</span>
+        <span class="font-semibold text-sm">{{ __('Customer') }}</span>
       </button>
-    </div>
-
-    <!-- Selected Customer Info -->
-    <div
-      v-if="selectedCustomer"
-      class="mt-3 p-3 rounded text-sm"
-      :style="{
-        background: 'var(--info-bg)',
-        color: 'var(--focus-ring)',
-        border: '1px solid var(--info-border)'
-      }"
-    >
-      Selected: <strong>{{ selectedCustomer }}</strong>
     </div>
   </div>
 
@@ -84,8 +71,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import UpdateCustomer from '../modals/UpdateCustomer.vue'
-import { getCustomersFromFrappeDB } from '../../composables/shift'
-import { useShiftStore } from '../../stores/shift.js'
+import { useShiftStore } from '@/stores/shift.js'
 import { useSettingsStore } from '@/stores/settings'
 const emit = defineEmits(['customer-selected'])
 const settingsStore = useSettingsStore()
@@ -105,11 +91,9 @@ const showAddCustomerModal = ref(false)
 const shiftStore = useShiftStore()
 const pos_profile = computed(() => shiftStore.pos_profile || {})
 
-console.log("** pos_profile **",pos_profile.value.customer)
-// تحميل العملاء عند أول ظهور للصفحة فقط
 const loadCustomers = async () => {
   try {
-    const customersList = await getCustomersFromFrappeDB(JSON.stringify(pos_profile.value))
+    const customersList = await shiftStore.getCustomers(JSON.stringify(pos_profile.value))
     if (customersList) {
       customers.value = customersList
       return customersList
@@ -124,12 +108,12 @@ const loadCustomers = async () => {
 // فتح مودال جديد
 const handleCustomerChange = () => {
   if (!selectedCustomer.value) {
-    // الخيار الفاضي -> إنشاء عميل جديد
+    // case: Create new customer
     showAddCustomerModal.value = true
     customer_id.value = null
     customer_info.value = {}
   } else {
-    // اختيار عميل موجود
+    // case: Select existing customer
     const cust = customers.value.find(c => c.name === selectedCustomer.value)
     if (cust) {
       console.log('Selected customer info:', cust)
@@ -142,19 +126,15 @@ const handleCustomerChange = () => {
 
 
 const handleCustomerUpdated = async (updatedCustomer) => {
- const res = await loadCustomers() // إعادة تحميل العملاء من السيرفر
-  console.log('🔄 loadCustomers:', res)
 
-
+  const res = await loadCustomers()
   const existingIndex = res.findIndex(c => c.name === updatedCustomer.name)
-  console.log('🔍 index:', existingIndex)
+
   if (existingIndex !== -1) {
 
     customers.value[existingIndex] = { ...updatedCustomer }
-    console.log('Customer updated in list at index:', existingIndex)
   } else {
     customers.value.push({ ...updatedCustomer })
-    console.log(' New customer added to list')
   }
 
   customer_id.value = updatedCustomer.name
@@ -167,7 +147,6 @@ const handleCustomerUpdated = async (updatedCustomer) => {
 const closeCustomerModal = () => {
   showAddCustomerModal.value = false
   const currentCustomer = shiftStore.$state.currentCustomer
-  console.log("currentCustomer",currentCustomer)
   if (currentCustomer?.name) {
     const cust = customers.value.find(c => c.name === currentCustomer.name)
     if (cust) {
@@ -193,32 +172,14 @@ watch(
         customer_id.value = defaultCustomer.name
         customer_info.value = { ...defaultCustomer }
 
-        // مهم جداً
         shiftStore.setCustomer(defaultCustomer)
-
         emit('customer-selected', defaultCustomer)
 
-        console.log('✅ Default customer set from POS Profile')
       }
     }
   },
   { immediate: true }
 )
-// watch(
-//   [() => customers.value, () => shiftStore.$state.currentCustomer],
-//   ([customerList, currentCustomer]) => {
-//     if (!customerList || !currentCustomer?.name) return
-
-//     const cust = customerList.find(c => c.name === currentCustomer.name)
-//     if (cust) {
-//       selectedCustomer.value = cust.name
-//       customer_id.value = cust.name
-//       customer_info.value = { ...cust }
-//       emit('customer-selected', cust)
-//     }
-//   },
-//   { immediate: true }
-// )
 
 onMounted(async () => {
   const list = await loadCustomers()
@@ -233,6 +194,5 @@ onMounted(async () => {
     }
   }
 })
-
 
 </script>

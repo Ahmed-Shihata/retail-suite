@@ -1,9 +1,130 @@
 import frappe
 import math
-
 from frappe.utils import today, formatdate, flt, datetime
 import calendar
 from retail.retail.api.payment_utils import get_shift_payments_entries, get_shift_unallocated_payments, get_shift_invoice_payments, get_shift_pos_invoices
+
+@frappe.whitelist()
+def check_opening_shift(user):
+    open_vouchers = frappe.db.get_all(
+        "POS Opening Shift",
+        filters={
+            "user": user,
+            "docstatus": 1,
+            "status": "Open",
+        },
+        fields=["name", "pos_profile"],
+        order_by="period_start_date desc",
+    )
+
+    if not open_vouchers:
+        return {"count": 0, "shifts": []}
+
+    shifts = []
+    for voucher in open_vouchers:
+        data = {}
+        data["pos_opening_shift"] = frappe.get_doc(
+            "POS Opening Shift", voucher["name"]
+        ).as_dict()
+        update_opening_shift_data(data, voucher["pos_profile"])
+        shifts.append(data)
+
+    return {
+        "count": len(shifts),
+        "shifts": shifts   # ← list كاملة مش واحد بس
+    }
+
+
+@frappe.whitelist()
+def create_opening_voucher(pos_profile, company, balance_details):
+    balance_details = frappe.parse_json(balance_details)
+
+    new_pos_opening = frappe.get_doc(
+        {
+            "doctype": "POS Opening Shift",
+            "period_start_date": frappe.utils.get_datetime(),
+            "posting_date": frappe.utils.getdate(),
+            "user": frappe.session.user,
+            "pos_profile": pos_profile,
+            "company": company,
+            "docstatus": 1,
+        }
+    )
+    new_pos_opening.set("balance_details", balance_details)
+    new_pos_opening.insert(ignore_permissions=True)
+
+    data = {}
+    data["pos_opening_shift"] = new_pos_opening.as_dict()
+    update_opening_shift_data(data, new_pos_opening.pos_profile)
+    return data
+
+
+def update_opening_shift_data(data, pos_profile):
+    data["pos_profile"] = frappe.get_doc("POS Profile", pos_profile)
+    data["company"] = frappe.get_doc("Company", data["pos_profile"].company)
+    allow_negative_stock = frappe.get_value(
+        "Stock Settings", None, "allow_negative_stock"
+    )
+    data["stock_settings"] = {}
+    data["stock_settings"].update({"allow_negative_stock": allow_negative_stock})
+
+@frappe.whitelist()
+def get_opening_dialog_data():
+    data = {}
+    data["companies"] = frappe.get_list("Company", limit_page_length=0, order_by="name")
+    data["pos_profiles_data"] = frappe.get_list(
+        "POS Profile",
+        filters={"disabled": 0},
+        fields=["name", "company", "currency"],
+        limit_page_length=0,
+        order_by="name",
+    )
+
+    pos_profiles_list = []
+    for i in data["pos_profiles_data"]:
+        pos_profiles_list.append(i.name)
+
+    payment_method_table = (
+        "POS Payment Method" if get_version() == 13 else "Sales Invoice Payment"
+    )
+    data["payments_method"] = frappe.get_list(
+        payment_method_table,
+        filters={"parent": ["in", pos_profiles_list]},
+        fields=["*"],
+        limit_page_length=0,
+        order_by="parent",
+        ignore_permissions=True,
+    )
+    # set currency from pos profile
+    for mode in data["payments_method"]:
+        mode["currency"] = frappe.get_cached_value(
+            "POS Profile", mode["parent"], "currency"
+        )
+
+    return data
+
+def get_version():
+    branch_name = get_app_branch("erpnext")
+    if "12" in branch_name:
+        return 12
+    elif "13" in branch_name:
+        return 13
+    else:
+        return 13
+
+def get_app_branch(app):
+    """Returns branch of an app"""
+    import subprocess
+
+    try:
+        branch = subprocess.check_output(
+            "cd ../apps/{0} && git rev-parse --abbrev-ref HEAD".format(app), shell=True
+        )
+        branch = branch.decode("utf-8")
+        branch = branch.strip()
+        return branch
+    except Exception:
+        return ""
 
 @frappe.whitelist()
 def process_auto_attendance_api(shift_name):
@@ -121,13 +242,12 @@ def get_shifts(name=None,status=None):
     if name:
         filters["name"] = name
 
-    # نجيب الـ Opening Shifts
     opening_shifts = frappe.get_all(
         "POS Opening Shift",
         filters=filters,
         fields=["name", "status", "posting_date", "pos_profile", "company", "period_start_date", "period_end_date", "user", "pos_closing_shift"]
     )
-    print('print opeing',opening_shifts)
+
     result = []
     total_qty = 0
     total_sales = 0
@@ -137,7 +257,7 @@ def get_shifts(name=None,status=None):
         shift_data["opening_cash"] = opening_cash
         total_opening_cash = sum([d.amount for d in opening_cash])
         shift_data["total_opening_cash"] = total_opening_cash
-        # لو الشيفت متقفل، نجيب تفاصيل الـ Closing Shift
+
         if shift.pos_closing_shift:
             closing_shift = frappe.get_doc("POS Closing Shift", shift.pos_closing_shift)
 
@@ -172,13 +292,9 @@ def get_shifts(name=None,status=None):
             shift_data["total_sales"] = total_sales
 
         result.append(shift_data)
-    print('======================result===============================')
-    print("result",result)
-    # return result
+
     if result is not None:
-
         frappe.response["http_status_code"] = 200
-
         frappe.response["message"] = {
             "status": "success",
             "http_status_code":200,
@@ -187,9 +303,7 @@ def get_shifts(name=None,status=None):
         }
 
     else:
-
         frappe.response["http_status_code"] = 404
-
         frappe.response["message"] = {
             "status": "error",
             "http_status_code":404,
@@ -203,7 +317,6 @@ def get_shift_pos_transactions(shift_id):
     pos_opening_shift = frappe.get_doc("POS Opening Shift", shift_id).as_dict()
     transactions = []
 
-    # Opening balance entries — always "in"
     for b in pos_opening_shift.balance_details:
         transactions.append({
             "mode_of_payment": b.mode_of_payment,
@@ -234,7 +347,7 @@ def get_shift_pos_transactions(shift_id):
                     else f"مبيعات نقدية - فاتورة {d.name}"
                 ),
                 "created_at": d.posting_date,
-                "user_name": frappe.db.get_value("User", d.owner, "full_name") or "النظام",
+                "user_name": frappe.db.get_value("User", d.owner, "full_name") or "System",
             })
 
     # Credit / deferred payment collections — always "in"
@@ -244,9 +357,9 @@ def get_shift_pos_transactions(shift_id):
             "mode_of_payment": c.mode_of_payment,
             "type": "in",
             "amount": abs(flt(c.paid_amount)),
-            "description": f"تحصيل - دفعة أجل {c.name}",
+            "description": f"Collect - Credit Sale Payment {c.name}",
             "created_at": c.posting_date,
-            "user_name": frappe.db.get_value("User", c.owner, "full_name") or "النظام",
+            "user_name": frappe.db.get_value("User", c.owner, "full_name") or "System",
             "name": c.name,
             "reference_no": c.reference_no,
             "customer": c.party,
@@ -305,7 +418,6 @@ def get_shift_details(shift_id):
             closing_cash      = sum([c.closing_amount for c in closing_table])
             closing_balance   = {c.mode_of_payment: c.closing_amount for c in closing_table}
 
-    # 1-sum(opening_balance.values())
     opening_balance = {b.mode_of_payment: b.amount for b in pos_opening_shift.balance_details}
 
     total_sales          = 0
@@ -324,7 +436,6 @@ def get_shift_details(shift_id):
         cashier_id   = d.owner
         cashier_name = frappe.db.get_value("User", cashier_id, "full_name") or cashier_id
 
-        # ── 1. دفعات الـ POS المباشرة على الفاتورة ──────────
         pos_payments = [
             {
                 "source":          "pos",
@@ -334,7 +445,6 @@ def get_shift_details(shift_id):
             for p in d.payments
         ]
 
-        # ── 2. Payment Entries المرتبطة بالفاتورة ────────────
         payment_entries = get_shift_invoice_payments(d.name)
         pe_payments = [
             {
@@ -352,10 +462,8 @@ def get_shift_details(shift_id):
             for pe in payment_entries
         ]
 
-        # ── دمج الاتنين ───────────────────────────────────────
         all_payments = pos_payments + pe_payments
 
-        # ── primary payment method ────────────────────────────
         if pos_payments:
             payment_method = pos_payments[0]["mode_of_payment"]
         elif pe_payments:
@@ -374,18 +482,15 @@ def get_shift_details(shift_id):
             "total":            flt(d.grand_total),
             "total_qty":        flt(d.total_qty),
             "payment_method":   payment_method,
-            # ── الجديد ──────────────────────────────────────
-            "pos_payments":     pos_payments,      # دفعات POS مباشرة
-            "payment_entries":  pe_payments,        # Payment Entries
-            "all_payments":     all_payments,       # الكل مع بعض
-            # ── قديم للتوافق ─────────────────────────────────
+            "pos_payments":     pos_payments,
+            "payment_entries":  pe_payments,
+            "all_payments":     all_payments,
             "payments":         pos_payments,
             "cashier_name":     cashier_name,
             "owner":            cashier_id,
             "status":           d.status,
         })
 
-        # ── payments aggregation (للـ reconciliation table) ───
         for p in all_payments:
             mop = p["mode_of_payment"]
             if mop not in payments_map:
@@ -393,7 +498,6 @@ def get_shift_details(shift_id):
             payments_map[mop]["count"]           += 1
             payments_map[mop]["expected_amount"] += flt(p["amount"])
 
-        # ── staff ─────────────────────────────────────────────
         if cashier_id not in staff_map:
             staff_map[cashier_id] = {
                 "user_id":        cashier_id,
@@ -405,7 +509,6 @@ def get_shift_details(shift_id):
         staff_map[cashier_id]["invoices_count"] += 1
         staff_map[cashier_id]["total_sales"]    += flt(d.grand_total)
 
-    # ── Build payments reconciliation list ────────────────────
     all_modes     = set(payments_map.keys()) | set(opening_balance.keys()) | set(closing_balance.keys())
     payments_list = []
     for mop in all_modes:
@@ -421,7 +524,6 @@ def get_shift_details(shift_id):
             "difference":      closing - (opening + expected),
         })
         print("payments_list",payments_list)
-    # ── تتبع الفروقات لكل فاتورة ──────────────────────
     reconciliation_issues = []
 
     for inv in invoice_list:
@@ -433,8 +535,7 @@ def get_shift_details(shift_id):
         total_collected = pos_total + pe_total
         difference      = invoice_total - total_collected
 
-        # هل في فرق؟
-        if abs(difference) > 0.01:   # تسامح 0.01 لتجنب مشاكل الكسور
+        if abs(difference) > 0.01:
             reconciliation_issues.append({
                 "invoice":          inv["name"],
                 "customer":         inv["customer_name"],
@@ -446,24 +547,14 @@ def get_shift_details(shift_id):
                 "issue_type":       "overpaid" if difference < 0 else "underpaid",
             })
 
-    # ── الدفعات غير المخصصة ───────────────────────────
     unallocated_payments = get_shift_unallocated_payments(shift_id)
-    # 4-unallocated_total
     unallocated_total = sum(flt(p["unallocated_amount"]) for p in unallocated_payments)
-    # ✅ DEBUG هنا
     all_payment_entries = get_all_shift_payment_entries(shift_id)
 
     total_pe_paid = sum(flt(pe["paid_amount"]) for pe in all_payment_entries)
     total_allocated = sum(flt(pe["allocated_amount"]) for pe in all_payment_entries)
     total_unallocated = sum(flt(pe["unallocated_amount"]) for pe in all_payment_entries)
 
-    print(f"""
-    PE CHECK:
-    Paid: {total_pe_paid}
-    Allocated: {total_allocated}
-    Unallocated: {total_unallocated}
-    Diff: {total_pe_paid - (total_allocated + total_unallocated)}
-    """)
     return {
         "id":                   pos_opening_shift.name,
         "name":                 pos_opening_shift.name,
@@ -491,18 +582,3 @@ def get_shift_details(shift_id):
         "unallocated_payments":   unallocated_payments,     # ← جديد
         "has_issues":             len(reconciliation_issues) > 0,  # ← جديد
     }
-
-@frappe.whitelist()
-def cancel_and_delete_shift_assignment(name):
-    doc = frappe.get_doc("Shift Assignment", name)
-
-    if doc.docstatus == 1:
-        doc.cancel()
-
-    frappe.delete_doc("Shift Assignment", name)
-
-    return {
-        'status': 201,
-        "message": "Shift Assignement {0}Deleted Successfully".format(name)
-    }
-

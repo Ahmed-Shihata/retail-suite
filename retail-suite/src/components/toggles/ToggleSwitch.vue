@@ -7,6 +7,7 @@
       'bg-cyan-600': modelValue,
       'bg-gray-200': !modelValue
     }"
+    dir="ltr"
   >
     <span
       class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200"

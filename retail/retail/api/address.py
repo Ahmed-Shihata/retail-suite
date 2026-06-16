@@ -102,29 +102,28 @@ def update_address(address_name, title=None, line1=None, line2=None,
     frappe.db.commit()
     return _address_dict(doc)
 
-
-@frappe.whitelist(allow_guest=False)
-def delete_address(address_name):
-    """احذف Address"""
-    frappe.delete_doc("Address", address_name, ignore_permissions=False)
-    frappe.db.commit()
-    return {"deleted": address_name}
-
-
-@frappe.whitelist(allow_guest=False)
+@frappe.whitelist()
 def get_customer_addresses(customer):
-    """جيب كل عناوين Customer"""
-    linked = frappe.get_all(
-        "Dynamic Link",
-        filters={"link_doctype": "Customer", "link_name": customer, "parenttype": "Address"},
-        fields=["parent"],
-        distinct=True,
+    return frappe.db.sql(
+        """
+        SELECT
+            address.name,
+            address.address_line1,
+            address.address_line2,
+            address.address_title,
+            address.city,
+            address.state,
+            address.country,
+            address.address_type
+        FROM `tabAddress` as address
+        INNER JOIN `tabDynamic Link` AS link
+				ON address.name = link.parent
+        WHERE link.link_doctype = 'Customer'
+            AND link.link_name = '{0}'
+            AND address.disabled = 0
+        ORDER BY address.name
+        """.format(
+            customer
+        ),
+        as_dict=1,
     )
-    result = []
-    for row in linked:
-        try:
-            result.append(_address_dict(frappe.get_doc("Address", row["parent"])))
-        except Exception:
-            continue
-    return result
-

@@ -1,18 +1,8 @@
-# retail/retail/api/barcode_scan.py
-# ─────────────────────────────────────────────────────────────────
-#  Barcode Detection API
-#  POST /api/method/retail.retail.api.barcode_scan.decode_barcode
-#
-#  Install dependencies (once):
-#    bench pip install pyzbar opencv-python-headless pillow
-#    sudo apt-get install libzbar0   ← required for pyzbar
-# ─────────────────────────────────────────────────────────────────
 
 import frappe
 import base64
 import io
 
-# ── lazy imports (don't crash if not installed yet) ──────────────
 try:
     from PIL import Image, ImageEnhance, ImageFilter
     PIL_AVAILABLE = True
@@ -32,10 +22,6 @@ try:
 except ImportError:
     CV2_AVAILABLE = False
 
-
-# ════════════════════════════════════════════════════════════════
-#  MAIN ENDPOINT
-# ════════════════════════════════════════════════════════════════
 @frappe.whitelist(allow_guest=False)
 def decode_barcode(image_data: str, enhance: bool = True):
     """
@@ -66,7 +52,6 @@ def decode_barcode(image_data: str, enhance: bool = True):
 
     # ── Decode base64 → PIL Image ────────────────────────────────
     try:
-        # strip data URL prefix if present (data:image/png;base64,...)
         if "," in image_data:
             image_data = image_data.split(",", 1)[1]
 
@@ -75,27 +60,23 @@ def decode_barcode(image_data: str, enhance: bool = True):
     except Exception as e:
         return _error(f"Failed to decode image: {str(e)}")
 
-    # ── Try 1: pyzbar on original image ─────────────────────────
     if PYZBAR_AVAILABLE:
         result = _try_pyzbar(img)
         if result:
             return _success(result, "pyzbar_original")
 
-    # ── Try 2: OpenCV preprocessing + pyzbar ────────────────────
     if CV2_AVAILABLE and PYZBAR_AVAILABLE and enhance:
         for method_name, processed in _cv2_variants(img):
             result = _try_pyzbar(processed)
             if result:
                 return _success(result, f"pyzbar_{method_name}")
 
-    # ── Try 3: PIL enhancement + pyzbar ─────────────────────────
     if PYZBAR_AVAILABLE and enhance:
         for method_name, processed in _pil_variants(img):
             result = _try_pyzbar(processed)
             if result:
                 return _success(result, f"pyzbar_{method_name}")
 
-    # ── Try 4: OpenCV WeChat QR / barcode detector ───────────────
     if CV2_AVAILABLE:
         result = _try_opencv(img)
         if result:
@@ -103,10 +84,6 @@ def decode_barcode(image_data: str, enhance: bool = True):
 
     return _error("No barcode found in image")
 
-
-# ════════════════════════════════════════════════════════════════
-#  PYZBAR HELPER
-# ════════════════════════════════════════════════════════════════
 def _try_pyzbar(img: "Image.Image"):
     """Try to decode barcodes using pyzbar. Returns first result or None."""
     try:
@@ -121,10 +98,6 @@ def _try_pyzbar(img: "Image.Image"):
         pass
     return None
 
-
-# ════════════════════════════════════════════════════════════════
-#  OPENCV HELPER
-# ════════════════════════════════════════════════════════════════
 def _try_opencv(img: "Image.Image"):
     """Try OpenCV barcode/QR detector."""
     try:
@@ -148,10 +121,6 @@ def _try_opencv(img: "Image.Image"):
         pass
     return None
 
-
-# ════════════════════════════════════════════════════════════════
-#  IMAGE PREPROCESSING VARIANTS
-# ════════════════════════════════════════════════════════════════
 def _pil_variants(img: "Image.Image"):
     """Yield (name, processed_image) for PIL-based enhancements."""
     # Grayscale
@@ -203,10 +172,6 @@ def _cv2_variants(img: "Image.Image"):
     except Exception:
         pass
 
-
-# ════════════════════════════════════════════════════════════════
-#  UTILITY
-# ════════════════════════════════════════════════════════════════
 def _success(result: dict, method: str):
     return {
         "success": True,
@@ -221,10 +186,6 @@ def _error(msg: str):
         "error":   msg,
     }
 
-
-# ════════════════════════════════════════════════════════════════
-#  HEALTH CHECK
-# ════════════════════════════════════════════════════════════════
 @frappe.whitelist(allow_guest=False)
 def check_dependencies():
     """Check which barcode libraries are available."""

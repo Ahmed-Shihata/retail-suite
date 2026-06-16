@@ -46,24 +46,6 @@
           </router-link>
         </li>
 
-        <!-- Return Menu Item -->
-        <li>
-          <a
-            href="#"
-            class="flex items-center"
-            @click.prevent="handleMenuClick('return')"
-          >
-            <span
-              class="flex items-center justify-center h-10 w-10 rounded-2xl transition-colors duration-200"
-              :class="getMenuClass('return', isActive)"
-              :style="getMenuStyle('return', isActive)"
-              title="Returns & Refunds"
-            >
-              <ReturnIcon />
-            </span>
-          </a>
-        </li>
-
         <!-- Payment Menu Item -->
         <li>
           <router-link
@@ -82,73 +64,56 @@
           </router-link>
         </li>
 
-        <!-- Inventory Menu Item -->
+        <!-- Inventory Icon -->
         <li>
-          <router-link
-            to="/inventory"
+          <a
+            href="#"
             class="flex items-center"
-            #default="{ isActive }"
+            @click.prevent="handleMenuClick('barcodesunified')"
           >
             <span
               class="flex items-center justify-center h-10 w-10 rounded-2xl transition-all duration-200"
-              :class="getMenuClass('/inventory', isActive)"
-              :style="getMenuStyle('/inventory', isActive)"
-              title="Inventory Management"
+              :class="getMenuClass('barcodesunified', isActive)"
+              :style="getMenuStyle('barcodesunified', isActive)"
+              title="Barcodes Unified"
             >
               <InventoryIcon />
             </span>
-          </router-link>
+          </a>
         </li>
-        <!-- Shifts Menu Item -->
+
+        <!-- ShiftShowDialog Menu Item -->
         <li>
           <router-link
-            to="/staff-dashboard"
+            to="#"
             class="flex items-center"
-            #default="{ isActive }"
+            @click.prevent="handleMenuClick('dialog')"
           >
             <span
               class="flex items-center justify-center h-10 w-10 rounded-2xl transition-all duration-200"
-              :class="getMenuClass('/staff-dashboard', isActive)"
-              :style="getMenuStyle('/staff-dashboard', isActive)"
-              title="Shifts & Staff Management"
-            >
-              <ShiftsIcon />
-            </span>
-          </router-link>
+              :class="getMenuClass('dialog', isActive)"
+              :style="getMenuStyle('dialog', isActive)"
+              title="Current Shift"
+          >
+          <Clock />
+        </span>
+        </router-link>
         </li>
 
-         <!-- accounting Menu -->
-         <li>
-            <router-link
-              to="/accounting-dashboard"
-              class="sidebar-link"
-              #default="{ isActive }">
-
-            <span
-              class="flex items-center justify-center h-10 w-10 rounded-2xl transition-all duration-200"
-              :class="getMenuClass('/accounting-dashboard', isActive)"
-              :style="getMenuStyle('/accounting-dashboard', isActive)"
-              title="Accounting"
-             >
-            <AccountingIcon class="w-12 h-12" />
-            </span>
-          </router-link>
-         </li>
-
-        <!-- Archive Menu Item -->
+        <!-- Invoices Item (drafts, returns) -->
         <li>
-          <router-link
-            to="/archive"
+           <router-link
+            to="#"
             class="flex items-center"
-            #default="{ isActive }"
+            @click.prevent="handleMenuClick('invoices')"
           >
             <span
               class="flex items-center justify-center h-10 w-10 rounded-2xl transition-all duration-200"
-              :class="getMenuClass('/archive', isActive)"
-              :style="getMenuStyle('/archive', isActive)"
-              title="Archive & History"
+              :class="getMenuClass('invoices', isActive)"
+              :style="getMenuStyle('invoices', isActive)"
+              title="Invoices"
             >
-              <ArchiveIcon />
+            <FileText class="w-5 h-5" />
             </span>
           </router-link>
         </li>
@@ -156,9 +121,9 @@
         <!-- Settings Menu Item -->
         <li>
           <router-link
-            to="/settings"
+            to="#"
             class="flex items-center"
-            #default="{ isActive }"
+            @click.prevent="handleMenuClick('settings')"
           >
             <span
               class="flex items-center justify-center h-10 w-10 rounded-2xl transition-all duration-200"
@@ -170,23 +135,22 @@
             </span>
           </router-link>
         </li>
-
       </ul>
 
-        <!-- GitHub Link -->
-        <a
-          href="https://github.com/AhmedAbokhatwa/retail-suite"
-          target="_blank"
-          rel="AhmedAbokhatwa"
-          class="mt-auto flex items-center justify-center h-10 w-10 focus:outline-none transition-colors duration-200"
-          :style="{
-            color: lightenColor(primaryColor, 30),
-            transition: 'color 0.3s ease'
-          }"
-          title="View on GitHub"
-        >
-          <InfoIcon />
-        </a>
+      <!-- GitHub Link -->
+      <a
+        href="https://github.com/AhmedAbokhatwa/retail-suite"
+        target="_blank"
+        rel="AhmedAbokhatwa"
+        class="mt-auto flex items-center justify-center h-10 w-10 focus:outline-none transition-colors duration-200"
+        :style="{
+          color: lightenColor(primaryColor, 30),
+          transition: 'color 0.3s ease'
+        }"
+        title="View on GitHub"
+      >
+        <InfoIcon />
+      </a>
     </div>
   </aside>
 </template>
@@ -194,177 +158,119 @@
 import { useSettingsStore } from '@/stores/settings'
 import { computed, onMounted, onUnmounted, watch } from 'vue'
 import PosIcon from '@/components/icons/PosIcon.svg'
-import InventoryIcon from '@/components/icons/InventoryIcon2.svg'
+import InventoryIcon from '@/components/icons/InventoryIcon.svg'
 import CashIcon from '@/components/icons/DollarIcon.svg'
-import ArchiveIcon from '@/components/icons/ArchiveIcon.svg'
 import SettingsIcon from '@/components/icons/SettingsIcon.svg'
 import ReturnIcon from '@/components/icons/ReturnIcon.svg'
 import InfoIcon from '@/components/icons/InfoIcon.svg'
 import AppLogo from '@/components/icons/AppLogo.svg'
-import InvoiceLogo from '@/components/icons/InvoiceIcon.svg'
-import ShiftsIcon from '@/components/icons/shifts.svg'
-import ShoppingCartIcon from '@/components/icons/ShoppingCartIcon.svg'
-import AccountingIcon from '@/components/icons/AccountingIcon.svg'
-import {
-  Package,
-  BarChart3,
-  ShoppingCart,
-  ArrowRightLeft,
-  Scale,
-  FileText,
-  ArrowRight,
-  FileCheck,
-  Users,
-  Truck
-} from 'lucide-vue-next'
+import {FileText,Clock} from 'lucide-vue-next'
 
 
-  const props = defineProps( {
-    activeMenu: {
-      type: String,
-      default: 'pos'
-    }
-  })
-  const emit = defineEmits( ['menu-change'])
+const props = defineProps( {
+  activeMenu: {
+    type: String,
+    default: 'pos'
+  }
+})
+const emit = defineEmits( ['menu-change'])
 
-    const settingsStore = useSettingsStore()
+const settingsStore = useSettingsStore()
 
-    // ✅ الحصول على الإعدادات من Store مباشرة
-    const settings = computed(() => settingsStore.settings)
+const settings = computed(() => settingsStore.settings)
 
-    // متغير محلي لتتبع اللون والـ Theme
-    const primaryColor = computed(() => {
-      return settings.value?.appearance?.primaryColor || '#06b6d4'
-    })
+const primaryColor = computed(() => {
+  return settings.value?.appearance?.primaryColor || '#06b6d4'
+})
 
-    const theme = computed(() => {
-      return settings.value?.appearance?.theme || 'light'
-    })
+const theme = computed(() => {
+  return settings.value?.appearance?.theme || 'light'
+})
 
-    const isDark    = computed(() => settings.value?.appearance?.theme !== 'light')
-    // تطبيق الـ Theme على الـ DOM
-    const applyTheme = () => {
-      try {
-        const color = primaryColor.value
-        const themeValue = theme.value
+const isDark    = computed(() => settings.value?.appearance?.theme !== 'light')
 
-        // console.log('✨ Applying theme:', { color, theme: themeValue })
+const applyTheme = () => {
+  try {
+    const color = primaryColor.value
+    const themeValue = theme.value
 
-        document.documentElement.style.setProperty('--primary-color', color)
-        document.documentElement.setAttribute('data-theme', themeValue)
-      } catch (error) {
-        console.error('❌ Error applying theme:', error)
-      }
-    }
-
-    // ✅ مراقبة تغييرات localStorage من صفحات أخرى
-    const handleStorageChange = (event) => {
-      if (event.key === 'tailwind-pos-settings' || !event.key) {
-        console.log('🔔 localStorage changed from another tab/window!')
-
-        // إعادة تحميل الإعدادات من localStorage
-        settingsStore.loadSettings()
-
-        // تطبيق الـ Theme الجديد
-        setTimeout(() => {
-          applyTheme()
-        }, 100)
-      }
-    }
-
-    onMounted(() => {
+    document.documentElement.style.setProperty('--primary-color', color)
+    document.documentElement.setAttribute('data-theme', themeValue)
+  } catch (error) {
+    console.error('❌ Error applying theme:', error)
+  }
+}
 
 
-      // تحميل الإعدادات من localStorage
-      settingsStore.loadSettings()
-
-      // تطبيق الـ Theme الأولي
+onMounted(() => {
+  applyTheme()
+  watch(
+    () => primaryColor.value,
+    (newColor) => {
       applyTheme()
-
-      // ✅ الاستماع لأحداث storage (من صفحات أخرى)
-      window.addEventListener('storage', handleStorageChange)
-
-      // ✅ مراقبة اللون الأساسي (من نفس الصفحة)
-      watch(
-        () => primaryColor.value,
-        (newColor) => {
-          applyTheme()
-        }
-      )
-
-      // ✅ مراقبة الـ Theme (من نفس الصفحة)
-      watch(
-        () => theme.value,
-        (newTheme) => {
-          console.log('🌙 Theme changed:', newTheme)
-          applyTheme()
-        }
-      )
-    })
-
-    onUnmounted(() => {
-      // ✅ إزالة event listener عند إغلاق المكون
-      window.removeEventListener('storage', handleStorageChange)
-      console.log('👋 Sidebar unmounted')
-    })
-
-    // Convert hex to RGB
-    const hexToRgb = (hex) => {
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
-      return result
-        ? {
-            r: parseInt(result[1], 16),
-            g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16)
-          }
-        : null
     }
-
-    // Lighten color by percentage
-    const lightenColor = (hex, percent) => {
-      const rgb = hexToRgb(hex)
-      if (!rgb) return hex
-
-      const factor = 1 + percent / 100
-      const r = Math.min(255, Math.round(rgb.r * factor))
-      const g = Math.min(255, Math.round(rgb.g * factor))
-      const b = Math.min(255, Math.round(rgb.b * factor))
-
-      return `rgb(${r}, ${g}, ${b})`
+  )
+  watch(
+    () => theme.value,
+    (newTheme) => {
+      console.log('🌙 Theme changed:', newTheme)
+      applyTheme()
     }
+  )
+})
 
-    // Get menu item classes
-    const getMenuClass = (menuItem, isActive = false) => {
-      const isActive_ = props.activeMenu === menuItem || isActive
-      if (isActive_) {
-        return 'shadow-lg text-white'
+const hexToRgb = (hex) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  return result
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
       }
-      return 'text-opacity-70 hover:text-opacity-100'
-    }
+    : null
+}
 
-    // Get menu item styles
-    const getMenuStyle = (menuItem, isActive = false) => {
-      const isActive_ = props.activeMenu === menuItem || isActive
-      const currentColor = primaryColor.value
+const lightenColor = (hex, percent) => {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return hex
 
-      if (isActive_) {
-        return {
-          backgroundColor: lightenColor(currentColor, 20),
-          transition: 'all 0.2s ease'
-        }
-      }
-      return {
-        backgroundColor: lightenColor(currentColor, -10),
-        color: 'rgba(255, 255, 255, 0.7)',
-        transition: 'all 0.2s ease'
-      }
-    }
+  const factor = 1 + percent / 100
+  const r = Math.min(255, Math.round(rgb.r * factor))
+  const g = Math.min(255, Math.round(rgb.g * factor))
+  const b = Math.min(255, Math.round(rgb.b * factor))
 
-    // Handle menu click
-    const handleMenuClick = (menuItem) => {
-      console.log('📍 Menu clicked:', menuItem)
-      emit('menu-change', menuItem)
+  return `rgb(${r}, ${g}, ${b})`
+}
+
+const getMenuClass = (menuItem, isActive = false) => {
+  const isActive_ = props.activeMenu === menuItem || isActive
+  if (isActive_) {
+    return 'shadow-lg text-white'
+  }
+  return 'text-opacity-70 hover:text-opacity-100'
+}
+
+const getMenuStyle = (menuItem, isActive = false) => {
+  const isActive_ = props.activeMenu === menuItem || isActive
+  const currentColor = primaryColor.value
+
+  if (isActive_) {
+    return {
+      backgroundColor: lightenColor(currentColor, 20),
+      transition: 'all 0.2s ease'
     }
+  }
+  return {
+    backgroundColor: lightenColor(currentColor, -10),
+    color: 'rgba(255, 255, 255, 0.7)',
+    transition: 'all 0.2s ease'
+  }
+}
+
+const handleMenuClick = (menuItem) => {
+  console.log('📍 Menu clicked:', menuItem)
+  emit('menu-change', menuItem)
+}
 
 </script>
 

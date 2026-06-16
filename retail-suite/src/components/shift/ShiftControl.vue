@@ -18,30 +18,32 @@
               />
             </div>
             <span class="ml-2 text-sm font-medium" style="color: var(--text-secondary)">
-              {{ shiftStore.isShiftOpen ? 'Shift Active' : 'No Active Shift' }}
+              {{ shiftStore.isShiftOpen ? __('Shift Active') : __('Shift Inactive') }}
             </span>
           </div>
 
           <!-- Current Shift Info -->
           <div
             v-if="shiftStore.isShiftOpen && currentShift"
-            class="hidden sm:flex items-center space-x-6 text-sm"
+            class="hidden sm:flex items-center gap-6 text-sm"
             style="color: var(--text-secondary)"
+            dir="ltr"
           >
-            <div class="flex items-center">
-              <UserIcon class="w-4 h-4 mr-1" />
+            <div class="flex items-center gap-1">
+              <UserIcon class="w-4 h-4" />
               <span>{{ currentShift.user }}</span>
             </div>
-            <div class="flex items-center">
-              <ClockIcon class="w-4 h-4 mr-1" />
+            <div class="flex items-center gap-1">
+              <ClockIcon class="w-4 h-4" />
               <span>{{ shiftDuration }}</span>
             </div>
-            <div class="flex items-center">
-              <ReceiptIcon class="w-4 h-4 mr-1" />
-              <span>{{ currentShift.transactions.length || 0 }} transactions</span>
+            <div class="flex items-center gap-1">
+              <ReceiptIcon class="w-4 h-4" />
+              <span>{{ currentShift.transactions.length || 0 }}</span>
+              <span>{{ __('Transactions') }}</span>
             </div>
-            <div class="flex items-center">
-              <CashIcon class="w-7 h-[1.37rem] mr-1" />
+            <div class="flex items-center gap-1">
+              <CashIcon class="w-7 h-[1.37rem]" />
               <span class="font-medium text-green-600">{{ formatPrice(currentShift.totalSales || 0) }}</span>
             </div>
           </div>
@@ -49,23 +51,6 @@
 
         <!-- Right Section - 25% -->
         <div class="col-span-1 flex items-center justify-center gap-1">
-            <!-- Draft Invoices -->
-            <button
-              v-if="shiftStore.isShiftOpen"
-              @click="openDraftModal"
-              class="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:scale-110"
-              title="Draft Invoices"
-            >
-              <FileText
-                class="w-5 h-5"
-                :style="{
-                  color: draftInvoicesCount > 0
-                    ? primaryColor
-                    : '#6b7280'
-                }"
-              />
-            </button>
-
 
           <!-- Shift Info -->
           <button v-if="shiftStore.isShiftOpen" @click="showShiftInfo = true"
@@ -74,12 +59,11 @@
             <Coins class="w-5 h-5" :style="{ color: showShiftInfo ? '#8b5cf6' : '#6b7280' }" />
           </button>
 
-          <!-- Mobile Scanner -->
-          <button @click="openScanner"
-            class="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:scale-110"
-            title="Mobile Scanner">
+          <!-- Scanner -->
+          <button @click="showMobileScan = true"
+            class="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:scale-110">
             <BarcodeScannerIcon class="w-5 h-5"
-              :style="{ color: showScanner ? '#8b5cf6' : '#6b7280' }" />
+              :style="{ color: showMobileScan ? '#8b5cf6' : '#6b7280' }" />
           </button>
 
           <!-- Close Shift -->
@@ -148,56 +132,29 @@
       :shift="currentShift"
       @close="showShiftInfo = false"
     />
-    <ScanQRModal
-      v-if="showScanner"
-      :session-id="sessionId"
-      :url="getScannerUrl()"
-      @close="showScanner = false"
-    />
-    <!-- DroidCam Toast Notification -->
-    <Transition name="fade">
-      <div
-        v-if="showDroidCamNotification"
-        class="fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg transition-all duration-300"
-        :class="[
-          droidcamNotificationStatus === 'success'
-            ? 'bg-green-500 text-white'
-            : droidcamNotificationStatus === 'error'
-            ? 'bg-red-500 text-white'
-            : 'bg-blue-500 text-white'
-        ]"
-      >
-        <div class="flex items-center">
-          <span v-if="droidcamNotificationStatus === 'success'" class="mr-2">✓</span>
-          <span v-if="droidcamNotificationStatus === 'error'" class="mr-2">✕</span>
-          <span v-if="droidcamNotificationStatus === 'connecting'" class="mr-2">⟳</span>
-          <span>{{ droidcamNotificationMessage }}</span>
-        </div>
-      </div>
-    </Transition>
-
-    <DraftInvoicesModal
-      v-model="showDraftInvoicesModal"
-      :draft-invoices="draftInvoices"
-      :is-loading="isDraftLoading"
-      @open-invoice="handleOpenDraftInvoice"
-      @delete-draft="(name) => { /* delete logic */ }"
-    />
   </div>
+
+  <MobileScanOverlay
+  v-model="showMobileScan"
+  :on-add-to-cart="handleAddToCart"
+  :pos-profile="shiftStore.pos_profile"
+  :price-list="productStore.selectedPriceList"
+  :warehouse="productStore.selectedWarehouse"
+/>
+
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Coins, Wifi, FileText } from 'lucide-vue-next'
 import { useShiftStore } from '@/stores/shift'
+import { useProductsStore } from '@/stores/products'
+import MobileScanOverlay from '@/components/MobileScanOverlay.vue'
 import OpenShiftModal from '@/components/modals/OpenShiftModal.vue'
 import CloseShiftModal from '@/components/modals/CloseShiftModal.vue'
 import ShiftInfoModal from '@/components/modals/ShiftInfoModal.vue'
-import DraftInvoicesModal from '@/components/modals/DraftInvoicesModal.vue'
 import { formatDuration, formatPrice } from '../../utils/formatters'
-import { get_shift_summary } from '../../composables/shift'
 import eventBus from '../../utils/eventBus'
-import { useDroidCamClient } from '@/services/barcodeWebSocketClient'
 import UserIcon   from '@/components/icons/UserIcon.svg'
 import ClockIcon    from '@/components/icons/ClockIcon.svg'
 import ReceiptIcon            from '@/components/icons/ReceiptIcon.svg'
@@ -209,173 +166,43 @@ import { useSettingsStore }   from '@/stores/settings.js'
 import { useInvoicesStore }   from '@/stores/invoices'
 import { useCartStore }       from '@/stores/cart'
 import { useMobileScanSession } from '@/services/useMobileScanSession'
-import ScanQRModal from '@/components/modals/ScanQRModal.vue'
-
-
+import { isOffline } from '@/db/network'
+import { createDocumentResource } from 'frappe-ui'
 // Stores
 const cartStore = useCartStore()
 const shiftStore = useShiftStore()
 const settingsStore = useSettingsStore()
 const invoicesStore = useInvoicesStore()
-const {sessionId, getScannerUrl, startListening} = useMobileScanSession()
+const productStore = useProductsStore()
 
 const emit = defineEmits(['shift-opened', 'shift-closed', 'shift-error'])
 
-
-const showScanner = ref(false)
 // Shift Modals
 const showOpenShiftModal = ref(false)
 const showCloseShiftModal = ref(false)
 const showShiftInfo = ref(false)
 const shiftDuration = ref('')
-// DroidCam State
-const isDroidCamConnecting = ref(false)
-const showDroidCamNotification = ref(false)
-const droidcamNotificationMessage = ref('')
-const droidcamNotificationStatus = ref('connecting') // 'connecting', 'success', 'error'
-
-let notificationTimeout = null
-let durationInterval = null
-let wifiInterval = null
-
-const showDraftInvoicesModal = ref(false)
-const draftInvoices = ref([])
-const isDraftLoading = ref(false)
-
-const draftInvoicesCount = computed(() => draftInvoices.value.length)
-
-const openDraftModal = async () => {
-  showDraftInvoicesModal.value = true
-  isDraftLoading.value = true
-  console.log('currentShift', currentShift.value.name)
-  draftInvoices.value = await invoicesStore.loadDraftInvoices(currentShift.value.name)
-  isDraftLoading.value = false
-}
-
-
-
-const wificonnected = ref('disconnected')
-const checkInternetConnection = async () => {
-  if (!navigator.onLine) {
-    wificonnected.value = 'disconnected'
-    return
-  }
-
-  try {
-    await fetch('https://1.1.1.1/cdn-cgi/trace', {
-      method: 'GET',
-      cache: 'no-cache',
-      signal: AbortSignal.timeout(3000),
-    })
-    wificonnected.value = 'connected'
-  } catch {
-    wificonnected.value = 'disconnected'
-  }
-}
-
-
-
 const userAvatar = ref('https://ui-avatars.com/api/?name=Ahmed+Reda&background=0D8ABC&color=fff')
+
+const wificonnected = computed(() => isOffline.value ? 'disconnected' : 'connected')
+
 const userName = computed(() => shiftStore.userName)
 
-// DroidCam Composable
-const {
-isConnected: isDroidCamConnected,
-connectionStatus,
-droidcamIP,
-connectToDroidCam,
-disconnectDroidCam
-} = useDroidCamClient()
+const showMobileScan = ref(false)
 
-
-const openScanner = () => {
-  showScanner.value = true
-  startListening()
+const handleAddToCart = (product) => {
+  const added = cartStore.addToCart(product)
+  if (!added) {
+    window.$toast?.warning(__('Quantity exceeds available stock'))
+  }
 }
 
-
 const currentShift = computed(() => shiftStore.currentShift)
-
-// theme
 const isDark = computed(() => settingsStore.settings.appearance.theme === 'dark')
 const primaryColor = computed(() => {
   return settingsStore.settings.value?.appearance?.primaryColor || '#06b6d4';
 })
 
-const handleDroidCamConnect = async () => {
-  if (isDroidCamConnected.value) {
-    // قطع الاتصال
-    isDroidCamConnecting.value = true
-    await disconnectDroidCam()
-    isDroidCamConnecting.value = false
-
-    showNotification('DroidCam Disconnected', 'success')
-  } else {
-    // الاتصال
-    isDroidCamConnecting.value = true
-
-    try {
-      showNotification('Connecting to DroidCam...', 'connecting')
-
-      // استخدم IP من المتغير أو القيمة الافتراضية
-      const ipAddress = droidcamIP.value || '192.168.8.15'
-
-      await connectToDroidCam(ipAddress, 4747)
-
-      if (isDroidCamConnected.value) {
-        showNotification(`Connected to DroidCam (${ipAddress})`, 'success')
-
-        // استقبال أحداث الباركود
-        window.addEventListener('barcode-scanned', handleBarcodeScanned)
-      } else {
-        showNotification('Failed to connect to DroidCam', 'error')
-      }
-    } catch (error) {
-      console.error('DroidCam connection error:', error)
-      showNotification(`Connection failed: ${error.message}`, 'error')
-    } finally {
-      isDroidCamConnecting.value = false
-    }
-  }
-}
-
-
-const handleBarcodeScanned = (event) => {
-    console.log(`📦 Barcode Scanned function 2`)
-  const { barcode, timestamp } = event.detail
-  console.log(`📦 Barcode Scanned: ${barcode} at ${timestamp}`)
-
-  // بث الحدث للـ components الأخرى
-  eventBus.emit('barcode:scanned', {
-    barcode,
-    timestamp
-  })
-}
-
-/**
- * عرض إشعار DroidCam
- */
-const showNotification = (message, status = 'connecting') => {
-  droidcamNotificationMessage.value = message
-  droidcamNotificationStatus.value = status
-  showDroidCamNotification.value = true
-
-  // إخفاء الإشعار بعد 3 ثواني
-  if (notificationTimeout) clearTimeout(notificationTimeout)
-
-  if (status === 'connecting') {
-    // لا تخفي إشعار الاتصال تلقائياً
-    return
-  }
-
-  notificationTimeout = setTimeout(() => {
-    showDroidCamNotification.value = false
-  }, 3000)
-}
-
-/**
- * تحديث مدة Shift
- */
 const updateShiftDuration = () => {
   if (shiftStore.isShiftOpen && currentShift.value) {
     const startTime = new Date(currentShift.value.period_start_date)
@@ -389,7 +216,7 @@ const updateShiftDuration = () => {
 const refreshShiftSummary = async () => {
   try {
     if (shiftStore.isShiftOpen && currentShift.value?.name) {
-      const summary = await get_shift_summary({ name: currentShift.value.name })
+      const summary = await shiftStore.get_shift_summary({ name: currentShift.value.name })
       shiftStore.currentShift.totalSales = summary.total_sales || 0
       shiftStore.currentShift.transactions = summary.transactions || []
     }
@@ -433,59 +260,13 @@ const applyTheme = (theme) => {
   }
 }
 
-// في ShiftControl.vue
-const handleOpenDraftInvoice = (invoiceName) => {
-  const invoice = draftInvoices.value.find(inv => inv.name === invoiceName)
-  if (!invoice) return
-
-  cartStore.loadDraftInvoice(invoice)
-  showDraftInvoicesModal.value = false
-}
-
 onMounted(() => {
-
-  checkInternetConnection()
-  window.addEventListener('online', checkInternetConnection)
-  window.addEventListener('offline', checkInternetConnection)
-  wifiInterval = setInterval(checkInternetConnection, 10000)
-
-
   updateShiftDuration()
-  durationInterval = setInterval(updateShiftDuration, 1000)
   eventBus.on('invoice:created', refreshShiftSummary)
-
-  // الاستماع لأحداث DroidCam
-  window.addEventListener('droidcam-connected', () => {
-    console.log('✅ DroidCam connected')
-  })
-
-  window.addEventListener('droidcam-disconnected', () => {
-    console.log('❌ DroidCam disconnected')
-  })
 })
 
 onUnmounted(() => {
-
-  window.removeEventListener('online', checkInternetConnection)
-  window.removeEventListener('offline', checkInternetConnection)
-  clearInterval(wifiInterval)
-
-  if (durationInterval) clearInterval(durationInterval)
-  if (notificationTimeout) clearTimeout(notificationTimeout)
-
   eventBus.off('invoice:created', refreshShiftSummary)
-
-  window.removeEventListener('barcode-scanned', handleBarcodeScanned)
-  window.removeEventListener('droidcam-connected', null)
-  window.removeEventListener('droidcam-disconnected', null)
-
-  // قطع الاتصال عند غلق الـ component
-  if (isDroidCamConnected.value) {
-    disconnectDroidCam()
-  }
-
-
-
 })
 
 </script>

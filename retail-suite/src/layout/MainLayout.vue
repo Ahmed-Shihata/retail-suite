@@ -21,11 +21,13 @@
 
             <!-- Breadcrumb Navigation -->
             <div class="hidden sm:flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <span class="hover:text-gray-900 dark:hover:text-white cursor-pointer transition">Home</span>
-              <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-              <span class="text-gray-900 dark:text-gray-50">{{ currentPageName }}</span>
+               <template v-if="currentPage.section && currentPage.section !== currentPage.title">
+                 <span class="hover:text-gray-900 dark:hover:text-white cursor-pointer transition">{{ __(currentPage.section) }}</span>
+                 <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                 </svg>
+               </template>
+              <span class="text-gray-900 dark:text-gray-50">{{ __(currentPage.title) }}</span>
             </div>
           </div>
 
@@ -83,9 +85,7 @@
                     >
                       <div class="flex items-center gap-3 sm:gap-4">
                         <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="page.icon" />
-                          </svg>
+                          <component :is="page.icon" class="w-5 h-5" :style="{ color: primaryColor }" :stroke-width="2" />
                         </div>
                         <div class="flex-1 min-w-0">
                           <p class="text-sm font-medium text-gray-900 dark:text-white">{{ page.name }}</p>
@@ -106,7 +106,7 @@
               <button
                 @click="showNotifications = !showNotifications"
                 class="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
-                title="Notifications"
+                :title="__('Notifications')"
               >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -171,7 +171,7 @@
                     <button
                        @click="$router.push('/notification-center')"
                       class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium">
-                      View All Notifications
+                      {{ __('View All Notifications') }}
                     </button>
                   </div>
                 </div>
@@ -183,7 +183,7 @@
               <button
                 @click="showMessages = !showMessages"
                 class="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
-                title="Messages"
+                :title="__('Messages')"
               >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -235,7 +235,7 @@
 
                     class="text-sm text-blue-600 dark:text-blue-400
                            hover:text-blue-700 dark:hover:text-blue-300 font-medium">
-                      View All Messages
+                      __{{ __('View All Messages') }}
                     </button>
                   </div>
                 </div>
@@ -294,19 +294,19 @@
                       href="#"
                       class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
                     >
-                      Profile
+                      {{ __('Profile') }}
                     </a>
                     <a
                       href="#"
                       class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
                     >
-                      Settings
+                      __{{ __('Settings') }}
                     </a>
                     <a
                       href="#"
                       class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition"
                     >
-                      Help & Support
+                      __{{ __('Help & Support') }}
                     </a>
                   </nav>
                   <div class="p-2 border-t border-gray-200 dark:border-gray-700">
@@ -314,7 +314,7 @@
                       @click="logout"
                       class="w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition text-left"
                     >
-                      Logout
+                      __{{ __('Logout') }}
                     </button>
                   </div>
                 </div>
@@ -325,7 +325,7 @@
             <button
               @click="toggleTheme"
               class="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
-              title="Toggle Theme"
+              :title="__('Toggle Theme')"
             >
               <svg v-if="isDark" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
@@ -350,19 +350,6 @@
           </main>
         </div>
       </div>
-
-      <!-- Footer -->
-      <footer class="border-t  px-4 sm:px-6 py-4 text-sm text-gray-500 dark:text-gray-400"
-        style="background: var(--nav-bg); border-color: var(--divider);">
-        <div class="flex items-center justify-between">
-          <p>&copy; 2025 POS System. Build With: <span class="text-cyan-500 dark:text-cyan-400 font-semibold">Ahmed Abu-Khatwa</span> All rights reserved.</p>
-          <div class="flex gap-4">
-            <a href="#" class="hover:text-gray-700 dark:hover:text-gray-300 transition">Privacy</a>
-            <a href="#" class="hover:text-gray-700 dark:hover:text-gray-300 transition">Terms</a>
-            <a href="#" class="hover:text-gray-700 dark:hover:text-gray-300 transition">Contact</a>
-          </div>
-        </div>
-      </footer>
     </div>
 
     <!-- Mobile Overlay -->
@@ -385,334 +372,280 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import {
   getNotifications,
   getMessages,
   markNotificationAsRead,
-  markAllNotificationsAsRead,
-  getCurrentUserInfoApi
+  markAllNotificationsAsRead
 } from '@/services/api.js'
 import config from '@/config/frappe'
 import { useSettingsStore } from '@/stores/settings.js'
+import {useShiftStore} from '@/stores/shift'
+
 import Sidebar from './Sidebar.vue'
-import { session } from '@/services/auth'; // استورد من ملف auth.js بتاعك
+import { session } from '@/services/auth';
 // Settings Store
 const settingsStore = useSettingsStore()
+const shiftStore = useShiftStore()
+
+const route = useRoute()
+const router = useRouter()
 
 // State
 const showNotifications = ref(false)
 const showMessages = ref(false)
 const showProfileDropdown = ref(false)
 const isSidebarCollapsed = ref(false)
-const currentPageName = ref('Dashboard')
 
 // Dark Mode from Settings Store
 const isDark = computed(() => settingsStore.settings.appearance.theme === 'dark')
+const primaryColor = computed(() => settingsStore.settings.appearance.primaryColor || '#06b6d4')
+const currentPage = computed(() => {
+  const currentRoute = route.meta
+
+  return {
+    section: currentRoute.section || '',
+    title: currentRoute.title || 'Dashboard'
+  }
+})
 
 // Search State
 const searchQuery = ref('')
 const showSearchResults = ref(false)
 const selectedResultIndex = ref(0)
 
-    // Available Pages for Search
-    const availablePages = ref([
-      {
-        name: 'Dashboard',
-        path: '/dashboard',
-        description: 'Main dashboard overview',
-        icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
-        keywords: ['home', 'main', 'overview']
-      },
-      {
-        name: 'Products',
-        path: '/products',
-        description: 'Manage products and inventory',
-        icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
-        keywords: ['items', 'inventory', 'stock', 'goods']
-      },
-      {
-        name: 'Sales',
-        path: '/sales',
-        description: 'Sales orders and invoices',
-        icon: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z',
-        keywords: ['orders', 'invoices', 'transactions', 'sell']
-      },
-      {
-        name: 'Purchases',
-        path: '/purchases',
-        description: 'Purchase orders and suppliers',
-        icon: 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z',
-        keywords: ['buy', 'suppliers', 'orders', 'procurement']
-      },
-      {
-        name: 'Customers',
-        path: '/customers',
-        description: 'Customer management',
-        icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z',
-        keywords: ['clients', 'buyers', 'contacts']
-      },
-      {
-        name: 'Suppliers',
-        path: '/suppliers',
-        description: 'Supplier management',
-        icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
-        keywords: ['vendors', 'providers']
-      },
-      {
-        name: 'Reports',
-        path: '/reports',
-        description: 'Analytics and reports',
-        icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
-        keywords: ['analytics', 'statistics', 'charts', 'data']
-      },
-      {
-        name: 'Settings',
-        path: '/settings',
-        description: 'System settings and configuration',
-        icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
-        keywords: ['configuration', 'preferences', 'options', 'setup']
-      },
-      {
-        name: 'Users',
-        path: '/users',
-        description: 'User management',
-        icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
-        keywords: ['staff', 'employees', 'team', 'accounts']
-      },
-      {
-        name: 'Accounting',
-        path: '/accounting',
-        description: 'Financial management',
-        icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
-        keywords: ['finance', 'ledger', 'journal', 'accounts']
-      }
-    ])
+const availablePages = computed(() => {
+  return router.options.routes.map(route => ({
+    name: route.name,
+    path: route.path,
+    description: route.meta?.description || '',
+    icon: route.meta?.icon || '',
+    keywords: route.meta?.keywords || []
+  }))
+})
+// User Data
+const userName = ref('Ahmed Reda')
+const userEmail = ref('ahmed@example.com')
+const userAvatar = ref('https://ui-avatars.com/api/?name=Ahmed+Reda&background=0D8ABC&color=fff')
 
-    // User Data
-    const userName = ref('Ahmed Reda')
-    const userEmail = ref('ahmed@example.com')
-    const userAvatar = ref('https://ui-avatars.com/api/?name=Ahmed+Reda&background=0D8ABC&color=fff')
+// Notifications
+const notifications = ref([])
 
-    // Notifications
-    const notifications = ref([])
+// Messages
+const messages = ref([])
 
-    // Messages
-    const messages = ref([])
+// Computed Properties
+const notificationCount = computed(() => notifications.value.filter(n => !n.read).length)
+const messageCount = computed(() => messages.value.length)
 
-    // Computed Properties
-    const notificationCount = computed(() => notifications.value.filter(n => !n.read).length)
-    const messageCount = computed(() => messages.value.length)
+// Search Computed
+const filteredPages = computed(() => {
+  if (!searchQuery.value) return []
 
-    // Search Computed
-    const filteredPages = computed(() => {
-      if (!searchQuery.value) return []
+  const query = searchQuery.value.toLowerCase().trim()
 
-      const query = searchQuery.value.toLowerCase().trim()
+  return availablePages.value.filter(page => {
+    const nameMatch = page.name.toLowerCase().includes(query)
+    const descMatch = page.description.toLowerCase().includes(query)
+    const keywordMatch = page.keywords.some(keyword => keyword.includes(query))
 
-      return availablePages.value.filter(page => {
-        const nameMatch = page.name.toLowerCase().includes(query)
-        const descMatch = page.description.toLowerCase().includes(query)
-        const keywordMatch = page.keywords.some(keyword => keyword.includes(query))
+    return nameMatch || descMatch || keywordMatch
+  })
+})
 
-        return nameMatch || descMatch || keywordMatch
+// Methods
+const toggleSidebar = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value
+}
+
+const toggleTheme = () => {
+  const newTheme = settingsStore.settings.appearance.theme === 'dark' ? 'light' : 'dark'
+  settingsStore.settings.appearance.theme = newTheme
+  applyTheme(newTheme)
+}
+
+const applyTheme = (theme) => {
+  if (theme === 'dark') {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
+}
+
+const logout = () => {
+  session.logout.submit()
+}
+const markAsRead = async (notificationId) => {
+  const notification = notifications.value.find(n => n.id === notificationId)
+  if (notification) {
+    const success = await markNotificationAsRead(notificationId)
+    if (success) {
+      notification.read = true
+    }
+  }
+}
+
+const markAllAsRead = async () => {
+  const unreadIds = notifications.value
+    .filter(n => !n.read)
+    .map(n => n.id)
+
+  if (unreadIds.length > 0) {
+    const success = await markAllNotificationsAsRead(unreadIds)
+    if (success) {
+      notifications.value.forEach(n => {
+        n.read = true
       })
+    }
+  }
+}
+
+const getNotificationIcon = (type) => {
+  const icons = {
+    alert: 'AlertIcon',
+    purchase: 'ShoppingCartIcon',
+    success: 'CheckIcon',
+    default: 'BellIcon'
+  }
+  return icons[type] || icons.default
+}
+
+const getNotificationIconBg = (type) => {
+  const colors = {
+    alert: 'bg-red-500',
+    purchase: 'bg-blue-500',
+    success: 'bg-green-500',
+    default: 'bg-gray-500'
+  }
+  return `w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${colors[type] || colors.default}`
+}
+
+// Search Methods
+const handleSearch = () => {
+  showSearchResults.value = true
+  selectedResultIndex.value = 0
+}
+
+const navigateToPage = (path) => {
+  searchQuery.value = ''
+  showSearchResults.value = false
+  window.location.href = path
+}
+
+const navigateToResult = () => {
+  if (filteredPages.value.length > 0) {
+    const selectedPage = filteredPages.value[selectedResultIndex.value]
+    navigateToPage(selectedPage.path)
+  }
+}
+
+// Close search results when clicking outside
+const handleClickOutside = (event) => {
+  const searchContainer = event.target.closest('.relative.w-64')
+  if (!searchContainer) {
+    showSearchResults.value = false
+  }
+}
+
+// Lifecycle Hooks
+onMounted(async () => {
+
+  document.addEventListener('click', handleClickOutside)
+  applyTheme(settingsStore.settings.appearance.theme)
+
+  // Load user info from Frappe
+  const userInfo = await shiftStore.getCurrentUserInfo()
+  if (userInfo) {
+    userName.value = userInfo.full_name || userInfo.user
+    userEmail.value = userInfo.email
+    userAvatar.value = userInfo.user_image
+      ? config.FRAPPE_URL + userInfo.user_image
+      : `https://ui-avatars.com/api/?name=${encodeURIComponent(userInfo.full_name)}&background=0D8ABC&color=fff`
+  }
+
+  // Load notifications
+  const notificationsData = await getNotifications(userName.value)
+  console.log("notificationsData",notificationsData)
+  if (notificationsData.length > 0) {
+    notifications.value = notificationsData.map((n, index) => ({
+      id: n.name,
+      title: n.subject || 'Notification',
+      message: n.email_content || '',
+      time: formatTime(n.creation),
+      type: getNotificationType(n.type),
+      read: n.read || false
+    }))
+  }
+
+  // Load messages
+  const messagesData = await getMessages()
+  if (messagesData.length > 0) {
+    messages.value = messagesData.map(m => ({
+      id: m.name,
+      sender: m.sender || 'System',
+      subject: m.subject || 'Message',
+      time: formatTime(m.creation)
+    }))
+  }
+
+  // Setup Socket.io for realtime notifications
+  setupRealtimeNotifications()
+})
+
+// Helper Functions
+const formatTime = (dateString) => {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diff = now - date
+
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
+  if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`
+  return date.toLocaleDateString()
+}
+
+const getNotificationType = (type) => {
+  const typeMap = {
+    'Alert': 'alert',
+    'Purchase': 'purchase',
+    'Success': 'success',
+    'Info': 'info'
+  }
+  return typeMap[type] || 'alert'
+}
+
+const setupRealtimeNotifications = () => {
+  // Check if frappe.realtime is available
+  if (typeof frappe !== 'undefined' && frappe.realtime) {
+    frappe.realtime.on('notification', (data) => {
+      const newNotification = {
+        id: Date.now(),
+        title: data.subject || 'New Notification',
+        message: data.message || '',
+        time: 'Just now',
+        type: data.type || 'alert',
+        read: false
+      }
+      notifications.value.unshift(newNotification)
     })
 
-    // Methods
-    const toggleSidebar = () => {
-      isSidebarCollapsed.value = !isSidebarCollapsed.value
-    }
-
-    const toggleTheme = () => {
-      const newTheme = settingsStore.settings.appearance.theme === 'dark' ? 'light' : 'dark'
-      settingsStore.settings.appearance.theme = newTheme
-      applyTheme(newTheme)
-    }
-
-    const applyTheme = (theme) => {
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark')
-      } else {
-        document.documentElement.classList.remove('dark')
+    frappe.realtime.on('new_message', (data) => {
+      const newMessage = {
+        id: Date.now(),
+        sender: data.sender || 'System',
+        subject: data.subject || 'New Message',
+        time: 'Just now'
       }
-    }
-
-    const logout = () => {
-      session.logout.submit()
-    }
-    const markAsRead = async (notificationId) => {
-      const notification = notifications.value.find(n => n.id === notificationId)
-      if (notification) {
-        const success = await markNotificationAsRead(notificationId)
-        if (success) {
-          notification.read = true
-        }
-      }
-    }
-
-    const markAllAsRead = async () => {
-      const unreadIds = notifications.value
-        .filter(n => !n.read)
-        .map(n => n.id)
-
-      if (unreadIds.length > 0) {
-        const success = await markAllNotificationsAsRead(unreadIds)
-        if (success) {
-          notifications.value.forEach(n => {
-            n.read = true
-          })
-        }
-      }
-    }
-
-    const getNotificationIcon = (type) => {
-      const icons = {
-        alert: 'AlertIcon',
-        purchase: 'ShoppingCartIcon',
-        success: 'CheckIcon',
-        default: 'BellIcon'
-      }
-      return icons[type] || icons.default
-    }
-
-    const getNotificationIconBg = (type) => {
-      const colors = {
-        alert: 'bg-red-500',
-        purchase: 'bg-blue-500',
-        success: 'bg-green-500',
-        default: 'bg-gray-500'
-      }
-      return `w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${colors[type] || colors.default}`
-    }
-
-    // Search Methods
-    const handleSearch = () => {
-      showSearchResults.value = true
-      selectedResultIndex.value = 0
-    }
-
-    const navigateToPage = (path) => {
-      searchQuery.value = ''
-      showSearchResults.value = false
-      window.location.href = path
-    }
-
-    const navigateToResult = () => {
-      if (filteredPages.value.length > 0) {
-        const selectedPage = filteredPages.value[selectedResultIndex.value]
-        navigateToPage(selectedPage.path)
-      }
-    }
-
-    // Close search results when clicking outside
-    const handleClickOutside = (event) => {
-      const searchContainer = event.target.closest('.relative.w-64')
-      if (!searchContainer) {
-        showSearchResults.value = false
-      }
-    }
-
-    // Lifecycle Hooks
-    onMounted(async () => {
-      // Add click outside listener for search
-      document.addEventListener('click', handleClickOutside)
-
-      // Load settings and apply theme
-      settingsStore.loadSettings()
-      applyTheme(settingsStore.settings.appearance.theme)
-
-      // Load user info from Frappe
-      const userInfo = await getCurrentUserInfoApi()
-      if (userInfo) {
-        userName.value = userInfo.full_name || userInfo.user
-        userEmail.value = userInfo.email
-        userAvatar.value = userInfo.user_image
-          ? config.FRAPPE_URL + userInfo.user_image
-          : `https://ui-avatars.com/api/?name=${encodeURIComponent(userInfo.full_name)}&background=0D8ABC&color=fff`
-      }
-
-      // Load notifications
-      const notificationsData = await getNotifications(userName.value)
-      console.log("notificationsData",notificationsData)
-      if (notificationsData.length > 0) {
-        notifications.value = notificationsData.map((n, index) => ({
-          id: n.name,
-          title: n.subject || 'Notification',
-          message: n.email_content || '',
-          time: formatTime(n.creation),
-          type: getNotificationType(n.type),
-          read: n.read || false
-        }))
-      }
-
-      // Load messages
-      const messagesData = await getMessages()
-      if (messagesData.length > 0) {
-        messages.value = messagesData.map(m => ({
-          id: m.name,
-          sender: m.sender || 'System',
-          subject: m.subject || 'Message',
-          time: formatTime(m.creation)
-        }))
-      }
-
-      // Setup Socket.io for realtime notifications
-      setupRealtimeNotifications()
+      messages.value.unshift(newMessage)
     })
-
-    // Helper Functions
-    const formatTime = (dateString) => {
-      const date = new Date(dateString)
-      const now = new Date()
-      const diff = now - date
-
-      const minutes = Math.floor(diff / 60000)
-      const hours = Math.floor(diff / 3600000)
-      const days = Math.floor(diff / 86400000)
-
-      if (minutes < 1) return 'Just now'
-      if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
-      if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
-      if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`
-      return date.toLocaleDateString()
-    }
-
-    const getNotificationType = (type) => {
-      const typeMap = {
-        'Alert': 'alert',
-        'Purchase': 'purchase',
-        'Success': 'success',
-        'Info': 'info'
-      }
-      return typeMap[type] || 'alert'
-    }
-
-    const setupRealtimeNotifications = () => {
-      // Check if frappe.realtime is available
-      if (typeof frappe !== 'undefined' && frappe.realtime) {
-        frappe.realtime.on('notification', (data) => {
-          const newNotification = {
-            id: Date.now(),
-            title: data.subject || 'New Notification',
-            message: data.message || '',
-            time: 'Just now',
-            type: data.type || 'alert',
-            read: false
-          }
-          notifications.value.unshift(newNotification)
-        })
-
-        frappe.realtime.on('new_message', (data) => {
-          const newMessage = {
-            id: Date.now(),
-            sender: data.sender || 'System',
-            subject: data.subject || 'New Message',
-            time: 'Just now'
-          }
-          messages.value.unshift(newMessage)
-        })
-      }
-    }
+  }
+}
 
 </script>
 

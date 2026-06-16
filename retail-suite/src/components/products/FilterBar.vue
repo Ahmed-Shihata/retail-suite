@@ -7,7 +7,7 @@
     <!-- Price List -->
     <div class="flex items-center gap-2 flex-1 min-w-0">
       <span class="text-xs font-semibold whitespace-nowrap" :style="{ color: 'var(--text-muted)' }">
-        Price List
+        {{ __('Price List') }}
       </span>
       <select
         :value="selectedPriceList"
@@ -31,7 +31,7 @@
     <!-- Warehouse -->
     <div class="flex items-center gap-2 flex-1 min-w-0">
       <span class="text-xs font-semibold whitespace-nowrap" :style="{ color: 'var(--text-muted)' }">
-        Warehouse
+        {{ __('Warehouse') }}
       </span>
       <select
         :value="selectedWarehouse"
@@ -39,7 +39,6 @@
         :style="selectStyle"
         @change="emit('update:selectedWarehouse', $event.target.value)"
       >
-        <option value="">الافتراضي</option>
         <option
           v-for="wh in warehouses"
           :key="wh.name"
@@ -59,12 +58,13 @@
     >
       <span v-if="isLoading" class="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
       <span v-else>↻</span>
-      <span>Reload</span>
+      <span>{{ __('Reload') }}</span>
     </button>
   </div>
 </template>
 
 <script setup>
+
 import { onMounted, computed } from 'vue'
 import { useProductsStore } from '@/stores/products'
 import { storeToRefs } from 'pinia'
@@ -95,4 +95,5 @@ const selectStyle = {
   border: '1px solid var(--card-border)',
   cursor: 'pointer'
 }
+
 </script>
