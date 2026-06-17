@@ -125,26 +125,12 @@ def get_shift_statistics():
         if fieldname not in ALLOWED_FIELDS:
             frappe.throw(f"Invalid fieldname: {fieldname}")
 
-        conditions = []
-        values = []
-        for key, val in filters.items():
-            if isinstance(val, list):
-                if val[0].lower() == "between":
-                    conditions.append(f"`{key}` BETWEEN %s AND %s")
-                    values.extend(val[1])
-                else:
-                    conditions.append(f"`{key}` {val[0]} %s")
-                    values.append(val[1])
-            else:
-                conditions.append(f"`{key}` = %s")
-                values.append(val)
-
-        where = " AND ".join(conditions)
-        result = frappe.db.sql(
-                f"SELECT SUM(`{fieldname}`) FROM `tab{doctype}` WHERE {where}",  # nosemgrep
-                values
-            )
-        return result[0][0] or 0
+        records = frappe.db.get_list(
+            doctype,
+            filters=filters,
+            fields=[fieldname],
+        )
+        return sum(r.get(fieldname) or 0 for r in records)
 
     stats = {
         "today_shifts": frappe.db.count("POS Opening Shift", {"posting_date": today}),
