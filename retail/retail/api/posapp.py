@@ -2,6 +2,8 @@ import frappe
 from frappe import _
 from frappe.utils.caching import redis_cache
 from frappe.utils import nowdate, flt, nowdate
+from frappe.query_builder import DocType
+from frappe.query_builder.functions import Count
 from frappe.utils.background_jobs import enqueue
 from erpnext.stock.get_item_details import get_item_details
 from retail.retail.api.pricing_rule import apply_pricing_rules_for_pos
@@ -9,7 +11,6 @@ from erpnext.stock.doctype.batch.batch import (get_batch_no, get_batch_qty)
 from erpnext.accounts.doctype.pos_profile.pos_profile import get_item_groups
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
 from erpnext.accounts.doctype.loyalty_program.loyalty_program import get_loyalty_program_details_with_points
-
 def pos_cache(fn, pos_profile: dict):
 
     if not pos_profile.get("posa_use_server_cache"):
@@ -78,7 +79,7 @@ def get_item_attributes(item_code):
         "Item Variant Attribute",
         fields=["attribute"],
         filters={"parenttype": "Item", "parent": item_code},
-        order_by="idx asc",
+        order_by="name asc",
     )
 
     optional_attributes = get_item_optional_attributes(item_code)
@@ -88,7 +89,7 @@ def get_item_attributes(item_code):
             "Item Attribute Value",
             fields=["attribute_value", "abbr"],
             filters={"parenttype": "Item Attribute", "parent": a.attribute},
-            order_by="idx asc",
+            order_by="abbr asc",
         )
         a.values = values
         if a.attribute in optional_attributes:
@@ -325,7 +326,6 @@ def resolve_pos_search(search_value: str) -> dict:
     }
 
 def _get_items(pos_profile, price_list, item_group, search_value, customer=None, warehouse=None):
-
     pos_profile = frappe.parse_json(pos_profile)
     today = nowdate()
     posa_display_items_in_stock = pos_profile.get("posa_display_items_in_stock")
@@ -336,13 +336,43 @@ def _get_items(pos_profile, price_list, item_group, search_value, customer=None,
     allow_zero_rated_items = pos_profile.get("posa_allow_zero_rated_items")
     search_mode = get_search_mode_settings(pos_profile)
     price_list = price_list or pos_profile.get("selling_price_list")
-
     data = dict()
-    limit = ""
-    condition = ""
-    values = []
     search_context = {}
-    condition += get_item_group_condition(pos_profile.get("name"))
+
+    Item = DocType("Item")
+    query = (
+        frappe.qb.from_(Item)
+        .select(
+            Item.name.as_("item_code"),
+            Item.item_name,
+            Item.description,
+            Item.stock_uom,
+            Item.image,
+            Item.is_stock_item,
+            Item.has_variants,
+            Item.variant_of,
+            Item.item_group,
+            Item.has_batch_no,
+            Item.has_serial_no,
+            Item.max_discount,
+            Item.brand,
+            Item.disabled,
+        )
+        .where(
+            (Item.disabled == 0)
+            & (Item.is_sales_item == 1)
+            & (Item.is_fixed_asset == 0)
+        )
+        .orderby(Item.item_name)
+    )
+
+    item_groups = get_item_group_condition(pos_profile.get("name"))
+
+    if item_groups:
+        query = query.where(Item.item_group.isin(item_groups))
+
+    if not posa_show_template_items:
+        query = query.where(Item.has_variants == 0)
 
     if use_limit_search:
         if search_value:
@@ -361,59 +391,25 @@ def _get_items(pos_profile, price_list, item_group, search_value, customer=None,
         batch_no = data.get("batch_no") or ""
         barcode = data.get("barcode") or ""
 
-        condition += get_search_items_conditions(
-            item_code, serial_no, batch_no, barcode
-        )
+        if serial_no or batch_no or barcode:
+            query = query.where(Item.name == item_code)
+        elif item_code:
+            query = query.where(
+                (Item.name.like(f"%{item_code}%")) | (Item.item_name.like(f"%{item_code}%"))
+            )
 
         if item_group:
-            condition += " AND item_group like %s"
-            values.append(f"%{item_group}%")
-        limit = f"LIMIT {int(search_limit)}"
+            query = query.where(Item.item_group.like(f"%{item_group}%"))
 
-    if not posa_show_template_items:
-        condition += " AND has_variants = 0"
+        query = query.limit(int(search_limit))
+
+    items_data = query.run(as_dict=True)
+    print("Items Data:", items_data)
 
     result = []
-
-    items_data = frappe.db.sql(
-        """
-        SELECT
-            name AS item_code,
-            item_name,
-            description,
-            stock_uom,
-            image,
-            is_stock_item,
-            has_variants,
-            variant_of,
-            item_group,
-            idx as idx,
-            has_batch_no,
-            has_serial_no,
-            max_discount,
-            brand,
-            disabled
-        FROM
-            `tabItem`
-        WHERE
-            disabled = 0
-                AND is_sales_item = 1
-                AND is_fixed_asset = 0
-                {condition}
-        ORDER BY
-            item_name asc
-        {limit}
-           """.format(  # nosemgrep
-            condition=condition, limit=limit
-        ),
-        values=values,
-        as_dict=1,
-    )
-
     if items_data:
         price_map = _build_prices(items_data, price_list, customer, pos_profile, today)
         rule_map = _build_pricing_rule(items_data, price_map, customer, pos_profile, price_list, today)
-
         for item in items_data:
             pricing = _calculate_item_price(item, price_map, rule_map, allow_zero_rated_items, pos_profile)
             if pricing is None:
@@ -422,25 +418,23 @@ def _get_items(pos_profile, price_list, item_group, search_value, customer=None,
             item = attach_stock_and_attributes(item, warehouse, posa_show_template_items)
             if posa_display_items_in_stock and item["actual_qty"] <= 0:
                 continue
-
             item.update({
                 **pricing,
                 "warehouse": pos_profile.get("warehouse"),
                 "use_limit_search": use_limit_search,
             })
             result.append(item)
+
     return {
         "items": result,
         "search_context": search_context if use_limit_search else {}
     }
 
 def get_item_group_condition(pos_profile):
-    cond = " and 1=1"
     item_groups = get_item_groups(pos_profile)
     if item_groups:
-        cond = " and item_group in (%s)" % (", ".join(["%s"] * len(item_groups)))
-
-    return cond % tuple(item_groups)
+        return [i.strip("'") for i in item_groups]
+    return []
 
 def get_customer_groups(pos_profile):
     customer_groups = []
@@ -539,7 +533,7 @@ def build_item_cache(item_code):
             "Item Variant Attribute",
             {"parent": parent_item_code},
             ["attribute"],
-            order_by="idx asc",
+            order_by="name asc",
         )
     ]
 
