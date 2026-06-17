@@ -14,21 +14,17 @@ def get_translations(lang="en"):
         return {}
 
     app_path = frappe.get_app_path("retail")
-    translations_dir = os.path.join(app_path, "translations-retail")
-    csv_path = os.path.join(translations_dir, f"{lang}.csv")
-
-    if not os.path.abspath(csv_path).startswith(os.path.abspath(translations_dir)):
-        return {}
+    csv_path = os.path.join(app_path, "translations-retail", f"{lang}.csv")
 
     if not os.path.exists(csv_path):
         return {}
 
-    messages = {}
-    with open(csv_path, "r", encoding="utf-8") as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if len(row) >= 2 and row[0] and row[1]:
-                messages[row[0]] = row[1]
+    from frappe.translate import get_translation_dict_from_file
+    messages = get_translation_dict_from_file(csv_path, lang, "retail")
+
+    translations = translate.get_all_translations(lang)
+    translations.update(messages)
+    return translations
 
 
 def _get_user_language():

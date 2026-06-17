@@ -403,8 +403,8 @@ def _get_items(pos_profile, price_list, item_group, search_value, customer=None,
         ORDER BY
             item_name asc
         {limit}
-            """.format(
-            condition=condition, limit=limit   # nosemgrep
+           """.format(  # nosemgrep
+            condition=condition, limit=limit
         ),
         values=values,
         as_dict=1,
@@ -462,13 +462,12 @@ def get_child_nodes(group_type, root):
     if not frappe.get_meta(group_type):
         frappe.throw("Invalid DocType")
     lft, rgt = frappe.db.get_value(group_type, root, ["lft", "rgt"])
-    query = """
-        SELECT name, lft, rgt
-        FROM `tab{}`
-        WHERE lft >= %s AND rgt <= %s
-        ORDER BY lft
-        """.format(group_type)  # nosemgrep
-    return frappe.db.sql(query, (lft, rgt), as_dict=1)
+    return frappe.db.get_all(
+        group_type,
+        filters=[["lft", ">=", lft], ["rgt", "<=", rgt]],
+        fields=["name", "lft", "rgt"],
+        order_by="lft asc",
+    )
 
 def get_customer_group_condition(pos_profile):
     customer_groups = get_customer_groups(pos_profile)
@@ -479,26 +478,18 @@ def get_customer_group_condition(pos_profile):
 
 def _get_customer_names(pos_profile):
     pos_profile = frappe.parse_json(pos_profile)
-    conditions = ["disabled = 0"]
-    values = []
+    filters = {"disabled": 0}
 
-    cond, cond_values = get_customer_group_condition(pos_profile)
-    if cond:
-        conditions.append(cond)
-        values.extend(cond_values)
+    customer_groups = get_customer_groups(pos_profile)
+    if customer_groups:
+        filters["customer_group"] = ["in", customer_groups]
 
-    where_clause = "WHERE " + " AND ".join(conditions)
-    customers = frappe.db.sql(
-        f"""
-        SELECT name, customer_name, territory, customer_type
-        FROM `tabCustomer`
-        {where_clause}
-        ORDER BY name
-        """,
-        tuple(values) if values else (),
-        as_dict=1,
+    return frappe.db.get_all(
+        "Customer",
+        filters=filters,
+        fields=["name", "customer_name", "territory", "customer_type"],
+        order_by="name asc",
     )
-    return customers
 
 def get_cash_account(invoice_doc, payment_mode=None):
     mop = [
