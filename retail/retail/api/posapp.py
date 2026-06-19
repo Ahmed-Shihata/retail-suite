@@ -332,7 +332,7 @@ def _get_items(pos_profile, price_list, item_group, search_value, customer=None,
     posa_show_template_items = pos_profile.get("posa_show_template_items")
     warehouse = warehouse or pos_profile.get("warehouse")
     search_limit = pos_profile.get("posa_search_limit") or 100
-    use_limit_search = pos_profile.get("pose_use_limit_search")
+    use_limit_search = pos_profile.get("posa_use_limit_search")
     allow_zero_rated_items = pos_profile.get("posa_allow_zero_rated_items")
     search_mode = get_search_mode_settings(pos_profile)
     price_list = price_list or pos_profile.get("selling_price_list")
@@ -463,51 +463,6 @@ def get_child_nodes(group_type, root):
         order_by="lft asc",
     )
 
-def get_customer_group_condition(pos_profile):
-    customer_groups = get_customer_groups(pos_profile)
-    if customer_groups:
-        placeholders = ", ".join(["%s"] * len(customer_groups))
-        return f"customer_group IN ({placeholders})", list(customer_groups)  # nosemgrep
-    return "1=1", []
-
-def _get_customer_names(pos_profile):
-    pos_profile = frappe.parse_json(pos_profile)
-    filters = {"disabled": 0}
-
-    customer_groups = get_customer_groups(pos_profile)
-    if customer_groups:
-        filters["customer_group"] = ["in", customer_groups]
-
-    return frappe.db.get_all(
-        "Customer",
-        filters=filters,
-        fields=["name", "customer_name", "territory", "customer_type"],
-        order_by="name asc",
-    )
-
-def get_cash_account(invoice_doc, payment_mode=None):
-    mop = [
-        i.mode_of_payment
-        for i in invoice_doc.payments
-        if "cash" in i.mode_of_payment.lower()
-    ]
-    if mop:
-        return get_bank_cash_account(mop[0], invoice_doc.company)
-
-    # fallback على payment_mode الممرر من الـ payload
-    if payment_mode:
-        try:
-            return get_bank_cash_account(payment_mode, invoice_doc.company)
-        except Exception:
-            pass
-
-    # آخر fallback → default_cash_account
-    return {
-        "account": frappe.get_value(
-            "Company", invoice_doc.company, "default_cash_account"
-        )
-    }
-
 def get_stock_availability(item_code, warehouse):
     actual_qty = (
         frappe.db.get_value(
@@ -588,6 +543,34 @@ def get_search_items_conditions(item_code, serial_no, batch_no, barcode):
         return " and name = {0}".format(frappe.db.escape(item_code))
     return """ and (name like {item_code} or item_name like {item_code})""".format(
         item_code=frappe.db.escape("%" + item_code + "%")
+    )
+
+def get_customer_group_condition(pos_profile):
+    customer_groups = get_customer_groups(pos_profile)
+    if customer_groups:
+        placeholders = ", ".join(["%s"] * len(customer_groups))
+        return f"customer_group IN ({placeholders})", list(customer_groups)  # nosemgrep
+    return "1=1", []
+
+@frappe.whitelist()
+def get_customer_names(pos_profile):
+    return _get_customer_names(pos_profile)
+
+def _get_customer_names(pos_profile):
+    pos_profile = frappe.parse_json(pos_profile)
+    filters = {"disabled": 0}
+
+    customer_groups = get_customer_groups(pos_profile)
+    if customer_groups:
+        filters["customer_group"] = ["in", customer_groups]
+    else:
+        filters["name"] = pos_profile.get("customer")
+
+    return frappe.db.get_all(
+        "Customer",
+        filters=filters,
+        fields=["name", "customer_name", "territory", "customer_type"],
+        order_by="name asc"
     )
 
 @frappe.whitelist()

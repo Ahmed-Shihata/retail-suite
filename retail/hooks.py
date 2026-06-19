@@ -7,10 +7,7 @@ app_license = "mit"
 # Apps
 # ------------------
 
-required_apps = [
-    {"app": "frappe", "version": ">=15.0.0 <17.0.0"},
-    {"app": "erpnext", "version": ">=15.0.0 <17.0.0"},
-]
+required_apps = ["frappe", "erpnext"]
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
 # 	{

@@ -4,37 +4,24 @@ from weasyprint import HTML, CSS
 import json
 
 @frappe.whitelist()
-def create_Sample_items(item_data):
-    """
-    Create an Item in ERPNext using provided item data.
-    Args:
-        item_data (dict): Dictionary containing item fields like:
-            {
-                "item_code": "TEST-ITEM-001",
-                "item_name": "Test Item",
-                "item_group": "Products",
-                "stock_uom": "Nos",
-                "standard_rate": 50
-            }
-    Returns:
-        str: Name of the created item
-    """
-
-    # Validate input
-    if not isinstance(item_data, dict):
-        frappe.throw("item_data must be a dictionary")
-
+def create_Sample_items(item_data: dict):
     item_code = item_data.get("item_code")
     if not item_code:
         frappe.throw("Missing required field: item_code")
 
-    # Ensure required item group exists
     if item_data.get("item_group"):
-        ensure_item_group(item_data["item_group"])
+        if not frappe.db.exists("Item Group", group_name):
+            item_group = frappe.get_doc({
+                "doctype": "Item Group",
+                "item_group_name": group_name,
+                "parent_item_group": "All Item Groups",
+                "is_group": 0
+            })
+            item_group.insert(ignore_permissions=True)
+            return item_group.name
 
-    # Check if item already exists
     if frappe.db.exists("Item", item_code):
-        frappe.msgprint(f"⚠️ Item <b>{item_code}</b> already exists.")
+        frappe.msgprint(f"Item <b>{item_code}</b> already exists.")
         return item_code
 
     # Create new item
@@ -43,16 +30,11 @@ def create_Sample_items(item_data):
         **item_data
     })
 
-    item.insert(ignore_permissions=True)
+    item.insert()
     return item.name
 
 @frappe.whitelist()
-def create_all_sample_items(sample_products):
-    """Loop through sample_products list and create each item."""
-
-    if not isinstance(sample_products, list):
-        frappe.throw("sample_products must be a list of dictionaries")
-
+def create_all_sample_items(sample_products: list):
     created, failed = [], []
     for product in sample_products:
         try:
@@ -66,33 +48,19 @@ def create_all_sample_items(sample_products):
         "failed": failed
     }
 
-
-def ensure_item_group(group_name: str):
-    """Ensure a specific Item Group exists; if not, create it"""
-    if not frappe.db.exists("Item Group", group_name):
-        item_group = frappe.get_doc({
-            "doctype": "Item Group",
-            "item_group_name": group_name,
-            "parent_item_group": "All Item Groups",
-            "is_group": 0
-        })
-        item_group.insert(ignore_permissions=True)
-        return item_group.name
-
 @frappe.whitelist()
 def delete_all_sample_items():
     """Delete all items created as sample data (SAMPLE-ITEM-###)"""
     try:
-        # حدد العناصر اللي كودها يبدأ بـ SAMPLE-
         items = frappe.get_all("Item", filters=[["item_code", "like", "SAMPLE-ITEM-%"]], pluck="name")
 
         if not items:
-            return {"status": "empty", "message": "⚠️ No sample items found to delete."}
+            return {"status": "empty", "message": "No sample items found to delete."}
 
         deleted_count = 0
         for name in items:
             try:
-                frappe.delete_doc("Item", name, ignore_permissions=True)
+                frappe.delete_doc("Item", name)
                 deleted_count += 1
             except Exception as e:
                 frappe.log_error(f"Failed to delete {name}: {str(e)}", "Delete Sample Items")
@@ -100,7 +68,7 @@ def delete_all_sample_items():
         return {
             "status": "success",
             "deleted_count": deleted_count,
-            "message": f"🗑️ Deleted {deleted_count} sample items successfully."
+            "message": f"Deleted {deleted_count} sample items successfully."
         }
 
     except Exception as e:
@@ -128,13 +96,18 @@ def get_paper_size(paper_size: str) -> tuple[int, int | None]:
 
 @frappe.whitelist()
 def print_with_ip(invoice_name, printer):
-    printer_dict, printer_type, printer_width, printer_height, page_size = _parse_printer(printer)
-    printer_ip   = printer_dict.get("name")
-    printer_port = int(printer_dict.get("port", 9100))
+
+    printer_type = printer.get("posa_printer_type", "Thermal Printer")
+    paper_width, paper_height = get_paper_size(printer.get("posa_paper_size"))
+    page_size = f"{paper_width}mm {paper_height}mm" if paper_height else f"{paper_width}mm auto"
+
+    printer_ip   = printer.get("posa_printer_ip")
+    printer_port = int(printer.get("posa_printer_port", 9100))
 
     invoice, payments = _get_invoice_data(invoice_name)
-    html      = _build_receipt_html(invoice, payments, printer_type, printer_width, printer_height, page_size)
-    css       = CSS(string=f"@page {{ size: {page_size}; margin: 4mm 3mm; }}")
+
+    html = _build_receipt_html(invoice, payments, printer_type, paper_width, paper_height, page_size)
+    css = CSS(string=f"@page {{ size: {page_size}; margin: 4mm 3mm; }}")
     pdf_bytes = HTML(string=html).write_pdf(stylesheets=[css])
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -152,7 +125,7 @@ def print_with_ip(invoice_name, printer):
     return {"status": "ok", "invoice": invoice_name, "printer_type": printer_type}
 
 
-def _get_invoice_data(invoice_name):
+def _get_invoice_data(invoice_name: str):
     invoice  = frappe.get_doc("Sales Invoice", invoice_name)
     payments = frappe.get_all(
         "Sales Invoice Payment",
@@ -161,21 +134,19 @@ def _get_invoice_data(invoice_name):
     )
     return invoice, payments
 
-def _parse_printer(printer):
-    printer        = frappe.parse_json(printer)
-    printer_type   = printer.get("printer_type", "Thermal Printer")
-    printer_width, printer_height = get_paper_size(printer.get("paper_size"))
-    page_size      = f"{printer_width}mm {printer_height}mm" if printer_height else f"{printer_width}mm auto"
-    return printer, printer_type, printer_width, printer_height, page_size
-
 @frappe.whitelist()
-def get_invoice_html(invoice_name, printer):
-    printer, printer_type, printer_width, printer_height, page_size = _parse_printer(printer)
+def get_invoice_html(invoice_name: str, printer: dict):
+
+    printer_type = printer.get("posa_printer_type", "Thermal Printer")
+    paper_width, paper_height = get_paper_size(printer.get("posa_paper_size"))
+    page_size = f"{paper_width}mm {paper_height}mm" if paper_height else f"{paper_width}mm auto"
+
     invoice, payments = _get_invoice_data(invoice_name)
-    return _build_receipt_html(invoice, payments, printer_type, printer_width, printer_height, page_size)
+
+    return _build_receipt_html(invoice, payments, printer_type, paper_width, paper_height, page_size)
 
 
-def _build_receipt_html(invoice, payments, printer_type, printer_width, printer_height, page_size):
+def _build_receipt_html(invoice, payments, printer_type, paper_width, paper_height, page_size):
 
         items_rows = ""
         for item in invoice.items:
@@ -199,7 +170,7 @@ def _build_receipt_html(invoice, payments, printer_type, printer_width, printer_
         change = paid_total - invoice.grand_total
         is_thermal = printer_type == "Thermal Printer"
 
-        if printer_width <= 80:
+        if paper_width <= 80:
             base_font, title_font, header_font = "11px", "14px", "12px"
         else:
             base_font, title_font, header_font = "13px", "17px", "14px"
@@ -227,7 +198,7 @@ def _build_receipt_html(invoice, payments, printer_type, printer_width, printer_
                         font-family: {'monospace' if is_thermal else 'Arial, sans-serif'};
                         font-size: {base_font};
                         color: #000;
-                        width: {printer_width}mm;
+                        width: {paper_width}mm;
                         margin: 4mm auto;
                         }}
                         .center  {{ text-align: center; }}
@@ -296,52 +267,14 @@ def _build_receipt_html(invoice, payments, printer_type, printer_width, printer_
                     </html>
                 """
 
-def _parse_printer_config(printer):
-    if isinstance(printer, str):
-        # Try JSON parse first
-        try:
-            parsed = json.loads(printer)
-            if isinstance(parsed, dict):
-                return parsed
-        except (json.JSONDecodeError, ValueError):
-            pass
+@frappe.whitelist()
+def view_invoice(invoice_name: str, printer: dict):
 
-        # Treat as printer document name — fetch from DB
-        try:
-            printer_doc = frappe.get_doc("POS Printer", printer)
-            return {
-                "printer_type": getattr(printer_doc, "printer_type", "thermal"),
-                "page_size": getattr(printer_doc, "page_size", "80mm"),
-                "printer_width": getattr(printer_doc, "printer_width", 80),
-                "name": printer,
-            }
-        except frappe.DoesNotExistError:
-            # Unknown string → fall back to thermal 80mm defaults
-            frappe.log_error(
-                f"POS printer '{printer}' not found — using defaults",
-                "view_invoice",
-            )
-            return {
-                "printer_type": "thermal",
-                "page_size": "80mm",
-                "printer_width": 80,
-            }
+    frappe.has_permission("Sales Invoice", doc=invoice_name, throw=True)
 
-    if isinstance(printer, dict):
-        return printer
-
-    # Unexpected type → safe defaults
-    return {
-        "printer_type": "thermal",
-        "page_size": "80mm",
-        "printer_width": 80,
-    }
-
-
-def _resolve_print_format(page_size: str) -> str:
+    page_size = printer.get("posa_paper_size", "80mm")
 
     thermal_sizes = {"58mm", "80mm"}
-
     if page_size in thermal_sizes:
         return "POS Thermal Receipt"
 
@@ -350,21 +283,10 @@ def _resolve_print_format(page_size: str) -> str:
             "A5": "POS A5 Invoice",
         }
 
-    return page_formats.get(page_size, "POS A4 Invoice")
-
-@frappe.whitelist()
-def view_invoice(invoice_name: str, printer):
-
-    frappe.has_permission("Sales Invoice", doc=invoice_name, throw=True)
-
-    printer_config = _parse_printer_config(printer)
-    page_size = printer_config.get("paperSize", "80mm")
-    print_format = _resolve_print_format(page_size)
-
     html = frappe.get_print(
         doctype="Sales Invoice",
         name=invoice_name,
-        print_format=print_format,
+        print_format=page_formats.get(page_size, "POS A4 Invoice"),
         as_pdf=False,
         letterhead=None,
     )
