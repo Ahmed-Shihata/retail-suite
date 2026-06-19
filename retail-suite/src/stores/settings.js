@@ -109,8 +109,6 @@ export const useSettingsStore = defineStore("settings", () => {
     system: {
       offlineMode:       false,
       soundEffects:      true,
-      showScannerStatus: true,
-      simpleData:        false,
       language:          "en",
       itemsPerPage:      20,
     },
@@ -119,30 +117,25 @@ export const useSettingsStore = defineStore("settings", () => {
   // ── Sync from POS Profile ──────────────────
 const syncPOSSettings = (profile) => {
   const p = profile || shiftStore.pos_profile
-  if (!p) {
-    console.log("POS Profile is null")
-    return
-  }
+  console.log("profile:", p)
+     if (!p) return
 
-  console.log('🔍 syncPOSSettings:', p)
-  console.log('🔍 Phone', p.custom_phone)
-   console.log('🔍 tax_category', p.tax_category)
     // Store
-    settings.store.name    = p.custom_store_name    || "";
-    settings.store.storeLogo = p.store_logo || "";
-    settings.store.address = p.custom_store_address || "";
-    settings.store.phone = (p.custom_phone ?? "")|| "";
-    settings.store.email   = p.custom_email         || "";
-    settings.store.taxId   = p.custom_tax_id        || "";
+    settings.store.name = p.posa_store_name || "";
+    settings.store.storeLogo = p.posa_store_logo || "";
+    settings.store.address = p.posa_store_address || "";
+    settings.store.phone = (p.posa_store_phone ?? "")|| "";
+    settings.store.email = p.posa_store_email || "";
+    settings.store.taxId   = p.posa_tax_id || "";
 
     // Receipt
-    settings.receipt.showLogo      = !!p.custom_show_logo;
-    settings.receipt.showThankYou  = !!p.custom_show_thank_you;
-    settings.receipt.footerMessage = p.custom_footermessage || "";
+    settings.receipt.showLogo      = !!p.posa_show_store_logo;
+    settings.receipt.showThankYou  = !!p.posa_show_thank_you;
+    settings.receipt.footerMessage = p.posa_footer_message || "";
 
     // Appearance
-    settings.appearance.theme        = p.custom_theme         || "light";
-    settings.appearance.primaryColor = p.custom_primary_color || "#06b6d4";
+    settings.appearance.theme        = p.posa_theme         || "light";
+    settings.appearance.primaryColor = p.posa_primary_color || "#06b6d4";
 
     // Pricing
     settings.pricing.price_list = p.selling_price_list  || "";
@@ -152,33 +145,28 @@ const syncPOSSettings = (profile) => {
     settings.pricing.enableTax  = !!p.posa_tax_inclusive;
 
     // Printer
-    settings.printer.printerIP        = p.printer_ip        || "";
-    settings.printer.paperSize        = p.paper_size        || "";
-    settings.printer.printerPort      = p.printer_port      || "";
-    settings.printer.printerType      = p.printer_type      || "";
-    settings.printer.width            = p.width             || 80;
-    settings.printer.height           = p.height            || 0;
+    settings.printer.printerIP        = p.posa_printer_ip || "";
+    settings.printer.paperSize        = p.posa_paper_size || "";
+    settings.printer.printerPort      = p.posa_printer_port || "";
+    settings.printer.printerType      = p.posa_printer_type || "";
+    settings.printer.width            = p.posa_paper_width || 80;
+    settings.printer.height           = p.posa_paper_height || 0;
 
     // System
-    settings.system.offlineMode       = !!p.custom_offline_mode;
-    settings.system.soundEffects      = !!p.custom_sound_effects;
-    settings.system.showScannerStatus = !!p.custom_show_scanner_status;
-    settings.system.simpleData        = !!p.custom_simple_data;
-    settings.system.language          = p.custom_language      || "en";
-    settings.system.itemsPerPage      = p.custom_items_per_page || 20;
+    settings.system.offlineMode       = !!p.posa_offline_mode;
+    settings.system.soundEffects      = !!p.posa_sound_effects;
+    settings.system.language          = p.posa_language      || "en";
+    settings.system.itemsPerPage      = p.posa_items_per_page || 20;
 
     applyVisualSettings(settings.appearance);
-    console.log("✅ POS Profile synced to settings");
   };
 
   // ── Watch pos_profile ──────────────────────
 watch(
   () => shiftStore.pos_profile,
   (profile) => {
-    console.log('👀 watch fired:', profile)
     if (profile) {
       syncPOSSettings(profile)
-      console.log("✅ pos_profile loaded — settings synced")
     }
   },
   { immediate: true }
@@ -196,21 +184,22 @@ watch(
 
     await posProfileResource.submit({
       pos_profile_name: shiftStore.pos_profile.name,
+
       settings: JSON.stringify({
         // Store
-        custom_store_name:          settings.store.name,
-        store_logo:                 settings.store.storeLogo,
-        custom_store_address:       settings.store.address,
-        custom_phone:               settings.store.phone,
-        custom_email:               settings.store.email,
-        custom_tax_id:              settings.store.taxId,
+        posa_store_name:            settings.store.name,
+        posa_store_logo:            settings.store.storeLogo,
+        posa_store_address:         settings.store.address,
+        posa_store_phone:           settings.store.phone,
+        posa_store_email:           settings.store.email,
+        posa_tax_id:                settings.store.taxId,
         // Receipt
-        custom_show_logo:           settings.receipt.showLogo     ? 1 : 0,
-        custom_show_thank_you:      settings.receipt.showThankYou ? 1 : 0,
-        custom_footermessage:       settings.receipt.footerMessage,
+        posa_show_store_logo:       settings.receipt.showLogo,
+        posa_show_thank_you:        settings.receipt.showThankYou,
+        posa_footer_message:        settings.receipt.footerMessage,
         // Appearance
-        custom_theme:               settings.appearance.theme,
-        custom_primary_color:       settings.appearance.primaryColor,
+        posa_theme:                 settings.appearance.theme,
+        posa_primary_color:         settings.appearance.primaryColor,
         // Pricing
         selling_price_list:         settings.pricing.price_list,
         currency:                   settings.pricing.currency,
@@ -218,23 +207,21 @@ watch(
         tax_category:               settings.pricing.taxCategory,
         posa_tax_inclusive:         settings.pricing.enableTax,
         // Printer
-        printer_ip:                 settings.printer.printerIP,
-        printer_port:               settings.printer.printerPort,
-        printer_type:               settings.printer.printerType,
-        paper_size:                 settings.printer.paperSize,
-        width:                      settings.printer.width,
-        height:                     settings.printer.height,
+        posa_printer_ip:            settings.printer.printerIP,
+        posa_printer_port:          settings.printer.printerPort,
+        posa_printer_type:          settings.printer.printerType,
+        posa_paper_size:            settings.printer.paperSize,
+        posa_paper_width:           settings.printer.width,
+        posa_paper_height:          settings.printer.height,
         // System
-        custom_items_per_page:      settings.system.itemsPerPage,
-        custom_offline_mode:        settings.system.offlineMode        ? 1 : 0,
-        custom_sound_effects:       settings.system.soundEffects       ? 1 : 0,
-        custom_show_scanner_status: settings.system.showScannerStatus  ? 1 : 0,
-        custom_simple_data:         settings.system.simpleData         ? 1 : 0,
-        custom_language:            settings.system.language,
+        posa_items_per_page:        settings.system.itemsPerPage,
+        posa_offline_mode:          settings.system.offlineMode,
+        posa_sound_effects:         settings.system.soundEffects,
+        posa_language:              settings.system.language,
       }),
     });
 
-    console.log("✅ POS Profile updated");
+    console.log("posa_tax_id",settings.store.taxId)
   };
 
   const saveSettings = async () => {
@@ -242,7 +229,6 @@ watch(
       changeLanguage(settings.system.language);
       applyVisualSettings(settings.appearance);
       await saveToPOSProfile();
-      console.log("✅ Settings saved to backend");
       return true;
     } catch (e) {
       console.error("❌ saveSettings failed:", e);

@@ -1,23 +1,20 @@
 <template>
   <div
     v-if="shift"
-    class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[9999]"
-  >
+    class="fixed inset-0 flex items-center justify-center p-4 z-[9999] bg-black/30"
+    :class="isDark ? 'theme-dark' : 'theme-light'">
     <!-- Backdrop -->
-    <div class="absolute inset-0" @click="$emit('close')" />
+   <div class="absolute inset-0 bg-black/25" style="backdrop-filter: blur(2px)" @click="$emit('close')"/>
 
     <!-- Modal -->
     <div
       class="relative rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col"
-      :class="isDark ? 'bg-slate-900 text-slate-100' : 'bg-white text-slate-900'"
+      :style="{ background: 'var(--card-bg)' }"
     >
-
       <!-- ── Header ──────────────────────────────────────────────── -->
       <div
         class="px-6 py-4 border-b flex-shrink-0"
-        :class="isDark
-          ? 'border-slate-700 bg-gradient-to-r from-slate-800 to-slate-800/70'
-          : 'border-slate-200 bg-gradient-to-r from-blue-50 to-indigo-50'"
+        :style="{ borderBottomColor: 'var(--card-border)' }"
       >
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">

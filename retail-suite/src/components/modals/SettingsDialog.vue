@@ -410,7 +410,7 @@
 
                   <div class="form-grid mb-4">
                     <div class="form-group">
-                      <label class="form-label required" :style="{ color: 'var(--text-sub)' }">{{ __('Printer Type') }}</label>
+                      <label class="form-label" :style="{ color: 'var(--text-sub)' }">{{ __('Printer Type') }}</label>
                       <div class="readonly-field" :style="readonlyStyle">
                         <span>{{ settings.printer.printerType || '—' }}</span>
                         <Lock class="w-3.5 h-3.5 ml-auto" :style="{ color: 'var(--text-muted)' }" />
@@ -419,7 +419,7 @@
                     </div>
 
                     <div class="form-group">
-                      <label class="form-label required" :style="{ color: 'var(--text-sub)' }">{{ __('Printer IP') }}</label>
+                      <label class="form-label" :style="{ color: 'var(--text-sub)' }">{{ __('Printer IP') }}</label>
                       <div class="readonly-field" :style="readonlyStyle">
                         <span>{{ settings.printer.printerIP || '—' }}</span>
                         <Lock class="w-3.5 h-3.5 ml-auto" :style="{ color: 'var(--text-muted)' }" />
@@ -428,7 +428,7 @@
                     </div>
 
                     <div class="form-group">
-                      <label class="form-label required" :style="{ color: 'var(--text-sub)' }">{{ __('Paper Width (mm)') }}</label>
+                      <label class="form-label" :style="{ color: 'var(--text-sub)' }">{{ __('Paper Width (mm)') }}</label>
                       <div class="readonly-field" :style="readonlyStyle">
                         <span>{{ settings.printer.width || '—' }}</span>
                         <Lock class="w-3.5 h-3.5 ml-auto" :style="{ color: 'var(--text-muted)' }" />
@@ -657,6 +657,7 @@ import { useConfirm }       from '@/composables/useConfirm'
 import ToggleSwitch         from '@/components/toggles/ToggleSwitch.vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useProductsStore } from '@/stores/products'
+import { useShiftStore } from '@/stores/shift'
 import SaudiArabiaFlag from '@/components/icons/flag-saudi-arabia.svg'
 import UnitedStatesFlag from '@/components/icons/flag-usa.svg'
 import { useToast } from '@/composables/useToast'
@@ -671,7 +672,7 @@ const { confirm } = useConfirm()
 const { toast } = useToast()
 const settingsStore = useSettingsStore()
 const productsStore = useProductsStore()
-
+const shiftStore = useShiftStore()
 const isDark         = useDark({ selector: 'html', attribute: 'class', valueDark: 'dark', valueLight: '' })
 const isSaving       = ref(false)
 const activeCategory = ref('store')
@@ -747,14 +748,20 @@ watch(
   (phone) => {
 
     if (!phone) return
-
-    const parsed = parsePhoneNumber(phone)
+    try {
+    const parsed = parsePhoneNumber(phone, 'SA')
     if (!parsed) return
 
     selectedCountry.value = countryList.find(
       c => c.iso === parsed.country
     )
-    rawPhone.value = phone.replace('-', ' ')
+
+    rawPhone.value = phone.replace('/-/g', ' ')
+
+    } catch{
+      rawPhone.value = phone.replace('/-/g', ' ')
+    }
+
   },
   { immediate: true }
 )
@@ -1046,8 +1053,15 @@ const handleKeydown = (e) => {
   if (e.ctrlKey && e.key === 'p')                { e.preventDefault(); return }
 }
 
+watch(
+  () => shiftStore.pos_profile,
+  (profile) => {
+    if (profile) settingsStore.syncPOSSettings(profile)
+  },
+  { immediate: true }
+)
+
 onMounted(() => {
-  settingsStore.syncPOSSettings()
   window.addEventListener('keydown', handleKeydown)
 })
 
