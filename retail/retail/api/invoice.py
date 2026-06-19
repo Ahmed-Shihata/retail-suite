@@ -50,7 +50,6 @@ def get_cash_account(invoice_doc, payment_mode):
 
     return mop_account
 
-
 def redeeming_customer_credit(invoice_doc, data, is_payment_entry, total_cash, cash_account, payments):
     today = nowdate()
     if data.get("redeemed_customer_credit"):
