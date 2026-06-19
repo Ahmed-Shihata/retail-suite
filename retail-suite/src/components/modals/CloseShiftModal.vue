@@ -6,7 +6,7 @@
     <!-- Modal — horizontal two-column layout -->
     <div
       class="relative rounded-xl shadow-2xl w-full max-w-4xl mx-4 flex flex-col lg:flex-row overflow-hidden max-h-[90vh]"
-      :class="isDark ? 'bg-slate-900 text-slate-100' : 'bg-white text-slate-900'"
+      :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
     >
 
       <!-- ══════════════════════════════════════════════════════════ -->
@@ -14,7 +14,7 @@
       <!-- ══════════════════════════════════════════════════════════ -->
       <div
         class="flex flex-col lg:w-[42%] flex-shrink-0 border-b lg:border-b-0 lg:border-r"
-        :class="isDark ? 'border-slate-700' : 'border-slate-200'"
+        :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
       >
 
         <!-- Header -->
@@ -226,7 +226,7 @@
         <!-- Right header -->
         <div
           class="px-5 py-3 flex-shrink-0 border-b"
-          :class="isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50'"
+          :style="{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }"
         >
           <h4 class="text-sm font-semibold flex items-center gap-2"
             :class="isDark ? 'text-slate-200' : 'text-slate-800'">
@@ -254,7 +254,6 @@
           <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
 
             <!-- Payment mode row -->
-             <p>here</p>
             <div
               v-for="pm in displayModes"
               :key="pm.name"

@@ -636,11 +636,11 @@ def create_customer(
             "doctype"             : "Customer",
             "customer_name"       : customer_name,
             "posa_referral_company": company,
-            "customer_type"       : customer_type or "Individual",
+            "customer_type"       : customer_type or "",
             "gender"              : gender or "",
             "custom_note"         : note or "",
-            "customer_group"      : customer_group or "All Customer Groups",
-            "territory"           : territory      or "All Territories",
+            "customer_group"      : customer_group or "",
+            "territory"           : territory      or "",
         })
         customer_doc.insert(ignore_permissions=False)
 
@@ -723,10 +723,8 @@ def get_customer_info(customer):
     res = {"loyalty_points": None, "conversion_factor": None}
 
     res["email_id"] = customer.email_id
-    res["first_mobile"] = customer.custom_first_mobile
-    res["second_mobile"] = customer.custom_second_mobile
-    res["custom_city"] = customer.custom_city
-    res["custom_customer_note"] = getattr(customer, "custom_note", None)
+    res["territory"] = customer.territory
+    res["customer_group"] = customer.customer_group
     res["image"] = customer.image
     res["loyalty_program"] = customer.loyalty_program
     res["customer_price_list"] = customer.default_price_list
@@ -753,4 +751,8 @@ def get_customer_info(customer):
         res["loyalty_points"] = lp_details.get("loyalty_points")
         res["conversion_factor"] = lp_details.get("conversion_factor")
 
+    from retail.retail.api.contact import get_party_contact_info
+    res["contacts"] = get_party_contact_info("Customer", customer.name)
+    from retail.retail.api.address import get_customer_addresses
+    res["addresses"] = get_customer_addresses(customer.name)
     return res

@@ -173,9 +173,6 @@
 
   --pt-focus-ring: #fb923c;
 
-
-
-
         /* pay.vue */
     --v-theme-surface: 30, 30, 30;
     --v-theme-background: 18, 18, 18;
@@ -199,7 +196,7 @@
     --content-panel-shadow: 0 6px 20px rgba(0,0,0,0.35);
 
 
-    --card-bg: rgba(10, 28, 34, 0.85);
+    --card-bg: rgba(10, 28, 34, 0.9);
     --card-border: rgba(20, 184, 166, 0.14);
 
     --header-bg: rgba(10, 28, 34, 0.85);

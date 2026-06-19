@@ -78,7 +78,7 @@
                     </div>
                     <div>
                       <div class="text-sm font-bold" style="color: var(--text-main);">
-                        {{ current.pos_profile.custom_store_name || current.pos_profile.name }}
+                        {{ current.pos_profile.posa_store_name || current.pos_profile.name }}
                       </div>
                       <div class="text-xs" style="color: var(--text-muted);">
                         {{ current.pos_profile.name }} · {{ current.pos_opening_shift.company }}

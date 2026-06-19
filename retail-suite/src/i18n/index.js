@@ -77,22 +77,25 @@ async function fetchTranslations(locale) {
 export async function loadLocale(locale) {
   const target = locale || getLocale()
 
-  // جيب من localStorage أولاً
+  // Get translations from localStorage
+
   const cached = localStorage.getItem(`retail_translations_${target}`)
   if (cached) {
     try {
-      const { messages, timestamp } = JSON.parse(cached)
+      console.log("📦 TTTTTTTTTTTT:", target)
+      const { messages, timestamp, target } = JSON.parse(cached)
+      console.log("📦 T :", target)
       applyMessages(messages)
 
-      // لو الـ cache أقل من 24 ساعة مش محتاج تجيب من الـ server
       const isStale = Date.now() - timestamp > 24 * 60 * 60 * 1000
-      if (!isStale) return true
-    } catch {}
-  }
+      if (!isStale) return JSON.parse(cached)
 
-  // جيب من الـ server
-  console.log("📦 fetchTranslations from server")
-  console.log("📦 target:",target)
+    } catch {
+      localStorage.removeItem(`retail_translations_${target}`)
+      return {}
+    }
+  }
+  // Get translations from server
   const messages = await fetchTranslations(target)
   if (messages) {
     applyMessages(messages)
@@ -100,7 +103,7 @@ export async function loadLocale(locale) {
       messages,
       timestamp: Date.now(),
     }))
-    return true
+    return messages || {}
   }
 
   return !!cached
@@ -130,7 +133,6 @@ export default {
     window.__ = translate
     window.$changeLanguage = changeLanguage
 
-    // حمّل اللغة الحالية
     loadLocale(getLocale())
   }
 }

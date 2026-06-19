@@ -28,7 +28,7 @@
           :key="cust.name"
           :value="cust.name"
         >
-          {{ cust.customer_name }}
+          {{ cust.name }}
         </option>
       </select>
 
@@ -55,7 +55,7 @@
     <UpdateCustomer
       v-show="showAddCustomerModal"
       :model-value="showAddCustomerModal"
-      :customer-id="customer_id"
+      :customer-id="customerName"
       :customer-info="customer_info"
       :pos_profile_doc="pos_profile"
       :customers="customers"
@@ -83,7 +83,7 @@ const primaryColor = computed(() => {
 
 const selectedCustomer = ref('')
 const customers = ref([])
-const customer_id = ref(null)
+const customerName = ref(null)
 const customer_info = ref({})
 const showAddCustomerModal = ref(false)
 
@@ -94,6 +94,7 @@ const pos_profile = computed(() => shiftStore.pos_profile || {})
 const loadCustomers = async () => {
   try {
     const customersList = await shiftStore.getCustomers(JSON.stringify(pos_profile.value))
+    console.log("customersList", customersList)
     if (customersList) {
       customers.value = customersList
       return customersList
@@ -105,19 +106,18 @@ const loadCustomers = async () => {
   }
 }
 
-// فتح مودال جديد
 const handleCustomerChange = () => {
   if (!selectedCustomer.value) {
     // case: Create new customer
     showAddCustomerModal.value = true
-    customer_id.value = null
+    customerName.value = null
     customer_info.value = {}
   } else {
     // case: Select existing customer
     const cust = customers.value.find(c => c.name === selectedCustomer.value)
     if (cust) {
       console.log('Selected customer info:', cust)
-      customer_id.value = cust.name
+      customerName.value = cust.name
       customer_info.value = { ...cust }
       emit('customer-selected', cust)
     }
@@ -137,7 +137,7 @@ const handleCustomerUpdated = async (updatedCustomer) => {
     customers.value.push({ ...updatedCustomer })
   }
 
-  customer_id.value = updatedCustomer.name
+  customerName.value = updatedCustomer.name
   customer_info.value = { ...updatedCustomer }
   selectedCustomer.value = updatedCustomer.name
   shiftStore.setCustomer(updatedCustomer)
@@ -151,34 +151,41 @@ const closeCustomerModal = () => {
     const cust = customers.value.find(c => c.name === currentCustomer.name)
     if (cust) {
       selectedCustomer.value = cust.name
-      customer_id.value = cust.name
+      customerName.value = cust.name
       customer_info.value = { ...cust }
       emit('customer-selected', cust)
     }
   }
 }
+
 watch(
-  [() => customers.value, () => pos_profile.value],
-  ([customerList, profile]) => {
-    if (!customerList?.length || !profile?.customer) return
+  () => shiftStore.isShiftOpen,
+  async (isOpen) => {
+    console.log("shift open changed", isOpen)
+
+    if (!isOpen) return
+
+    const list = await loadCustomers()
+
+    const customerList = list || customers.value
+
+    if (!customerList?.length || !shiftStore.pos_profile?.customer) return
 
     if (!selectedCustomer.value) {
       const defaultCustomer = customerList.find(
-        c => c.name === profile.customer
+        c => c.name === shiftStore.pos_profile.customer
       )
 
       if (defaultCustomer) {
         selectedCustomer.value = defaultCustomer.name
-        customer_id.value = defaultCustomer.name
+        customerName.value = defaultCustomer.name
         customer_info.value = { ...defaultCustomer }
 
         shiftStore.setCustomer(defaultCustomer)
         emit('customer-selected', defaultCustomer)
-
       }
     }
-  },
-  { immediate: true }
+  }
 )
 
 onMounted(async () => {
@@ -188,7 +195,7 @@ onMounted(async () => {
     const exists = list.find(c => c.name === savedCustomer.name)
     if (exists) {
       selectedCustomer.value = exists.name
-      customer_id.value = exists.name
+      customerName.value = exists.name
       customer_info.value = { ...exists }
       emit("customer-selected", exists)
     }

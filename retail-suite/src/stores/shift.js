@@ -474,7 +474,6 @@ export const useShiftStore = defineStore('shift', {
 
     async getCustomers(pos_profile) {
       try {
-          console.log("getCustomers",pos_profile)
           if (isOffline.value) {
               return await db.customers.toArray()
           }

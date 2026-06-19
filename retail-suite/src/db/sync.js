@@ -1,7 +1,7 @@
 // src/db/sync.js
 import { db } from './indexedDB'
 import { loadLocale } from '@/i18n'
-
+import { toRaw } from 'vue'
 const OFFLINE_ID_PREFIX = 'retail_offline_'
 
 // ============================================================================
@@ -24,7 +24,7 @@ export const saveToQueue = async (invoiceData, mode = 'fast') => {
 
   await db.invoice_queue.add({
     offline_id: offlineId,
-    data: JSON.parse(JSON.stringify(invoiceData)),
+    data: toRaw(invoiceData),
     mode,
     timestamp: Date.now(),
     synced: false,
@@ -113,8 +113,7 @@ export const cacheOfflineData = async (pos_profile, getItems, getCustomers) => {
   try {
     if (!pos_profile) return
     console.log('📦 Caching offline data...')
-
-    const [items, customers, translations] = await Promise.all([
+    const [itemsResponse, customers, translationsResponse] = await Promise.all([
       getItems(
         pos_profile,
         pos_profile.selling_price_list,
@@ -126,9 +125,10 @@ export const cacheOfflineData = async (pos_profile, getItems, getCustomers) => {
       loadLocale(),
     ])
 
-    if (items?.length) {
-      await db.items.bulkPut(items)
-      console.log(`✅ Cached ${items.length} items`)
+
+    if (itemsResponse.items?.length) {
+      await db.items.bulkPut(itemsResponse.items)
+      console.log(`✅ Cached ${itemsResponse.items.length} items`)
     }
 
     if (customers?.length) {
@@ -136,11 +136,16 @@ export const cacheOfflineData = async (pos_profile, getItems, getCustomers) => {
       console.log(`✅ Cached ${customers.length} customers`)
     }
 
-    if (translations) {
+    console.log("translationsResponse:", translationsResponse)
+    console.log("typeof translationsResponse:", typeof translationsResponse)
+    console.log("translationsResponse.target:", translationsResponse.target)
+    console.log("translationsResponse.messages:", translationsResponse.messages)
+    console.log("translationsResponse.timestamp:", translationsResponse.timestamp)
+    if (translationsResponse) {
         await db.translations.put({
-            locale: 'ar',
-            messages: translations,
-            timestamp: Date.now(),
+            locale: translationsResponse.target,
+            messages: translationsResponse.messages,
+            timestamp: translationsResponse.timestamp,
         })
     }
 

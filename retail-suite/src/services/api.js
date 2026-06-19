@@ -2,30 +2,6 @@
 import { api } from './auth.js'
 import { createListResource, call } from 'frappe-ui'
 
-export const getTerritoriesApi = async () => {
-    const resource =  createListResource({
-          doctype: 'Territory',
-          fields: JSON.stringify(['name']),
-          auto: true,
-          limit_page_length: 100,
-
-      })
-      await resource.list.promise
-      console.log("API Territories: ", resource.data)
-      return resource.data || []
-}
-
-export const getCountriesApi = async () => {
-  const resource = createListResource({
-        doctype: 'Country',
-        fields: JSON.stringify(['name']),
-        limit_page_length: 300,
-      })
-      await resource.list.promise
-      console.log("API Countries: ", resource.data)
-      return resource.data || []
-}
-
 export const getNotifications = async (user) => {
   try {
     const resource = createListResource({
@@ -171,9 +147,3 @@ export const deleteSampleItems = async () => {
     }
 }
 
-export const getCustomerAddressesApi = async (customer) => {
-  const res = await call('retail.retail.api.address.get_customer_addresses', {
-    params: { customer }
-  })
-  return res.data?.message ?? []
-}

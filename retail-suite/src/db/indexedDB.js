@@ -6,5 +6,5 @@ db.version(1).stores({
   stock: '&[item_code+warehouse], item_code, warehouse',
   items: '&item_code, item_name, item_group',
   customers: '&name, customer_name, mobile_no',
-  translations: '++id, locale',
+  translations: '&locale',
 })
